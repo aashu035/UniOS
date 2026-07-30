@@ -3,8 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { colors } from '../../theme/colors';
-import { db } from '../../db/client';
-import { subjects, faculty, venues, semesters } from '../../db/schema';
+import { db } from '../../core/db/client';
+import { subjects, faculty, venues, semesters } from '../../core/db/schema';
 import { ArrowLeft, Save } from 'lucide-react-native';
 
 export default function AddSubject() {
