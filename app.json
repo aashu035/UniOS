@@ -27,6 +27,13 @@
       "expo-sqlite",
       "expo-sharing",
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "27ab2b68-3f88-428b-94e9-0eabe47b02ea"
+      }
+    },
+    "owner": "aashu035"
   }
 }
