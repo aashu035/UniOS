@@ -1,7 +1,7 @@
 {
   "name": "unios",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
     "drizzle-orm": "^0.45.2",
