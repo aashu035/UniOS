@@ -11,6 +11,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { ProfileContext } from '../core/context/ProfileContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sentry from '@sentry/react-native';
+import { isRunningInExpoGo } from 'expo';
 
 Sentry.init({
   dsn: 'https://f7dbe1260e7f28e50afb2a04b1b83bf1@o4509450523049984.ingest.us.sentry.io/4509450526851072',
@@ -22,7 +23,13 @@ Sentry.init({
   // Replay 100% of errors, 10% of sessions
   replaysOnErrorSampleRate: 1.0,
   replaysSessionSampleRate: 0.1,
-  integrations: [Sentry.mobileReplayIntegration()],
+  integrations: [
+    Sentry.mobileReplayIntegration(),
+    Sentry.expoRouterIntegration({
+      enableTimeToInitialDisplay: !isRunningInExpoGo(),
+    }),
+  ],
+  enableNativeFramesTracking: !isRunningInExpoGo(),
   enableLogs: true,
 });
 
