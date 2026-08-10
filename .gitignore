@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+nativewind-env.d.ts
 
 # Native
 .kotlin/
@@ -30,8 +31,15 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# Windows
+Thumbs.db
+Desktop.ini
+
 # local env files
 .env*.local
+
+# Sentry
+*.sentry.properties
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +47,14 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Agent/AI internal files
+.agent/
+.codex/
+.artifacts/
+.tmp-*

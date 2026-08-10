@@ -4,7 +4,7 @@ import { workspaces } from '../workspace/model';
 
 export const attendance = sqliteTable('attendance', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  workspaceId: integer('workspace_id').references(() => workspaces.id),
+  workspaceId: integer('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
   date: text('date').notNull(),
   status: text('status').notNull(), // present/absent/cancelled/holiday
   markedAt: text('marked_at').default(sql`(CURRENT_TIMESTAMP)`),
@@ -13,7 +13,7 @@ export const attendance = sqliteTable('attendance', {
 
 export const portalAttendance = sqliteTable('portal_attendance', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  workspaceId: integer('workspace_id').references(() => workspaces.id),
+  workspaceId: integer('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
   portalTotal: integer('portal_total'),
   portalPresent: integer('portal_present'),
   portalPercent: real('portal_percent'),

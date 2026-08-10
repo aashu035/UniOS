@@ -1,13 +1,15 @@
-import { Stack } from 'expo-router';
-import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+import React from 'react';
+import { Stack, router } from 'expo-router';
+import { PaperProvider, MD3LightTheme, Button } from 'react-native-paper';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { db, expoDb } from '../core/db/client';
 import migrations from '../drizzle/migrations';
-import { seedFullDatabase } from '../core/db/seed';
 import { colors } from '../tokens';
-import { View, Text } from 'react-native';
-import { useEffect, useState } from 'react';
+import { View, Text, Alert } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSegments } from 'expo-router';
+import { ProfileContext } from '../core/context/ProfileContext';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const theme = {
   ...MD3LightTheme,
@@ -20,29 +22,120 @@ const theme = {
   },
 };
 
+/**
+ * Reload the app by navigating to root. In production builds with expo-updates,
+ * you'd use Updates.reloadAsync(). For dev/preview builds without expo-updates,
+ * we force a root navigation which re-runs the layout and re-triggers migrations.
+ */
+const reloadApp = () => {
+  try {
+    // Force the root layout to re-mount by navigating away
+    router.replace('/');
+  } catch {
+    // If router isn't ready, alert the user to manually restart
+    Alert.alert('Restart Required', 'Please close and reopen the app.');
+  }
+};
+
+// ─── Top-Level Error Boundary (Runtime Rendering Crashes) ─────────────────────
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('AppErrorBoundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.light.background }}>
+          <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.light.danger, marginBottom: 8 }}>Something went wrong</Text>
+          <Text style={{ textAlign: 'center', color: colors.light.textMuted, marginBottom: 16, paddingHorizontal: 16 }}>
+            {this.state.error?.message || 'An unexpected error occurred.'}
+          </Text>
+          <Button mode="contained" onPress={() => this.setState({ hasError: false, error: null })} style={{ marginBottom: 8 }}>
+            Try Again
+          </Button>
+          <Button mode="outlined" onPress={reloadApp}>
+            Reload App
+          </Button>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ─── Migration Error Screen (Database Startup Failures) ──────────────────────
+function MigrationErrorScreen({ error }: { error: Error }) {
+  const handleResetDatabase = () => {
+    Alert.alert(
+      'Reset Database',
+      'This will delete ALL your data (courses, attendance, tasks, resources) and restart the app. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset & Restart',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const dbPath = `${FileSystem.documentDirectory}SQLite/unios.db`;
+              await FileSystem.deleteAsync(dbPath, { idempotent: true });
+              reloadApp();
+            } catch (e) {
+              console.error('Failed to reset database:', e);
+              Alert.alert('Reset Failed', 'Could not delete the database file. Please reinstall the app.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.light.background }}>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.light.danger, marginBottom: 12 }}>Database Migration Failed</Text>
+      <Text style={{ textAlign: 'center', marginBottom: 8, color: colors.light.text }}>{error.message}</Text>
+      <Text style={{ textAlign: 'center', marginBottom: 24, color: colors.light.textMuted, fontSize: 13 }}>
+        This usually happens after an app update. Try retrying first. If the problem persists, resetting the database will fix it but erase all local data.
+      </Text>
+      <Button mode="contained" onPress={reloadApp} style={{ marginBottom: 12, width: '80%' }}>
+        Retry / Reload App
+      </Button>
+      <Button mode="outlined" onPress={handleResetDatabase} style={{ width: '80%' }} textColor={colors.light.danger}>
+        Reset Database (lose all data)
+      </Button>
+    </View>
+  );
+}
+
+// ─── Root Layout ─────────────────────────────────────────────────────────────
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
   const [isSeeded, setIsSeeded] = useState(false);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
-  const router = useRouter();
+  const navRouter = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
     if (success) {
-      seedFullDatabase()
-        .then(async () => {
-          setIsSeeded(true);
-          try {
-            const result = await expoDb.getAllAsync(`SELECT id FROM students LIMIT 1`);
-            setHasProfile(result.length > 0);
-          } catch (e) {
-            console.error("Failed to check profile", e);
-            setHasProfile(false);
-          }
+      setIsSeeded(true);
+      expoDb.getAllAsync(`SELECT id FROM students LIMIT 1`)
+        .then((result) => {
+          setHasProfile(result.length > 0);
         })
         .catch((e) => {
-          console.error(e);
-          setIsSeeded(true);
+          console.error("Failed to check profile", e);
           setHasProfile(false);
         });
     }
@@ -50,22 +143,26 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (isSeeded && hasProfile !== null) {
-      const inMainGroup = segments[0] === '(main)';
-      
-      if (!hasProfile && inMainGroup) {
-        router.replace('/onboarding');
-      } else if (hasProfile && !inMainGroup) {
-        router.replace('/(main)');
+      const onOnboarding = segments[0] === 'onboarding';
+
+      if (!hasProfile && !onOnboarding) {
+        expoDb.getAllAsync(`SELECT id FROM students LIMIT 1`).then((result) => {
+          if (result.length > 0) {
+            setHasProfile(true);
+          } else {
+            navRouter.replace('/onboarding');
+          }
+        }).catch(() => {
+          navRouter.replace('/onboarding');
+        });
+      } else if (hasProfile && onOnboarding) {
+        navRouter.replace('/(main)/home');
       }
     }
   }, [isSeeded, hasProfile, segments]);
 
   if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Error running migrations: {error.message}</Text>
-      </View>
-    );
+    return <MigrationErrorScreen error={error} />;
   }
 
   if (!success || !isSeeded || hasProfile === null) {
@@ -77,13 +174,20 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider theme={theme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(main)" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="search" options={{ presentation: 'modal' }} />
-      </Stack>
-    </PaperProvider>
+    <AppErrorBoundary>
+      <ProfileContext.Provider value={{ hasProfile, setHasProfile }}>
+        <PaperProvider theme={theme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(main)" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="search" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="course/add" options={{ presentation: 'formSheet' }} />
+            <Stack.Screen name="course/edit" options={{ presentation: 'formSheet' }} />
+            <Stack.Screen name="planner/add" options={{ presentation: 'formSheet' }} />
+          </Stack>
+        </PaperProvider>
+      </ProfileContext.Provider>
+    </AppErrorBoundary>
   );
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { TaskRepository } from './repository';
 
 export function useTasks(workspaceId?: number) {
@@ -24,9 +25,19 @@ export function useTasks(workspaceId?: number) {
     }
   }, [workspaceId]);
 
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [loadTasks])
+  );
 
-  return { tasks, isLoading, error, refreshTasks: loadTasks };
+  const updateTaskStatus = async (id: number, status: 'pending' | 'submitted' | 'graded' | 'overdue') => {
+    const updated = await TaskRepository.updateTaskStatus(id, status);
+    if (updated) {
+      setTasks(current => current.map(task => task.id === id ? updated : task));
+    }
+    return updated;
+  };
+
+  return { tasks, isLoading, error, refreshTasks: loadTasks, updateTaskStatus };
 }

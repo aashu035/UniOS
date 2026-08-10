@@ -1,15 +1,14 @@
 import React from 'react';
-import { View, StyleSheet, ViewProps, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewProps } from 'react-native';
 import { colors, radius, elevation, spacing } from '../../tokens';
 
 export interface AppCardProps extends ViewProps {
   children: React.ReactNode;
   variant?: 'elevated' | 'outlined' | 'flat';
   padding?: keyof typeof spacing;
-  style?: ViewStyle;
 }
 
-export function AppCard({ 
+export const AppCard = React.memo(function AppCard({ 
   children, 
   variant = 'elevated', 
   padding = 'lg',
@@ -29,7 +28,7 @@ export function AppCard({
       {children}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   base: {

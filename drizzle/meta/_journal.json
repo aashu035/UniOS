@@ -8,6 +8,48 @@
       "when": 1785198399559,
       "tag": "0000_petite_dark_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785448693534,
+      "tag": "0001_deep_zaran",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785478071567,
+      "tag": "0002_lonely_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785480142236,
+      "tag": "0003_curious_ozymandias",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785484057803,
+      "tag": "0004_add_calendar_recurrence_and_remove_legacy_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1785678228288,
+      "tag": "0005_bright_dakota_north",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785724228803,
+      "tag": "0006_bizarre_komodo",
+      "breakpoints": true
     }
   ]
 }

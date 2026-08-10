@@ -1,27 +1,44 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Text } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { AppScaffold } from '../../components/layout/AppScaffold';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { SectionHeader } from '../../components/layout/SectionHeader';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { TimelineCard } from '../../components/cards/TimelineCard';
 import { EmptyState } from '../../components/layout/EmptyState';
 import { IconButton } from '../../components/buttons/IconButton';
 import { Plus, Filter, Calendar as CalendarIcon } from 'lucide-react-native';
 import { colors, spacing, typography, radius } from '../../tokens';
+import { useRouter } from 'expo-router';
+import { useCalendar } from '../../domains/calendar/hooks';
 
 export default function Planner() {
-  const [selectedDate, setSelectedDate] = useState(12);
+  const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showStudySessions, setShowStudySessions] = useState(true);
 
-  // Mock Date strip
-  const dates = [
-    { day: 'Mon', date: 10 },
-    { day: 'Tue', date: 11 },
-    { day: 'Wed', date: 12 },
-    { day: 'Thu', date: 13 },
-    { day: 'Fri', date: 14 },
-    { day: 'Sat', date: 15 },
-  ];
+  // Generate 7 days starting from today
+  const dates = useMemo(() => {
+    const arr = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      arr.push({
+        dateObj: d,
+        day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: d.getDate(),
+        isToday: i === 0,
+      });
+    }
+    return arr;
+  }, []);
+
+  const dayOfWeek = selectedDate.getDay();
+  const specificDateStr = selectedDate.toISOString().split('T')[0];
+
+  const { events, isLoading } = useCalendar(dayOfWeek, specificDateStr);
 
   return (
     <AppScaffold>
@@ -29,8 +46,7 @@ export default function Planner() {
         title="Planner" 
         rightAction={
           <View style={styles.headerActions}>
-            <IconButton icon={<Filter size={24} color={colors.light.text} />} />
-            <IconButton icon={<Plus size={24} color={colors.light.text} />} />
+            <IconButton icon={<Plus size={24} color={colors.light.text} />} onPress={() => router.push('/planner/add')} accessibilityLabel="Add event" />
           </View>
         }
       />
@@ -40,13 +56,13 @@ export default function Planner() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateStrip}>
           {dates.map((d) => (
             <TouchableOpacity 
-              key={d.date}
+              key={d.dateObj.getTime()}
               activeOpacity={0.7}
-              onPress={() => setSelectedDate(d.date)}
-              style={[styles.dateBubble, selectedDate === d.date && styles.dateBubbleActive]}
+              onPress={() => setSelectedDate(d.dateObj)}
+              style={[styles.dateBubble, selectedDate.getDate() === d.date && styles.dateBubbleActive]}
             >
-              <Text style={[styles.dateDay, selectedDate === d.date && styles.dateTextActive]}>{d.day}</Text>
-              <Text style={[styles.dateNumber, selectedDate === d.date && styles.dateTextActive]}>{d.date}</Text>
+              <Text style={[styles.dateDay, selectedDate.getDate() === d.date && styles.dateTextActive]}>{d.day}</Text>
+              <Text style={[styles.dateNumber, selectedDate.getDate() === d.date && styles.dateTextActive]}>{d.date}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -55,28 +71,24 @@ export default function Planner() {
       <PageContainer>
         <SectionHeader title="Schedule" />
         
-        {selectedDate === 12 ? (
-          <>
+        {isLoading ? (
+            <View style={{ padding: spacing.xl }}>
+              <Skeleton height={80} borderRadius={radius.lg} style={{ marginBottom: spacing.md }} />
+              <Skeleton height={80} borderRadius={radius.lg} style={{ marginBottom: spacing.md }} />
+              <Skeleton height={80} borderRadius={radius.lg} />
+            </View>
+          ) : events.length > 0 ? (
+          events.map((event, index) => (
             <TimelineCard 
-              time="10:00 AM" 
-              title="Data Structures & Algorithms" 
-              subtitle="Prof. Sharma" 
-              venue="Room 304, Block B"
-              isActive={true}
+              key={event.id}
+              time={`${event.startTime} - ${event.endTime}`} 
+              title={event.title || event.workspaceName || 'Event'} 
+              subtitle={event.description || (event.type === 'work' ? 'External Work' : 'Lecture')} 
+              venue={event.location || event.venueName || 'TBD'}
+              isActive={index === 0 && selectedDate.getDate() === new Date().getDate()}
+              onPress={event.workspaceId ? () => router.push(`/workspace/${event.workspaceId}`) : undefined}
             />
-            <TimelineCard 
-              time="11:30 AM" 
-              title="Operating Systems" 
-              subtitle="Prof. Gupta" 
-              venue="Lab 2, Block A"
-            />
-            <TimelineCard 
-              time="02:00 PM" 
-              title="Study Group: OS Project" 
-              subtitle="Self Study" 
-              venue="Central Library"
-            />
-          </>
+          ))
         ) : (
           <EmptyState 
             icon={<CalendarIcon size={48} color={colors.light.textMuted} />}

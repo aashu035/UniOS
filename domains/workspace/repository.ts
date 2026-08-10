@@ -12,6 +12,7 @@ export class WorkspaceRepository {
       code: workspaces.code,
       color: workspaces.color,
       credits: workspaces.credits,
+      targetAttendance: workspaces.targetAttendance,
     }).from(workspaces);
   }
 
@@ -35,5 +36,11 @@ export class WorkspaceRepository {
       .from(workspaceTimeline)
       .where(eq(workspaceTimeline.workspaceId, workspaceId))
       .orderBy(desc(workspaceTimeline.timestamp));
+  }
+
+  static async deleteWorkspace(workspaceId: number) {
+    // Note: Caller is responsible for handling FileSystem operations for resources before calling this
+    // SQLite PRAGMA foreign_keys = ON handles cascading deletes for tasks, resources, attendance, and timeline.
+    await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
   }
 }

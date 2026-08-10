@@ -16,4 +16,12 @@ export class TaskRepository {
       .where(eq(tasks.status, 'pending'))
       .orderBy(tasks.dueDate);
   }
+
+  static async updateTaskStatus(id: number, status: 'pending' | 'submitted' | 'graded' | 'overdue') {
+    const result = await db.update(tasks)
+      .set({ status })
+      .where(eq(tasks.id, id))
+      .returning();
+    return result[0];
+  }
 }

@@ -1,17 +1,24 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing, typography } from '../../tokens';
 
 interface SectionHeaderProps {
   title: string;
   action?: React.ReactNode;
+  actionLabel?: string;
+  onActionPress?: () => void;
 }
 
-export function SectionHeader({ title, action }: SectionHeaderProps) {
+export function SectionHeader({ title, action, actionLabel, onActionPress }: SectionHeaderProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
       {action && <View>{action}</View>}
+      {!action && actionLabel && onActionPress && (
+        <TouchableOpacity onPress={onActionPress}>
+          <Text style={styles.actionLabel}>{actionLabel}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -30,4 +37,10 @@ const styles = StyleSheet.create({
     color: colors.light.text,
     letterSpacing: typography.letterSpacing.tight,
   }
+  ,
+  actionLabel: {
+    color: colors.light.accent,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
 });

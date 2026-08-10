@@ -4,7 +4,7 @@ import { workspaces } from '../workspace/model';
 
 export const tasks = sqliteTable('tasks', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  workspaceId: integer('workspace_id').references(() => workspaces.id),
+  workspaceId: integer('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
   type: text('type').default('assignment'), // assignment/quiz/lab/exam/todo

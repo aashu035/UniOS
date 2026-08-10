@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Text } from 'react-native';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { SectionHeader } from '../../../components/layout/SectionHeader';
 import { StatCard } from '../../../components/cards/StatCard';
+import { AppCard } from '../../../components/cards/AppCard';
 import { TimelineCard } from '../../../components/cards/TimelineCard';
 import { FacultyCard } from '../../../components/cards/FacultyCard';
-import { colors, spacing } from '../../../tokens';
+import { colors, spacing, typography } from '../../../tokens';
 import { BookOpen, AlertTriangle } from 'lucide-react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useWorkspace } from '../../../domains/workspace/hooks';
@@ -14,6 +15,8 @@ export default function WorkspaceOverview() {
   const { id } = useLocalSearchParams();
   const workspaceId = parseInt(id as string, 10);
   const { workspaceData, timeline, isLoading } = useWorkspace(workspaceId);
+  const facultyName = workspaceData?.faculty?.name ?? 'No instructor set';
+  const facultyEmail = workspaceData?.faculty?.email ?? undefined;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -21,17 +24,17 @@ export default function WorkspaceOverview() {
         <View style={styles.statsRow}>
           <StatCard 
             title="Attendance" 
-            value="85%" 
-            trend="+2% this week"
-            trendDirection="up"
+            value={workspaceData?.targetAttendance ? `${workspaceData.targetAttendance}% Target` : "No Target"} 
+            trend="Tracking disabled"
+            trendDirection="down"
             icon={<BookOpen size={20} color={colors.light.primary} />}
             style={styles.flexHalf}
           />
           <StatCard 
             title="Alerts" 
-            value="1" 
-            trend="Midterm next week"
-            trendDirection="down"
+            value="0" 
+            trend="All caught up"
+            trendDirection="up"
             icon={<AlertTriangle size={20} color={colors.light.warning} />}
             style={styles.flexHalf}
           />
@@ -39,9 +42,9 @@ export default function WorkspaceOverview() {
 
         <SectionHeader title="Faculty" />
         <FacultyCard 
-          name="Prof. Sharma"
+          name={facultyName}
           title="Course Instructor"
-          email="sharma@dcrust.edu.in"
+          email={facultyEmail}
         />
 
         <SectionHeader title="Subject Timeline" actionLabel="View All" />
@@ -57,27 +60,9 @@ export default function WorkspaceOverview() {
             />
           ))
         ) : (
-          <>
-            <TimelineCard 
-              time="Today" 
-              title="Uploaded Slide Deck: Trees & Graphs" 
-              subtitle="Knowledge Hub" 
-              venue="PDF • 2.4 MB"
-              isActive={true}
-            />
-            <TimelineCard 
-              time="Yesterday" 
-              title="Graded Assignment 2" 
-              subtitle="Tasks" 
-              venue="Score: 18/20"
-            />
-            <TimelineCard 
-              time="Mon, 10th" 
-              title="Midterm Syllabus Announced" 
-              subtitle="Announcement" 
-              venue="Chapters 1-5"
-            />
-          </>
+          <AppCard padding="md">
+            <Text style={styles.emptyText}>No recent activity in this workspace.</Text>
+          </AppCard>
         )}
       </PageContainer>
     </ScrollView>
@@ -99,5 +84,9 @@ const styles = StyleSheet.create({
   },
   flexHalf: {
     flex: 1,
+  },
+  emptyText: {
+    color: colors.light.textMuted,
+    fontSize: typography.fontSize.sm,
   }
 });

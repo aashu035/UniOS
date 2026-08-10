@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { Slot, useLocalSearchParams, useRouter, useSegments, usePathname } from 'expo-router';
+import { Slot, useFocusEffect, useLocalSearchParams, useRouter, useSegments, usePathname } from 'expo-router';
 import { AppScaffold } from '../../../components/layout/AppScaffold';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { IconButton } from '../../../components/buttons/IconButton';
 import { TopTabBar, TabItem } from '../../../components/layout/TopTabBar';
-import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
+import { ChevronLeft, Settings2 } from 'lucide-react-native';
 import { colors, spacing } from '../../../tokens';
+import { useWorkspace } from '../../../domains/workspace/hooks';
 
 const WORKSPACE_TABS: TabItem[] = [
   { key: 'index', label: 'Overview' },
@@ -21,6 +22,12 @@ export default function WorkspaceLayout() {
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
+  const workspaceId = Number(Array.isArray(id) ? id[0] : id);
+  const { workspaceData, refreshWorkspace } = useWorkspace(Number.isFinite(workspaceId) ? workspaceId : 0);
+
+  useFocusEffect(useCallback(() => {
+    refreshWorkspace();
+  }, [refreshWorkspace]));
 
   // Determine active tab based on the current segment
   // segments for /workspace/1/knowledge would be ['workspace', '[id]', 'knowledge']
@@ -44,8 +51,7 @@ export default function WorkspaceLayout() {
     }
   };
 
-  // Mock subject name based on id for now
-  const subjectName = id === '1' ? 'Data Structures' : 'Operating Systems';
+  const subjectName = workspaceData?.workspace?.name ?? 'Course';
 
   return (
     <AppScaffold>
@@ -58,11 +64,7 @@ export default function WorkspaceLayout() {
             onPress={() => router.back()} 
           />
         }
-        rightAction={
-          <IconButton 
-            icon={<MoreHorizontal size={24} color={colors.light.text} />} 
-          />
-        }
+        rightAction={<IconButton icon={<Settings2 size={22} color={colors.light.text} />} onPress={() => router.push({ pathname: '/course/edit', params: { id: String(id) } })} accessibilityLabel="Edit course" />}
       />
       
       {/* Custom Horizontal Top Tab Bar */}

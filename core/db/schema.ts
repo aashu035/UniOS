@@ -8,3 +8,4 @@ export * from '../../domains/task/model';
 export * from '../../domains/calendar/model';
 export * from '../../domains/notification/model';
 export * from '../../domains/resource/model';
+export * from '../../domains/ai/model';

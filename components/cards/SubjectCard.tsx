@@ -4,14 +4,24 @@ import { AppCard } from './AppCard';
 import { AttendanceRing } from '../feedback/AttendanceRing';
 import { colors, spacing, typography } from '../../tokens';
 
+import { useAttendanceMetrics } from '../../domains/attendance/hooks';
+
 interface SubjectCardProps {
   title: string;
   code: string;
-  attendancePercentage: number;
+  attendancePercentage?: number;
+  workspaceId?: number;
   onPress?: () => void;
 }
 
-export function SubjectCard({ title, code, attendancePercentage, onPress }: SubjectCardProps) {
+export function SubjectCard({ title, code, attendancePercentage, workspaceId, onPress }: SubjectCardProps) {
+  let displayPercentage = attendancePercentage || 100;
+  
+  const { metrics, isLoading } = useAttendanceMetrics(workspaceId || -1);
+  if (workspaceId && !isLoading) {
+    displayPercentage = metrics.percentage;
+  }
+
   const content = (
     <AppCard padding="lg" style={styles.card}>
       <View style={styles.textContainer}>
@@ -19,7 +29,7 @@ export function SubjectCard({ title, code, attendancePercentage, onPress }: Subj
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
       </View>
       <View style={styles.ringContainer}>
-        <AttendanceRing percentage={attendancePercentage} size={56} strokeWidth={5} />
+        <AttendanceRing percentage={displayPercentage} size={56} strokeWidth={5} />
       </View>
     </AppCard>
   );
@@ -57,7 +67,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
     color: colors.light.text,
-    lineHeight: typography.lineHeight.snug,
+    lineHeight: typography.lineHeight.base,
   },
   ringContainer: {
     justifyContent: 'center',

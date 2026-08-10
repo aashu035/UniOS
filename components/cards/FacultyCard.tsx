@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AppCard } from './AppCard';
 import { colors, spacing, typography } from '../../tokens';
 import { Avatar } from '../avatar/Avatar';
@@ -9,13 +9,13 @@ export interface FacultyCardProps {
   name: string;
   title: string;
   email?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function FacultyCard({ name, title, email, style }: FacultyCardProps) {
   return (
     <AppCard style={[styles.container, style]}>
-      <Avatar fallback={name} size={48} />
+      <Avatar name={name} size={48} />
       <View style={styles.content}>
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.title}>{title}</Text>
@@ -42,11 +42,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    ...typography.h4,
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.light.text,
     marginBottom: 2,
   },
   title: {
-    ...typography.body,
+    fontSize: typography.fontSize.sm,
     color: colors.light.textMuted,
     marginBottom: spacing.xs,
   },
@@ -56,7 +58,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   email: {
-    ...typography.caption,
+    fontSize: typography.fontSize.xs,
     color: colors.light.textMuted,
   }
 });

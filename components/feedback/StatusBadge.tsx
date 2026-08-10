@@ -50,17 +50,17 @@ const styles = StyleSheet.create({
   },
   
   error: {
-    backgroundColor: `${colors.light.error}20`,
+    backgroundColor: `${colors.light.danger}20`,
   },
   errorText: {
-    color: colors.light.error,
+    color: colors.light.danger,
   },
   
   info: {
-    backgroundColor: `${colors.light.primary}20`,
+    backgroundColor: '#3b82f620',
   },
   infoText: {
-    color: colors.light.primary,
+    color: '#3b82f6',
   },
   
   neutral: {

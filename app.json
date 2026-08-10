@@ -2,7 +2,8 @@
   "expo": {
     "name": "UniOS",
     "slug": "UniOS",
-    "version": "1.0.0",
+    "scheme": "unios",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -11,10 +12,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.UniOS"
@@ -26,7 +25,16 @@
       "expo-router",
       "expo-sqlite",
       "expo-sharing",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you set a profile picture.",
+          "cameraPermission": "The app accesses your camera to let you take a profile picture."
+        }
+      ]
     ],
     "extra": {
       "router": {},

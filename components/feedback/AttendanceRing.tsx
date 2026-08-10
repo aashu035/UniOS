@@ -18,7 +18,7 @@ export function AttendanceRing({ percentage, size = 64, strokeWidth = 6 }: Atten
   const getRingColor = () => {
     if (percentage >= 75) return colors.light.success;
     if (percentage >= 60) return colors.light.warning;
-    return colors.light.error;
+    return colors.light.danger;
   };
 
   const ringColor = getRingColor();

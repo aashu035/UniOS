@@ -24,7 +24,7 @@ export const workspaces = sqliteTable('workspaces', {
 // Subject Timeline events (Git-style history)
 export const workspaceTimeline = sqliteTable('workspace_timeline', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  workspaceId: integer('workspace_id').references(() => workspaces.id),
+  workspaceId: integer('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
   eventType: text('event_type').notNull(), // e.g. 'assignment_added', 'notes_uploaded', 'attendance_updated'
   title: text('title').notNull(),
   description: text('description'),

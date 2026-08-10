@@ -1,3 +1,4 @@
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Home, BookOpen, Calendar, User, LayoutGrid } from 'lucide-react-native';
 import { colors } from '../../tokens';
@@ -55,12 +56,22 @@ export default function MainLayout() {
         }}
       />
       
-      {/* Hide the old tabs from the navigation bar while they are being removed/replaced */}
-      <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="courses" options={{ href: null }} />
-      <Tabs.Screen name="tasks" options={{ href: null }} />
-      <Tabs.Screen name="timetable" options={{ href: null }} />
-      <Tabs.Screen name="more" options={{ href: null }} />
     </Tabs>
+  );
+}
+
+export function ErrorBoundary({ error, retry }: import('expo-router').ErrorBoundaryProps) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.light.background }}>
+      <Text style={{ fontSize: 18, color: colors.light.text, marginBottom: 12 }}>Something went wrong in the UI.</Text>
+      <Text style={{ color: colors.light.danger, marginBottom: 24, paddingHorizontal: 20, textAlign: 'center' }}>
+        {error.message}
+      </Text>
+      <TouchableOpacity 
+        onPress={retry} 
+        style={{ backgroundColor: colors.light.primary, padding: 16, borderRadius: 12 }}>
+        <Text style={{ color: colors.dark.text, fontWeight: 'bold' }}>Restart App</Text>
+      </TouchableOpacity>
+    </View>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { AppCard } from './AppCard';
 import { colors, spacing, typography, radius } from '../../tokens';
 import { MapPin, Clock } from 'lucide-react-native';
@@ -10,9 +10,12 @@ interface TimelineCardProps {
   subtitle: string;
   venue?: string;
   isActive?: boolean;
+  onPress?: () => void;
 }
 
-export function TimelineCard({ time, title, subtitle, venue, isActive = false }: TimelineCardProps) {
+export const TimelineCard = React.memo(function TimelineCard({ time, title, subtitle, venue, isActive = false, onPress }: TimelineCardProps) {
+  const CardWrapper = onPress ? React.Fragment : View;
+  
   return (
     <View style={styles.container}>
       {/* Time Column */}
@@ -24,24 +27,43 @@ export function TimelineCard({ time, title, subtitle, venue, isActive = false }:
 
       {/* Card Column */}
       <View style={styles.cardColumn}>
-        <AppCard 
-          variant={isActive ? 'elevated' : 'flat'} 
-          style={[styles.card, isActive && styles.activeCard]}
-        >
-          <Text style={[styles.title, isActive && styles.activeText]}>{title}</Text>
-          <Text style={[styles.subtitle, isActive && styles.activeSubText]}>{subtitle}</Text>
-          
-          {venue && (
-            <View style={styles.footer}>
-              <MapPin size={14} color={isActive ? colors.dark.text : colors.light.textMuted} />
-              <Text style={[styles.venueText, isActive && styles.activeSubText]}>{venue}</Text>
-            </View>
-          )}
-        </AppCard>
+        {onPress ? (
+          <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
+            <AppCard 
+              variant={isActive ? 'elevated' : 'flat'} 
+              style={[styles.card, isActive && styles.activeCard]}
+            >
+              <Text style={[styles.title, isActive && styles.activeText]}>{title}</Text>
+              <Text style={[styles.subtitle, isActive && styles.activeSubText]}>{subtitle}</Text>
+              
+              {venue && (
+                <View style={styles.footer}>
+                  <MapPin size={14} color={isActive ? colors.dark.text : colors.light.textMuted} />
+                  <Text style={[styles.venueText, isActive && styles.activeSubText]}>{venue}</Text>
+                </View>
+              )}
+            </AppCard>
+          </TouchableOpacity>
+        ) : (
+          <AppCard 
+            variant={isActive ? 'elevated' : 'flat'} 
+            style={[styles.card, isActive && styles.activeCard]}
+          >
+            <Text style={[styles.title, isActive && styles.activeText]}>{title}</Text>
+            <Text style={[styles.subtitle, isActive && styles.activeSubText]}>{subtitle}</Text>
+            
+            {venue && (
+              <View style={styles.footer}>
+                <MapPin size={14} color={isActive ? colors.dark.text : colors.light.textMuted} />
+                <Text style={[styles.venueText, isActive && styles.activeSubText]}>{venue}</Text>
+              </View>
+            )}
+          </AppCard>
+        )}
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

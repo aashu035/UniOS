@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { colors, spacing, typography, radius } from '../tokens';
 import { ProfileRepository } from '../domains/profile/repository';
 import { ArrowRight } from 'lucide-react-native';
+import { useProfile } from '../core/context/ProfileContext';
 
 export default function Onboarding() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function Onboarding() {
   const [branch, setBranch] = useState('');
   const [semester, setSemester] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setHasProfile } = useProfile();
 
   const handleNext = async () => {
     if (!name.trim() || !branch.trim() || !semester.trim()) return;
@@ -23,7 +25,7 @@ export default function Onboarding() {
         branch: branch.trim(),
         currentSemester: parseInt(semester, 10) || 1,
       });
-      router.replace('/(main)');
+      setHasProfile(true); // Synchronous update triggers _layout.tsx guard to redirect
     } catch (error) {
       console.error('Error saving profile:', error);
       setIsSubmitting(false);

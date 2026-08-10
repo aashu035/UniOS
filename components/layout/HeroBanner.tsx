@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.xl,
     paddingTop: spacing['3xl'], // Extra padding for safe area / visual weight
-    borderRadius: radius['3xl'],
+    borderRadius: radius.xxl,
     marginBottom: spacing.lg,
     position: 'relative',
   },

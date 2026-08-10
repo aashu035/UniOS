@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { WorkspaceRepository } from './repository';
 
 export function useWorkspaces() {
@@ -19,9 +20,11 @@ export function useWorkspaces() {
     }
   }, []);
 
-  useEffect(() => {
-    loadWorkspaces();
-  }, [loadWorkspaces]);
+  useFocusEffect(
+    useCallback(() => {
+      loadWorkspaces();
+    }, [loadWorkspaces])
+  );
 
   return { workspaces, isLoading, error, refreshWorkspaces: loadWorkspaces };
 }
@@ -47,9 +50,11 @@ export function useWorkspace(id: number) {
     }
   }, [id]);
 
-  useEffect(() => {
-    loadWorkspace();
-  }, [loadWorkspace]);
+  useFocusEffect(
+    useCallback(() => {
+      loadWorkspace();
+    }, [loadWorkspace])
+  );
 
   return { workspaceData, timeline, isLoading, error, refreshWorkspace: loadWorkspace };
 }

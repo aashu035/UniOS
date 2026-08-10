@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { AttendanceRepository } from './repository';
 
 export function useAttendance(workspaceId: number) {
@@ -8,6 +9,7 @@ export function useAttendance(workspaceId: number) {
   const [error, setError] = useState<Error | null>(null);
 
   const loadAttendance = useCallback(async () => {
+    if (workspaceId <= 0) return;
     try {
       setIsLoading(true);
       const historyData = await AttendanceRepository.getAttendanceHistory(workspaceId);
@@ -22,9 +24,19 @@ export function useAttendance(workspaceId: number) {
     }
   }, [workspaceId]);
 
-  useEffect(() => {
-    loadAttendance();
-  }, [loadAttendance]);
+  useFocusEffect(
+    useCallback(() => {
+      loadAttendance();
+    }, [loadAttendance])
+  );
 
   return { history, portalData, isLoading, error, refreshAttendance: loadAttendance };
+}
+
+import { calculateAttendanceMetrics } from '../../core/utils/attendance';
+
+export function useAttendanceMetrics(workspaceId: number) {
+  const { history, isLoading } = useAttendance(workspaceId);
+  const metrics = calculateAttendanceMetrics(history);
+  return { metrics, isLoading };
 }

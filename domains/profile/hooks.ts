@@ -3,7 +3,7 @@ import { ProfileRepository } from './repository';
 import { Student, NewStudent } from './types';
 
 export function useProfile() {
-  const [profile, setProfile] = useState<Student | null>(null);
+  const [profile, setProfile] = useState<(Student & { avatar?: string | null }) | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -24,13 +24,13 @@ export function useProfile() {
     loadProfile();
   }, [loadProfile]);
 
-  const createProfile = async (newProfile: NewStudent) => {
+  const createProfile = async (newProfile: NewStudent & { avatar?: string | null }) => {
     const created = await ProfileRepository.createProfile(newProfile);
     setProfile(created);
     return created;
   };
 
-  const updateProfile = async (updates: Partial<NewStudent>) => {
+  const updateProfile = async (updates: Partial<NewStudent> & { avatar?: string | null }) => {
     if (!profile) throw new Error('No profile exists to update');
     const updated = await ProfileRepository.updateProfile(profile.id, updates);
     setProfile(updated);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, ImageSourcePropType, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, Image, ImageSourcePropType, ViewStyle, ImageStyle } from 'react-native';
 import { colors, typography } from '../../tokens';
 
 interface AvatarProps {
@@ -25,7 +25,7 @@ export function Avatar({ name, imageUrl, size = 40, style }: AvatarProps) {
 
   if (imageUrl) {
     const source = typeof imageUrl === 'string' ? { uri: imageUrl } : imageUrl;
-    return <Image source={source as any} style={[styles.container, containerStyle, style]} />;
+    return <Image source={source as any} style={[styles.container, containerStyle, style] as ImageStyle} />;
   }
 
   return (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, ActivityIndicator, Pressable } from 'react-native';
 import { AppScaffold } from '../../components/layout/AppScaffold';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { HeroBanner } from '../../components/layout/HeroBanner';
@@ -9,47 +9,54 @@ import { SubjectCard } from '../../components/cards/SubjectCard';
 import { AppCard } from '../../components/cards/AppCard';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
 import { IconButton } from '../../components/buttons/IconButton';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useProfile } from '../../domains/profile/hooks';
 import { Bell, Calendar, FileText, Download } from 'lucide-react-native';
-import { colors, spacing, typography } from '../../tokens';
+import { colors, spacing, typography, radius } from '../../tokens';
 import { useRouter } from 'expo-router';
 import { useTasks } from '../../domains/task/hooks';
 import { useWorkspaces } from '../../domains/workspace/hooks';
+import { useCalendar, useHeroCardContext } from '../../domains/calendar/hooks';
+import { useRecentResources } from '../../domains/resource/hooks';
 
 export default function Home() {
   const { profile, isLoading: profileLoading } = useProfile();
   const { tasks, isLoading: tasksLoading } = useTasks();
   const { workspaces, isLoading: workspacesLoading } = useWorkspaces();
+  const todayDayOfWeek = new Date().getDay();
+  const { events, isLoading: eventsLoading } = useCalendar(todayDayOfWeek);
+  const { resources, isLoading: resourcesLoading } = useRecentResources(3);
   const router = useRouter();
 
-  if (profileLoading || tasksLoading || workspacesLoading) {
+  const name = profile?.name || 'Student';
+  const { greeting, subtitle, nextEvent, currentEvent } = useHeroCardContext(events, name);
+
+  if (profileLoading || tasksLoading || workspacesLoading || eventsLoading || resourcesLoading) {
     return (
       <AppScaffold>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.light.primary} />
-        </View>
+        <PageContainer>
+          <Skeleton height={200} borderRadius={radius.xl} style={{ marginBottom: spacing.xl }} />
+          <Skeleton height={32} width={150} style={{ marginBottom: spacing.md }} />
+          <Skeleton height={100} borderRadius={radius.lg} style={{ marginBottom: spacing.sm }} />
+          <Skeleton height={100} borderRadius={radius.lg} style={{ marginBottom: spacing.xl }} />
+          <Skeleton height={32} width={150} style={{ marginBottom: spacing.md }} />
+          <Skeleton height={80} borderRadius={radius.lg} />
+        </PageContainer>
       </AppScaffold>
     );
   }
 
-  // Fallback data if profile isn't fully loaded
-  const name = profile?.name || 'Student';
-  const semester = profile?.currentSemester ? `Semester ${profile.currentSemester}` : 'Semester';
-
-  // Mock Data for Phase 2 UI Showcase
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const subtitle = `${semester} • ${today}`;
-
   return (
     <AppScaffold>
       <PageContainer>
-        {/* Hero Section */}
+        {/* Dynamic Hero Section */}
         <HeroBanner 
-          greeting="Good Morning,"
+          greeting={greeting}
           title={name}
           subtitle={subtitle}
           accent="primary"
           showPortrait={true}
+          imageUrl={profile?.avatar || undefined}
           rightElement={
             <IconButton 
               icon={<Bell size={24} color={colors.dark.text} />} 
@@ -60,98 +67,112 @@ export default function Home() {
         >
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>3</Text>
+              <Text style={styles.heroStatValue}>{events.length}</Text>
               <Text style={styles.heroStatLabel}>Classes Today</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{tasks.length > 0 ? tasks.length : 2}</Text>
+              <Text style={styles.heroStatValue}>{tasks.length}</Text>
               <Text style={styles.heroStatLabel}>Tasks Due</Text>
             </View>
           </View>
         </HeroBanner>
 
-        {/* What should I do today? -> Next Lecture */}
+        {/* Today's Schedule (Vertical Stack) */}
         <SectionHeader 
-          title="Next Lecture" 
-          action={<IconButton icon={<Calendar size={20} color={colors.light.primary} />} />}
+          title="Today's Schedule" 
+          action={<IconButton icon={<Calendar size={20} color={colors.light.primary} />} onPress={() => router.push('/(main)/planner')} accessibilityLabel="Open planner" />}
         />
-        <TimelineCard 
-          time="10:00 AM" 
-          title="Data Structures & Algorithms" 
-          subtitle="Prof. Sharma" 
-          venue="Room 304, Block B"
-          isActive={true}
-        />
-        <TimelineCard 
-          time="11:30 AM" 
-          title="Operating Systems" 
-          subtitle="Prof. Gupta" 
-          venue="Lab 2, Block A"
-        />
+        {events.length > 0 ? (
+          <View style={styles.verticalStack}>
+            {events.map((event, index) => (
+              <TimelineCard 
+                key={event.id}
+                time={`${event.startTime} - ${event.endTime}`} 
+                title={event.title || event.workspaceName || 'Event'} 
+                subtitle={event.description || (event.type === 'work' ? 'External Work' : 'Lecture')} 
+                venue={event.location || event.venueName || 'TBD'}
+                isActive={currentEvent?.id === event.id || nextEvent?.id === event.id}
+                onPress={event.workspaceId ? () => router.push(`/workspace/${event.workspaceId}`) : undefined}
+              />
+            ))}
+          </View>
+        ) : (
+          <AppCard padding="md">
+            <Text style={{color: colors.light.text, fontWeight: '500'}}>No classes scheduled for today.</Text>
+            <Text style={{color: colors.light.textMuted, fontSize: typography.fontSize.sm, marginTop: 4}}>Enjoy your day off! Why not get ahead on readings?</Text>
+          </AppCard>
+        )}
 
         {/* Today's Focus */}
-        <SectionHeader 
-          title="Today's Focus" 
-        />
+        <SectionHeader title="Today's Focus" />
         {tasks.length > 0 ? (
-          <AppCard padding="md" style={styles.focusCard}>
-            <View style={styles.focusIcon}>
-              <FileText size={24} color={colors.light.primary} />
-            </View>
-            <View style={styles.focusContent}>
-              <Text style={styles.focusTitle}>{tasks[0].title}</Text>
-              <Text style={styles.focusSubtitle}>{tasks[0].dueDate ? `Due ${tasks[0].dueDate}` : 'Due Soon'}</Text>
-            </View>
-            <StatusBadge label={tasks[0].priority === 'high' ? 'Urgent' : 'To Do'} variant={tasks[0].priority === 'high' ? 'error' : 'warning'} />
-          </AppCard>
+          <View style={styles.verticalStack}>
+            {tasks.map(task => (
+              <AppCard key={task.id} padding="md" style={styles.focusCard}>
+                <View style={styles.focusIcon}>
+                  <FileText size={24} color={colors.light.primary} />
+                </View>
+                <View style={styles.focusContent}>
+                  <Text style={styles.focusTitle}>{task.title}</Text>
+                  <Text style={styles.focusSubtitle}>{task.dueDate ? `Due ${task.dueDate}` : 'Due Soon'}</Text>
+                </View>
+                <StatusBadge label={task.priority === 'high' ? 'Urgent' : 'To Do'} variant={task.priority === 'high' ? 'error' : 'warning'} />
+              </AppCard>
+            ))}
+          </View>
         ) : (
-          <AppCard padding="md" style={styles.focusCard}>
-            <View style={styles.focusIcon}>
-              <FileText size={24} color={colors.light.primary} />
-            </View>
-            <View style={styles.focusContent}>
-              <Text style={styles.focusTitle}>OS Assignment 2</Text>
-              <Text style={styles.focusSubtitle}>Due Tonight at 11:59 PM</Text>
-            </View>
-            <StatusBadge label="Urgent" variant="error" />
+          <AppCard padding="md">
+            <Text style={{color: colors.light.text, fontWeight: '500'}}>You are all caught up!</Text>
+            <Text style={{color: colors.light.textMuted, fontSize: typography.fontSize.sm, marginTop: 4}}>All clear for now. Great job staying on top of things.</Text>
           </AppCard>
         )}
 
         {/* Attendance Alerts */}
-        <SectionHeader 
-          title="Attendance Alerts" 
-        />
+        <SectionHeader title="Attendance Alerts" />
         {workspaces.length > 0 ? (
-          workspaces.slice(0, 1).map((ws) => (
-            <SubjectCard 
-              key={ws.id}
-              title={ws.name} 
-              code={ws.code || 'SUBJ'} 
-              attendancePercentage={ws.targetAttendance || 75} 
-              onPress={() => router.push(`/workspace/${ws.id}`)}
-            />
-          ))
+          <View style={styles.verticalStack}>
+            {workspaces.slice(0, 2).map((ws) => (
+              <SubjectCard 
+                key={ws.id}
+                title={ws.name} 
+                code={ws.code || 'SUBJ'} 
+                attendancePercentage={ws.targetAttendance || 75} 
+                onPress={() => router.push(`/workspace/${ws.id}`)}
+              />
+            ))}
+          </View>
         ) : (
-          <SubjectCard 
-            title="Data Structures & Algorithms" 
-            code="CSE-301" 
-            attendancePercentage={85} 
-            onPress={() => router.push('/workspace/1')}
-          />
+          <AppCard padding="md">
+            <Text style={{color: colors.light.textMuted}}>Enroll in a workspace to track attendance.</Text>
+          </AppCard>
         )}
 
-        {/* Recent Uploads */}
-        <SectionHeader 
-          title="Recent Uploads" 
-        />
-        <AppCard padding="md" variant="outlined" style={styles.uploadCard}>
-          <View style={styles.uploadInfo}>
-            <Text style={styles.uploadTitle}>DSA Notes - Trees</Text>
-            <Text style={styles.uploadSubtitle}>Uploaded by Rahul • 2 hours ago</Text>
+        {/* Recent Uploads / Notes - Now Clickable */}
+        <SectionHeader title="Recent Uploads / Notes" />
+        {resources.length > 0 ? (
+          <View style={styles.verticalStack}>
+            {resources.map((res) => (
+              <Pressable 
+                key={res.id} 
+                onPress={() => res.workspaceId ? router.push(`/workspace/${res.workspaceId}`) : null}
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <AppCard padding="md" variant="outlined" style={styles.uploadCard}>
+                  <View style={styles.uploadInfo}>
+                    <Text style={styles.uploadTitle}>{res.title}</Text>
+                    <Text style={styles.uploadSubtitle}>{res.workspaceName} • {res.type}</Text>
+                  </View>
+                  <Download size={20} color={colors.light.textMuted} />
+                </AppCard>
+              </Pressable>
+            ))}
           </View>
-          <IconButton icon={<Download size={20} color={colors.light.primary} />} variant="filled" />
-        </AppCard>
+        ) : (
+          <AppCard padding="md">
+            <Text style={{color: colors.light.textMuted}}>No recent resources found.</Text>
+          </AppCard>
+        )}
 
       </PageContainer>
     </AppScaffold>
@@ -164,11 +185,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  verticalStack: {
+    gap: spacing.md,
+  },
   heroStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 16,
+    borderRadius: radius.lg,
     padding: spacing.md,
   },
   heroStat: {
@@ -197,7 +221,7 @@ const styles = StyleSheet.create({
   focusIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: `${colors.light.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,0 +1,1 @@
+ALTER TABLE `resources` ADD `file_hash` text;

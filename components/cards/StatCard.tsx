@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AppCard } from './AppCard';
-import { colors, spacing, typography, borderRadius } from '../../tokens';
+import { colors, spacing, typography } from '../../tokens';
 import { TrendingUp, TrendingDown } from 'lucide-react-native';
 
 export interface StatCardProps {
@@ -10,7 +10,7 @@ export interface StatCardProps {
   trend?: string;
   trendDirection?: 'up' | 'down';
   icon?: React.ReactNode;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function StatCard({ title, value, trend, trendDirection, icon, style }: StatCardProps) {
@@ -53,11 +53,14 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   title: {
-    ...typography.label,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.light.textMuted,
   },
   value: {
-    ...typography.h3,
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.light.text,
     marginBottom: spacing.xs,
   },
   trendContainer: {
@@ -66,7 +69,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   trend: {
-    ...typography.caption,
+    fontSize: typography.fontSize.xs,
     color: colors.light.textMuted,
   }
 });
