@@ -34,6 +34,15 @@
           "photosPermission": "The app accesses your photos to let you set a profile picture.",
           "cameraPermission": "The app accesses your camera to let you take a profile picture."
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "note": "Use SENTRY_AUTH_TOKEN env to authenticate with Sentry.",
+          "project": "react-native",
+          "organization": "harivanshi"
+        }
       ]
     ],
     "extra": {

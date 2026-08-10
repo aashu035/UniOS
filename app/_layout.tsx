@@ -10,6 +10,21 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { ProfileContext } from '../core/context/ProfileContext';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://f7dbe1260e7f28e50afb2a04b1b83bf1@o4509450523049984.ingest.us.sentry.io/4509450526851072',
+  sendDefaultPii: true,
+  // Capture 100% of traces in dev/preview, reduce in production
+  tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+  // Capture profiles for 100% of sampled traces
+  profilesSampleRate: 1.0,
+  // Replay 100% of errors, 10% of sessions
+  replaysOnErrorSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  integrations: [Sentry.mobileReplayIntegration()],
+  enableLogs: true,
+});
 
 const theme = {
   ...MD3LightTheme,
@@ -53,6 +68,7 @@ class AppErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('AppErrorBoundary caught:', error, errorInfo);
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
   }
 
   render() {
@@ -120,7 +136,7 @@ function MigrationErrorScreen({ error }: { error: Error }) {
 }
 
 // ─── Root Layout ─────────────────────────────────────────────────────────────
-export default function RootLayout() {
+function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
   const [isSeeded, setIsSeeded] = useState(false);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
@@ -191,3 +207,5 @@ export default function RootLayout() {
     </AppErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);
