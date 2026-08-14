@@ -8,6 +8,7 @@ import m0003 from './0003_curious_ozymandias.sql';
 import m0004 from './0004_add_calendar_recurrence_and_remove_legacy_token.sql';
 import m0005 from './0005_bright_dakota_north.sql';
 import m0006 from './0006_bizarre_komodo.sql';
+import m0007 from './0007_nervous_polaris.sql';
 
   export default {
     journal,
@@ -18,7 +19,8 @@ m0002,
 m0003,
 m0004,
 m0005,
-m0006
+m0006,
+m0007
     }
   }
   
