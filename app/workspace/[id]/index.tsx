@@ -23,19 +23,11 @@ export default function WorkspaceOverview() {
       <PageContainer>
         <View style={styles.statsRow}>
           <StatCard 
-            title="Attendance" 
+            title="Target Attendance" 
             value={workspaceData?.targetAttendance ? `${workspaceData.targetAttendance}% Target` : "No Target"} 
             trend="Tracking disabled"
             trendDirection="down"
             icon={<BookOpen size={20} color={colors.light.primary} />}
-            style={styles.flexHalf}
-          />
-          <StatCard 
-            title="Alerts" 
-            value="0" 
-            trend="All caught up"
-            trendDirection="up"
-            icon={<AlertTriangle size={20} color={colors.light.warning} />}
             style={styles.flexHalf}
           />
         </View>
@@ -47,7 +39,7 @@ export default function WorkspaceOverview() {
           email={facultyEmail}
         />
 
-        <SectionHeader title="Subject Timeline" actionLabel="View All" />
+        <SectionHeader title="Subject Timeline" />
         {timeline.length > 0 ? (
           timeline.map((event) => (
             <TimelineCard 

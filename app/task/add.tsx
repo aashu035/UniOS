@@ -3,8 +3,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Save } from 'lucide-react-native';
-import { db } from '../../core/db/client';
-import { tasks } from '../../core/db/schema';
+import { TaskRepository } from '../../domains/task/repository';
 import { useWorkspaces } from '../../domains/workspace/hooks';
 import { colors, radius, spacing, typography } from '../../tokens';
 
@@ -35,7 +34,7 @@ export default function AddTask() {
     }
     setIsSaving(true);
     try {
-      await db.insert(tasks).values({ workspaceId: selectedWorkspaceId, title: title.trim(), dueDate: dueDate.trim() || null, priority, status: 'pending' });
+      await TaskRepository.createTask({ workspaceId: selectedWorkspaceId, title: title.trim(), dueDate: dueDate.trim() || null, priority, status: 'pending' });
       router.back();
     } catch (error) {
       console.error('Could not create task', error);
@@ -54,7 +53,27 @@ export default function AddTask() {
         <Text style={styles.label}>Due date or reminder</Text>
         <TextInput style={styles.input} value={dueDate} onChangeText={setDueDate} placeholder="e.g. Friday, 5:00 PM" placeholderTextColor={colors.light.textMuted} />
         <Text style={styles.label}>Course</Text>
-        {isLoading ? <Text style={styles.muted}>Loading courses…</Text> : workspaces.length === 0 ? <Text style={styles.muted}>No courses yet. Add a course from Workspaces first.</Text> : <View style={styles.chips}>{workspaces.map(workspace => <TouchableOpacity key={workspace.id} onPress={() => setSelectedWorkspaceId(workspace.id)} style={[styles.courseChip, selectedWorkspaceId === workspace.id && styles.courseChipActive]}><Text style={[styles.courseChipText, selectedWorkspaceId === workspace.id && styles.courseChipTextActive]}>{workspace.code || workspace.name}</Text></TouchableOpacity>)}</View>}
+        {workspaceId ? (
+          <View style={styles.chips}>
+            {workspaces.filter(w => w.id === Number(workspaceId)).map(workspace => (
+              <View key={workspace.id} style={[styles.courseChip, styles.courseChipActive]}>
+                <Text style={styles.courseChipTextActive}>{workspace.code || workspace.name}</Text>
+              </View>
+            ))}
+          </View>
+        ) : isLoading ? (
+          <Text style={styles.muted}>Loading courses…</Text>
+        ) : workspaces.length === 0 ? (
+          <Text style={styles.muted}>No courses yet. Add a course from Workspaces first.</Text>
+        ) : (
+          <View style={styles.chips}>
+            {workspaces.map(workspace => (
+              <TouchableOpacity key={workspace.id} onPress={() => setSelectedWorkspaceId(workspace.id)} style={[styles.courseChip, selectedWorkspaceId === workspace.id && styles.courseChipActive]}>
+                <Text style={[styles.courseChipText, selectedWorkspaceId === workspace.id && styles.courseChipTextActive]}>{workspace.code || workspace.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         <Text style={styles.label}>Priority</Text>
         <View style={styles.chips}>{PRIORITIES.map(item => <TouchableOpacity key={item} onPress={() => setPriority(item)} style={[styles.priorityChip, priority === item && styles.priorityChipActive]}><Text style={[styles.priorityText, priority === item && styles.priorityTextActive]}>{item[0].toUpperCase() + item.slice(1)}</Text></TouchableOpacity>)}</View>
       </ScrollView>

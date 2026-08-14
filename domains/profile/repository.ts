@@ -2,6 +2,7 @@ import { db } from '../../core/db/client';
 import { students } from './model';
 import { NewStudent, Student } from './types';
 import { eq } from 'drizzle-orm';
+import { semesters } from '../semester/model';
 
 export class ProfileRepository {
   static async getProfile(): Promise<Student & { avatar?: string | null }> {
@@ -32,6 +33,22 @@ export class ProfileRepository {
       .set(dbUpdates)
       .where(eq(students.id, id))
       .returning();
+
+    if (updates.currentSemester !== undefined) {
+      await db.update(semesters).set({ isActive: false }).run();
+      const existing = await db.select().from(semesters).where(eq(semesters.number, updates.currentSemester)).get();
+      if (existing) {
+        await db.update(semesters).set({ isActive: true }).where(eq(semesters.id, existing.id)).run();
+      } else {
+        await db.insert(semesters).values({
+          number: updates.currentSemester,
+          name: `Semester ${updates.currentSemester}`,
+          type: updates.currentSemester % 2 === 0 ? 'even' : 'odd',
+          isActive: true
+        }).run();
+      }
+    }
+
     const updated = result[0];
     return { ...updated, avatar: updated.heroPortraitUri };
   }

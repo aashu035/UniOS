@@ -3,7 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import { Slot, useFocusEffect, useLocalSearchParams, useRouter, useSegments, usePathname } from 'expo-router';
 import { AppScaffold } from '../../../components/layout/AppScaffold';
 import { PageHeader } from '../../../components/layout/PageHeader';
-import { IconButton } from '../../../components/buttons/IconButton';
+import { Button } from '../../../components/buttons/Button';
 import { TopTabBar, TabItem } from '../../../components/layout/TopTabBar';
 import { ChevronLeft, Settings2 } from 'lucide-react-native';
 import { colors, spacing } from '../../../tokens';
@@ -14,7 +14,6 @@ const WORKSPACE_TABS: TabItem[] = [
   { key: 'knowledge', label: 'Knowledge Hub' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'attendance', label: 'Attendance' },
-  { key: 'insights', label: 'Insights' },
 ];
 
 export default function WorkspaceLayout() {
@@ -59,12 +58,12 @@ export default function WorkspaceLayout() {
       <PageHeader 
         title={subjectName}
         leftAction={
-          <IconButton 
+          <Button variant="icon" 
             icon={<ChevronLeft size={24} color={colors.light.text} />} 
             onPress={() => router.back()} 
           />
         }
-        rightAction={<IconButton icon={<Settings2 size={22} color={colors.light.text} />} onPress={() => router.push({ pathname: '/course/edit', params: { id: String(id) } })} accessibilityLabel="Edit course" />}
+        rightAction={<Button variant="icon" icon={<Settings2 size={22} color={colors.light.text} />} onPress={() => router.push({ pathname: '/course/edit', params: { id: String(id) } })} accessibilityLabel="Edit course" />}
       />
       
       {/* Custom Horizontal Top Tab Bar */}

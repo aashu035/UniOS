@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Home, BookOpen, Calendar, User, LayoutGrid } from 'lucide-react-native';
+import { Home, BookOpen, Calendar, User, LayoutGrid, Bot } from 'lucide-react-native';
 import { colors } from '../../tokens';
 
 export default function MainLayout() {
@@ -28,13 +28,6 @@ export default function MainLayout() {
         }}
       />
       <Tabs.Screen
-        name="semester"
-        options={{
-          title: 'Semester',
-          tabBarIcon: ({ color }) => <LayoutGrid color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
         name="workspaces"
         options={{
           title: 'Workspaces',
@@ -46,6 +39,13 @@ export default function MainLayout() {
         options={{
           title: 'Planner',
           tabBarIcon: ({ color }) => <Calendar color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="tutor"
+        options={{
+          title: 'AI Tutor',
+          tabBarIcon: ({ color }) => <Bot color={color} size={24} />,
         }}
       />
       <Tabs.Screen
