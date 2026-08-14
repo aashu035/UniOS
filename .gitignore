@@ -58,3 +58,4 @@ Desktop.ini
 .codex/
 .artifacts/
 .tmp-*
+.env

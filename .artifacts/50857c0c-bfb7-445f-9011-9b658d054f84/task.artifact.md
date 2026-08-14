@@ -1,3 +1,0 @@
-- [ ] Run `npx expo prebuild --platform android`
-- [ ] Run `./gradlew assembleDebug` in the `android` directory
-- [ ] Verify the APK location
