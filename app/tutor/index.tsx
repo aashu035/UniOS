@@ -384,13 +384,25 @@ const styles = StyleSheet.create({
     color: colors.light.text,
   },
   sendButton: {
-    width: 44,
-    height: 44,
+    padding: spacing.sm,
+    backgroundColor: colors.light.primary,
+    borderRadius: radius.full,
+    marginLeft: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.light.background,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.light.border,
+    width: 44,
+    height: 44,
+  },
+  loadingContainer: {
+    padding: spacing.md,
+    alignItems: 'flex-start',
+  },
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    padding: spacing.sm,
+    backgroundColor: colors.light.surface,
+    borderRadius: radius.md,
   }
 });

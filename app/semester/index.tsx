@@ -8,7 +8,7 @@ import { useSemesters } from '../../domains/semester/hooks';
 
 export default function SemesterList() {
   const router = useRouter();
-  const { semesters, isLoading, updateSemester } = useSemesters();
+  const { semesters, isLoading, activateSemester } = useSemesters();
 
   const handleSetCurrent = async (id: number) => {
     Alert.alert(
@@ -18,7 +18,7 @@ export default function SemesterList() {
         { text: "Cancel", style: "cancel" },
         { 
           text: "Confirm", 
-          onPress: () => updateSemester(id, { isActive: true })
+          onPress: () => activateSemester(id)
         }
       ]
     );

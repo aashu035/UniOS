@@ -45,7 +45,7 @@ export class AITimetableService {
         if (session.type === 'lab') credits = 1;
         if (session.type === 'tutorial') credits = 1;
 
-        const newWs = await WorkspaceRepository.createCourseWorkspace({
+        const newWs = await WorkspaceRepository.createWorkspace({
           name: code, // Fallback to using code as name, user can edit later
           code: code,
           credits: credits,
@@ -64,7 +64,7 @@ export class AITimetableService {
         startTime: session.startTime,
         endTime: session.endTime,
         type: session.type === 'theory' ? 'lecture' : session.type, // map theory to lecture
-        batch: userBatch || null,
+        description: userBatch ? `Batch: ${userBatch}` : null,
         // venueOverrideId / facultyOverrideId would require looking up the IDs or creating them.
         // For simplicity in MVP, we might skip overrides or create them later.
       });

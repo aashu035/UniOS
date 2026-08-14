@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { eq } from 'drizzle-orm';
 import { ArrowLeft } from 'lucide-react-native';
-import { db } from '../../core/db/client';
-import { workspaces } from '../../core/db/schema';
+import { WorkspaceRepository } from '../../domains/workspace/repository';
 import { useWorkspace } from '../../domains/workspace/hooks';
 import { colors, radius, spacing, typography } from '../../tokens';
 import { CourseForm, CourseFormData } from '../../components/forms/CourseForm';
@@ -21,13 +19,18 @@ export default function EditCourse() {
   const save = async (data: CourseFormData) => {
     setIsSaving(true);
     try {
-      await db.update(workspaces).set({ 
-        name: data.name.trim(), 
-        code: data.code?.trim() || null, 
-        targetAttendance: data.targetAttendance ?? 75 
-      }).where(eq(workspaces.id, workspaceId));
+      await WorkspaceRepository.updateWorkspace(workspaceId, {
+        name: data.name,
+        code: data.code,
+        facultyName: data.facultyName,
+        venueName: data.venueName,
+        targetAttendance: data.targetAttendance,
+        credits: data.credits,
+        type: data.type,
+        notes: data.notes,
+      });
       router.back();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Could not update course', error);
       Alert.alert('Could not save course', 'Please try again.');
     } finally {
@@ -55,11 +58,16 @@ export default function EditCourse() {
           name: workspace.name ?? '',
           code: workspace.code ?? '',
           targetAttendance: workspace.targetAttendance ?? 75,
+          facultyName: workspaceData.faculty?.name ?? '',
+          venueName: workspaceData.venue?.name ?? '',
+          credits: workspace.credits ?? 3,
+          type: workspace.type as any ?? 'theory',
+          notes: workspace.notes ?? '',
         }}
         onSubmit={save}
         isSubmitting={isSaving}
         submitLabel="Save changes"
-        showFacultyVenue={false}
+        showFacultyVenue={true}
         showTargetAttendance={true}
       />
 
@@ -69,7 +77,7 @@ export default function EditCourse() {
           onPress={() => {
             Alert.alert(
               "Delete Workspace",
-              "Are you sure you want to delete this workspace and all of its tasks, materials, and timeline events? This action cannot be undone.",
+              "Are you sure you want to delete this workspace? This will permanently remove its Tasks, Materials, Timeline events, Calendar schedule, and Attendance history. This action cannot be undone.",
               [
                 { text: "Cancel", style: "cancel" },
                 { 
@@ -78,7 +86,6 @@ export default function EditCourse() {
                   onPress: async () => {
                     try {
                       setIsSaving(true);
-                      const { WorkspaceRepository } = require('../../domains/workspace/repository');
                       await WorkspaceRepository.deleteWorkspace(workspaceId);
                       // Make sure to replace rather than push so we can't go back to the deleted workspace
                       router.replace('/(main)/home');

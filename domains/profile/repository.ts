@@ -34,18 +34,23 @@ export class ProfileRepository {
       .where(eq(students.id, id))
       .returning();
 
-    if (updates.currentSemester !== undefined) {
-      await db.update(semesters).set({ isActive: false }).run();
+    if (updates.currentSemester !== undefined && updates.currentSemester !== null) {
+      // Find the corresponding semester to activate
       const existing = await db.select().from(semesters).where(eq(semesters.number, updates.currentSemester)).get();
       if (existing) {
-        await db.update(semesters).set({ isActive: true }).where(eq(semesters.id, existing.id)).run();
+        const { SemesterRepository } = require('../semester/repository');
+        await SemesterRepository.activateSemester(existing.id);
       } else {
-        await db.insert(semesters).values({
+        // If it doesn't exist, we must create it first, then activate it
+        const [createdSemester] = await db.insert(semesters).values({
           number: updates.currentSemester,
           name: `Semester ${updates.currentSemester}`,
           type: updates.currentSemester % 2 === 0 ? 'even' : 'odd',
-          isActive: true
-        }).run();
+          isActive: false // Let activateSemester handle activation and sync
+        }).returning();
+        
+        const { SemesterRepository } = require('../semester/repository');
+        await SemesterRepository.activateSemester(createdSemester.id);
       }
     }
 

@@ -128,8 +128,8 @@ export default function Home() {
           </AppCard>
         )}
 
-        {/* Attendance Alerts */}
-        <SectionHeader title="Attendance Alerts" />
+        {/* Attendance Targets */}
+        <SectionHeader title="Attendance Targets" />
         {workspaces.length > 0 ? (
           <View style={styles.verticalStack}>
             {workspaces.slice(0, 2).map((ws) => (

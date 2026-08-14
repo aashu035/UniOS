@@ -42,7 +42,16 @@ export class ResourceRepository {
           await FileSystem.deleteAsync(res.uri);
         }
       } catch (err) {
-        console.warn('Failed to delete managed file:', err);
+        console.warn('[ORPHAN_FILE] Failed to delete managed file:', res.uri, err);
+        try {
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const existing = await AsyncStorage.getItem('ORPHANED_FILES');
+          const orphans = existing ? JSON.parse(existing) : [];
+          orphans.push(res.uri);
+          await AsyncStorage.setItem('ORPHANED_FILES', JSON.stringify(orphans));
+        } catch (storageErr) {
+          console.error('Failed to register orphaned file in AsyncStorage:', storageErr);
+        }
       }
     }
   }

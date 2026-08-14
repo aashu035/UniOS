@@ -37,6 +37,11 @@ export function useSemesters() {
     await fetchSemesters();
   };
 
+  const activateSemester = async (id: number) => {
+    await SemesterRepository.activateSemester(id);
+    await fetchSemesters();
+  };
+
   const deleteSemester = async (id: number) => {
     await SemesterRepository.deleteSemester(id);
     await fetchSemesters();
@@ -49,6 +54,7 @@ export function useSemesters() {
     refresh: fetchSemesters,
     addSemester,
     updateSemester,
+    activateSemester,
     deleteSemester,
   };
 }

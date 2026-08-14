@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Save } from 'lucide-react-native';
+import { Save, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../tokens';
 
 const courseSchema = z.object({
@@ -12,6 +12,9 @@ const courseSchema = z.object({
   facultyName: z.string().optional(),
   venueName: z.string().optional(),
   targetAttendance: z.number().min(0).max(100).optional().default(75),
+  credits: z.number().min(0).max(20).optional().default(3),
+  type: z.enum(['theory', 'lab', 'elective']).optional().default('theory'),
+  notes: z.string().optional(),
 });
 
 export type CourseFormData = z.infer<typeof courseSchema>;
@@ -33,8 +36,10 @@ export function CourseForm({
   showFacultyVenue = true,
   showTargetAttendance = false
 }: CourseFormProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  
   const { control, handleSubmit, formState: { errors } } = useForm<CourseFormData>({
-    resolver: zodResolver(courseSchema),
+    resolver: zodResolver(courseSchema) as any,
     mode: 'onBlur',
     defaultValues: {
       name: initialValues?.name || '',
@@ -42,6 +47,9 @@ export function CourseForm({
       facultyName: initialValues?.facultyName || '',
       venueName: initialValues?.venueName || '',
       targetAttendance: initialValues?.targetAttendance ?? 75,
+      credits: initialValues?.credits ?? 3,
+      type: initialValues?.type || 'theory',
+      notes: initialValues?.notes || '',
     }
   });
 
@@ -143,6 +151,73 @@ export function CourseForm({
             />
           </>
         )}
+
+        <TouchableOpacity style={styles.advancedToggle} onPress={() => setShowAdvanced(!showAdvanced)}>
+          <Text style={styles.advancedToggleText}>{showAdvanced ? 'Hide Advanced Settings' : 'Show Advanced Settings'}</Text>
+          {showAdvanced ? <ChevronUp size={20} color={colors.light.primary} /> : <ChevronDown size={20} color={colors.light.primary} />}
+        </TouchableOpacity>
+
+        {showAdvanced && (
+          <View style={styles.advancedSection}>
+            <Text style={styles.label}>Credits</Text>
+            <Controller
+              control={control}
+              name="credits"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  style={styles.input}
+                  placeholder="3"
+                  placeholderTextColor={colors.light.textMuted}
+                  value={value.toString()}
+                  onChangeText={(val) => {
+                    const parsed = parseInt(val, 10);
+                    onChange(isNaN(parsed) ? 0 : parsed);
+                  }}
+                  onBlur={onBlur}
+                  keyboardType="number-pad"
+                />
+              )}
+            />
+
+            <Text style={styles.label}>Type</Text>
+            <Controller
+              control={control}
+              name="type"
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.typeChips}>
+                  {(['theory', 'lab', 'elective'] as const).map(t => (
+                    <TouchableOpacity 
+                      key={t} 
+                      style={[styles.typeChip, value === t && styles.typeChipActive]}
+                      onPress={() => onChange(t)}
+                    >
+                      <Text style={[styles.typeChipText, value === t && styles.typeChipTextActive]}>
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            />
+
+            <Text style={styles.label}>Notes</Text>
+            <Controller
+              control={control}
+              name="notes"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                  placeholder="Add any additional notes about this course..."
+                  placeholderTextColor={colors.light.textMuted}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  multiline
+                />
+              )}
+            />
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -166,6 +241,14 @@ const styles = StyleSheet.create({
   input: { backgroundColor: colors.light.surface, borderRadius: radius.lg, padding: spacing.lg, fontSize: typography.fontSize.base, color: colors.light.text, borderWidth: 1, borderColor: colors.light.border },
   inputError: { borderColor: colors.light.danger || 'red' },
   errorText: { color: colors.light.danger || 'red', fontSize: typography.fontSize.sm, marginTop: 4 },
+  advancedToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.lg, marginTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.light.border },
+  advancedToggleText: { color: colors.light.primary, fontWeight: typography.fontWeight.semibold, fontSize: typography.fontSize.sm },
+  advancedSection: { paddingBottom: spacing.lg },
+  typeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  typeChip: { borderRadius: radius.full, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.light.border, backgroundColor: colors.light.surface },
+  typeChipActive: { backgroundColor: colors.light.primary, borderColor: colors.light.primary },
+  typeChipText: { color: colors.light.text, fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium },
+  typeChipTextActive: { color: colors.dark.text },
   footer: { padding: spacing.xl, borderTopWidth: 1, borderTopColor: colors.light.border },
   button: { backgroundColor: colors.light.primary, borderRadius: radius.xl, padding: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { opacity: 0.5 },

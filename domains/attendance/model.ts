@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { workspaces } from '../workspace/model';
 
@@ -9,6 +9,10 @@ export const attendance = sqliteTable('attendance', {
   status: text('status').notNull(), // present/absent/cancelled/holiday
   markedAt: text('marked_at').default(sql`(CURRENT_TIMESTAMP)`),
   notes: text('notes'),
+}, (table) => {
+  return {
+    workspaceDateUnique: unique('workspace_date_idx').on(table.workspaceId, table.date)
+  };
 });
 
 export const portalAttendance = sqliteTable('portal_attendance', {

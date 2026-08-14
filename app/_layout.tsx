@@ -25,10 +25,11 @@ Sentry.init({
   replaysSessionSampleRate: 0.1,
   integrations: [
     Sentry.mobileReplayIntegration(),
-    Sentry.expoRouterIntegration({
+    // @ts-ignore
+    Sentry.expoRouterIntegration ? Sentry.expoRouterIntegration({
       enableTimeToInitialDisplay: !isRunningInExpoGo(),
-    }),
-  ],
+    }) : undefined,
+  ].filter(Boolean) as any,
   enableNativeFramesTracking: !isRunningInExpoGo(),
   enableLogs: true,
 });

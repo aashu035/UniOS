@@ -21,26 +21,16 @@ export class AttendanceRepository {
   }
 
   static async markAttendance(workspaceId: number, date: string, status: 'present' | 'absent' | 'cancelled' | 'holiday' | 'exempt', notes?: string) {
-    // Check if attendance already exists for this date
-    const existing = await db.select()
-      .from(attendance)
-      .where(and(eq(attendance.workspaceId, workspaceId), eq(attendance.date, date)));
+    const result = await db.insert(attendance).values({
+      workspaceId,
+      date,
+      status,
+      notes: notes || null,
+    }).onConflictDoUpdate({
+      target: [attendance.workspaceId, attendance.date],
+      set: { status, notes: notes || null }
+    }).returning();
     
-    if (existing.length > 0) {
-      // Update existing record
-      await db.update(attendance)
-        .set({ status, notes: notes || null })
-        .where(eq(attendance.id, existing[0].id));
-      return { ...existing[0], status, notes };
-    } else {
-      // Insert new record
-      const result = await db.insert(attendance).values({
-        workspaceId,
-        date,
-        status,
-        notes: notes || null,
-      }).returning();
-      return result[0];
-    }
+    return result[0];
   }
 }
