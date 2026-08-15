@@ -63,7 +63,7 @@ export default function WorkspaceAttendance() {
     );
   };
 
-  const { present, absent, exempt, total, percentage } = calculateAttendanceMetrics(history);
+  const { present, absent, exempt, total, percentage, hasData } = calculateAttendanceMetrics(history);
   
   const isPortalMode = viewMode === 'portal';
   
@@ -186,7 +186,7 @@ export default function WorkspaceAttendance() {
         <AppCard style={styles.heroCard}>
           <AttendanceRing percentage={finalPercentage} size={120} strokeWidth={12} />
           <View style={styles.heroText}>
-            <Text style={styles.heroTitle}>{isPortalMode && !portalData ? "No Data" : `${finalPercentage}%`}</Text>
+            <Text style={styles.heroTitle}>{isPortalMode && !portalData ? "No Data" : (!isPortalMode && !hasData ? "No Data" : `${finalPercentage}%`)}</Text>
             <Text style={[styles.heroSubtitle, isPortalMode && { fontWeight: '600' }]}>{recoveryText}</Text>
           </View>
         </AppCard>

@@ -1,261 +1,228 @@
-import React from 'react';
-import { View, StyleSheet, Text, ActivityIndicator, Pressable } from 'react-native';
-import { AppScaffold } from '../../components/layout/AppScaffold';
-import { PageContainer } from '../../components/layout/PageContainer';
-import { HeroBanner } from '../../components/layout/HeroBanner';
-import { SectionHeader } from '../../components/layout/SectionHeader';
-import { TimelineCard } from '../../components/cards/TimelineCard';
-import { SubjectCard } from '../../components/cards/SubjectCard';
-import { AppCard } from '../../components/cards/AppCard';
-import { StatusBadge } from '../../components/feedback/StatusBadge';
-import { IconButton } from '../../components/buttons/IconButton';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { useProfile } from '../../domains/profile/hooks';
-import { Bell, Calendar, FileText, Download } from 'lucide-react-native';
-import { colors, spacing, typography, radius } from '../../tokens';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTasks } from '../../domains/task/hooks';
-import { useWorkspaces } from '../../domains/workspace/hooks';
-import { useCalendar, useHeroCardContext } from '../../domains/calendar/hooks';
-import { useRecentResources } from '../../domains/resource/hooks';
+import { Bell, Search, CloudRain, Sun, Cloud, AlertCircle, BookOpen, Clock, MapPin } from 'lucide-react-native';
+import { colors } from '../../tokens';
+import { CalendarService, EffectiveOccurrence } from '../../domains/calendar/service';
+import { AttendanceService } from '../../domains/attendance/service';
 
-export default function Home() {
-  const { profile, isLoading: profileLoading } = useProfile();
-  const { tasks, isLoading: tasksLoading } = useTasks();
-  const { workspaces, isLoading: workspacesLoading } = useWorkspaces();
-  const todayDayOfWeek = new Date().getDay();
-  const { events, isLoading: eventsLoading } = useCalendar(todayDayOfWeek);
-  const { resources, isLoading: resourcesLoading } = useRecentResources(3);
+export default function HomeScreen() {
   const router = useRouter();
+  const [schedule, setSchedule] = useState<EffectiveOccurrence[]>([]);
+  const [weatherState, setWeatherState] = useState({ state: 'Balanced week', description: '', icon: Cloud });
+  const [loading, setLoading] = useState(true);
 
-  const name = profile?.name || 'Student';
-  const { greeting, subtitle, nextEvent, currentEvent } = useHeroCardContext(events, name);
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const today = new Date();
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        
+        const effectiveSchedule = await CalendarService.getEffectiveSchedule(
+          today.toISOString().split('T')[0],
+          nextWeek.toISOString().split('T')[0]
+        );
+        
+        // Split for today's timeline
+        const todayStr = today.toISOString().split('T')[0];
+        const todaysClasses = effectiveSchedule.filter(e => e.date === todayStr);
+        setSchedule(todaysClasses);
 
-  if (profileLoading || tasksLoading || workspacesLoading || eventsLoading || resourcesLoading) {
+        // Calculate Academic Weather for next 7 days
+        let totalLabs = 0;
+        let totalClasses = effectiveSchedule.length;
+        
+        for (const occ of effectiveSchedule) {
+          if (occ.componentType === 'lab') totalLabs++;
+        }
+
+        // Mock tasks / exams fetch
+        const mockTasksDue = 2; 
+        const mockExams = 0;
+        
+        // Mock checking attendance risk
+        let criticalCount = 0;
+        // In real app, we'd batch check risks for active workspaces
+        const risk = await AttendanceService.getAttendanceRisk(1); 
+        if (risk.riskState === 'Critical') criticalCount++;
+
+        // Assemble Facts
+        const facts = {
+          upcomingClasses: totalClasses,
+          labs: totalLabs,
+          deadlines: 2, // Mocked for now until TaskService is integrated
+          exams: 0,
+          attendanceRisks: criticalCount
+        };
+
+        const weather = CalendarService.calculateAcademicWeather(facts);
+        
+        let icon = Cloud;
+        if (weather.state === 'Heavy week') icon = CloudRain;
+        else if (weather.state === 'Busy week') icon = AlertCircle;
+        else if (weather.state === 'Light week') icon = Sun;
+
+        setWeatherState({ ...weather, icon });
+
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const WeatherIcon = weatherState.icon;
+
+  if (loading) {
     return (
-      <AppScaffold>
-        <PageContainer>
-          <Skeleton height={200} borderRadius={radius.xl} style={{ marginBottom: spacing.xl }} />
-          <Skeleton height={32} width={150} style={{ marginBottom: spacing.md }} />
-          <Skeleton height={100} borderRadius={radius.lg} style={{ marginBottom: spacing.sm }} />
-          <Skeleton height={100} borderRadius={radius.lg} style={{ marginBottom: spacing.xl }} />
-          <Skeleton height={32} width={150} style={{ marginBottom: spacing.md }} />
-          <Skeleton height={80} borderRadius={radius.lg} />
-        </PageContainer>
-      </AppScaffold>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.light.accent} />
+          <Text style={styles.loadingText}>Loading today's schedule...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <AppScaffold>
-      <PageContainer>
-        {/* Dynamic Hero Section */}
-        <HeroBanner 
-          greeting={greeting}
-          title={name}
-          subtitle={subtitle}
-          accent="primary"
-          showPortrait={true}
-          imageUrl={profile?.avatar || undefined}
-          rightElement={
-            <IconButton 
-              icon={<Bell size={24} color={colors.dark.text} />} 
-              variant="ghost" 
-              onPress={() => router.push('/notifications')}
-            />
-          }
-        >
-          <View style={styles.heroStatsRow}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{events.length}</Text>
-              <Text style={styles.heroStatLabel}>Classes Today</Text>
-            </View>
-            <View style={styles.heroStatDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{tasks.length}</Text>
-              <Text style={styles.heroStatLabel}>Tasks Due</Text>
-            </View>
-          </View>
-        </HeroBanner>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.topBar}>
+        <Search size={24} color={colors.light.text} />
+        <View style={styles.bellWrapper}>
+          <Bell size={24} color={colors.light.text} />
+          <View style={styles.redDot} />
+        </View>
+      </View>
 
-        {/* Today's Schedule (Vertical Stack) */}
-        <SectionHeader 
-          title="Today's Schedule" 
-          action={<IconButton icon={<Calendar size={20} color={colors.light.primary} />} onPress={() => router.push('/(main)/planner')} accessibilityLabel="Open planner" />}
-        />
-        {events.length > 0 ? (
-          <View style={styles.verticalStack}>
-            {events.map((event, index) => (
-              <TimelineCard 
-                key={event.id}
-                time={`${event.startTime} - ${event.endTime}`} 
-                title={event.title || event.workspaceName || 'Event'} 
-                subtitle={event.description || (event.type === 'work' ? 'External Work' : 'Lecture')} 
-                venue={event.location || event.venueName || 'TBD'}
-                isActive={currentEvent?.id === event.id || nextEvent?.id === event.id}
-                onPress={event.workspaceId ? () => router.push(`/workspace/${event.workspaceId}`) : undefined}
-              />
-            ))}
-          </View>
-        ) : (
-          <AppCard padding="md">
-            <Text style={{color: colors.light.text, fontWeight: '500'}}>No classes scheduled for today.</Text>
-            <Text style={{color: colors.light.textMuted, fontSize: typography.fontSize.sm, marginTop: 4}}>Enjoy your day off! Why not get ahead on readings?</Text>
-          </AppCard>
-        )}
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Today</Text>
+          <Text style={styles.headerSubtitle}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+        </View>
 
-        {/* Today's Focus */}
-        <SectionHeader title="Today's Focus" />
-        {tasks.length > 0 ? (
-          <View style={styles.verticalStack}>
-            {tasks.map(task => (
-              <AppCard key={task.id} padding="md" style={styles.focusCard}>
-                <View style={styles.focusIcon}>
-                  <FileText size={24} color={colors.light.primary} />
+        {/* Academic Weather */}
+        <View style={styles.weatherCard}>
+          <View style={styles.weatherIconBg}>
+            <WeatherIcon size={24} color={colors.light.accent} />
+          </View>
+          <View style={styles.weatherContent}>
+            <Text style={styles.weatherTitle}>{weatherState.state}</Text>
+            <Text style={styles.weatherDesc}>{weatherState.description}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Classes</Text>
+        
+        {schedule.length > 0 ? (
+          <View style={styles.timeline}>
+            {schedule.map((item, index) => (
+              <View key={item.id} style={styles.timelineItem}>
+                <View style={styles.timelineTime}>
+                  <Text style={styles.timeText}>{item.startTime}</Text>
+                  <Text style={styles.timeSubText}>{item.endTime}</Text>
                 </View>
-                <View style={styles.focusContent}>
-                  <Text style={styles.focusTitle}>{task.title}</Text>
-                  <Text style={styles.focusSubtitle}>{task.dueDate ? `Due ${task.dueDate}` : 'Due Soon'}</Text>
+                <View style={styles.timelineLine}>
+                  <View style={[styles.timelineDot, { backgroundColor: item.workspaceColor }]} />
+                  {index !== schedule.length - 1 && <View style={styles.timelineConnector} />}
                 </View>
-                <StatusBadge label={task.priority === 'high' ? 'Urgent' : 'To Do'} variant={task.priority === 'high' ? 'error' : 'warning'} />
-              </AppCard>
-            ))}
-          </View>
-        ) : (
-          <AppCard padding="md">
-            <Text style={{color: colors.light.text, fontWeight: '500'}}>You are all caught up!</Text>
-            <Text style={{color: colors.light.textMuted, fontSize: typography.fontSize.sm, marginTop: 4}}>All clear for now. Great job staying on top of things.</Text>
-          </AppCard>
-        )}
-
-        {/* Attendance Targets */}
-        <SectionHeader title="Attendance Targets" />
-        {workspaces.length > 0 ? (
-          <View style={styles.verticalStack}>
-            {workspaces.slice(0, 2).map((ws) => (
-              <SubjectCard 
-                key={ws.id}
-                title={ws.name} 
-                code={ws.code || 'SUBJ'} 
-                attendancePercentage={ws.targetAttendance || 75} 
-                onPress={() => router.push(`/workspace/${ws.id}`)}
-              />
-            ))}
-          </View>
-        ) : (
-          <AppCard padding="md">
-            <Text style={{color: colors.light.textMuted}}>Enroll in a workspace to track attendance.</Text>
-          </AppCard>
-        )}
-
-        {/* Recent Uploads / Notes - Now Clickable */}
-        <SectionHeader title="Recent Uploads / Notes" />
-        {resources.length > 0 ? (
-          <View style={styles.verticalStack}>
-            {resources.map((res) => (
-              <Pressable 
-                key={res.id} 
-                onPress={() => res.workspaceId ? router.push(`/workspace/${res.workspaceId}`) : null}
-                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-              >
-                <AppCard padding="md" variant="outlined" style={styles.uploadCard}>
-                  <View style={styles.uploadInfo}>
-                    <Text style={styles.uploadTitle}>{res.title}</Text>
-                    <Text style={styles.uploadSubtitle}>{res.workspaceName} • {res.type}</Text>
+                <TouchableOpacity 
+                  style={[styles.timelineCard, item.isException && styles.timelineCardException]} 
+                  onPress={() => router.push(`/workspace/${item.workspaceId}`)}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={[styles.subjectIcon, { backgroundColor: item.workspaceColor + '20' }]}>
+                      <BookOpen size={20} color={item.workspaceColor} />
+                    </View>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.subjectName}>{item.workspaceName}</Text>
+                      <Text style={styles.subjectType}>{item.componentType.toUpperCase()}</Text>
+                    </View>
                   </View>
-                  <Download size={20} color={colors.light.textMuted} />
-                </AppCard>
-              </Pressable>
+                  <View style={styles.cardFooter}>
+                    <View style={styles.footerItem}>
+                      <MapPin size={14} color={colors.light.textMuted} />
+                      <Text style={styles.footerText}>{item.venueName || 'TBD'}</Text>
+                    </View>
+                    {item.isException && (
+                      <View style={styles.exceptionBadge}>
+                        <Text style={styles.exceptionText}>{item.exceptionAction}</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         ) : (
-          <AppCard padding="md">
-            <Text style={{color: colors.light.textMuted}}>No recent resources found.</Text>
-          </AppCard>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Nothing scheduled.</Text>
+            <Text style={styles.emptySub}>Enjoy the empty day.</Text>
+          </View>
         )}
-
-      </PageContainer>
-    </AppScaffold>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  safeArea: { flex: 1, backgroundColor: colors.light.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 16, color: colors.light.textMuted, fontFamily: 'Inter' },
+  
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  bellWrapper: { position: 'relative' },
+  redDot: { position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.light.danger },
+  
+  container: { flex: 1, paddingHorizontal: 20 },
+  header: { marginBottom: 24, marginTop: 8 },
+  headerTitle: { fontSize: 34, fontWeight: '700', color: colors.light.text, fontFamily: 'Inter', letterSpacing: -1 },
+  headerSubtitle: { fontSize: 16, color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 4 },
+  
+  weatherCard: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.light.surface, 
+    borderRadius: 20, padding: 16, marginBottom: 32,
+    borderWidth: 1, borderColor: colors.light.border
   },
-  verticalStack: {
-    gap: spacing.md,
+  weatherIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.light.surfaceElevated, justifyContent: 'center', alignItems: 'center', marginRight: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  weatherContent: { flex: 1 },
+  weatherTitle: { fontSize: 16, fontWeight: '600', color: colors.light.text, fontFamily: 'Inter' },
+  weatherDesc: { fontSize: 14, color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 2 },
+
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.light.text, fontFamily: 'Inter', marginBottom: 16 },
+  
+  timeline: { paddingLeft: 8 },
+  timelineItem: { flexDirection: 'row', marginBottom: 16 },
+  timelineTime: { width: 60, alignItems: 'flex-end', paddingRight: 16, paddingTop: 16 },
+  timeText: { fontSize: 14, fontWeight: '600', color: colors.light.text, fontFamily: 'Inter' },
+  timeSubText: { fontSize: 12, color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 2 },
+  
+  timelineLine: { width: 24, alignItems: 'center', position: 'relative' },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.light.accent, marginTop: 18, zIndex: 2 },
+  timelineConnector: { position: 'absolute', top: 30, bottom: -30, width: 2, backgroundColor: colors.light.border, zIndex: 1 },
+  
+  timelineCard: { 
+    flex: 1, backgroundColor: colors.light.surfaceElevated, borderRadius: 16, padding: 16, marginLeft: 8,
+    borderWidth: 1, borderColor: colors.light.border,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
-  heroStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  heroStat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  heroStatDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  heroStatValue: {
-    color: colors.dark.text,
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-  },
-  heroStatLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: typography.fontSize.xs,
-    marginTop: 2,
-  },
-  focusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  focusIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: `${colors.light.primary}15`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  focusContent: {
-    flex: 1,
-  },
-  focusTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.light.text,
-  },
-  focusSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.light.textMuted,
-    marginTop: 2,
-  },
-  uploadCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  uploadInfo: {
-    flex: 1,
-  },
-  uploadTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.light.text,
-  },
-  uploadSubtitle: {
-    fontSize: typography.fontSize.xs,
-    color: colors.light.textMuted,
-    marginTop: 2,
-  }
+  timelineCardException: { borderStyle: 'dashed', borderColor: colors.light.warning },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  subjectIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  cardInfo: { flex: 1 },
+  subjectName: { fontSize: 16, fontWeight: '600', color: colors.light.text, fontFamily: 'Inter' },
+  subjectType: { fontSize: 12, fontWeight: '700', color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 4, letterSpacing: 0.5 },
+  
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.light.surface },
+  footerItem: { flexDirection: 'row', alignItems: 'center' },
+  footerText: { fontSize: 13, color: colors.light.textMuted, fontFamily: 'Inter', marginLeft: 6 },
+  
+  exceptionBadge: { backgroundColor: colors.light.warning + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  exceptionText: { fontSize: 10, fontWeight: '700', color: colors.light.warning, textTransform: 'uppercase' },
+
+  emptyState: { alignItems: 'center', paddingVertical: 48, backgroundColor: colors.light.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.light.border },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.light.text, fontFamily: 'Inter' },
+  emptySub: { fontSize: 14, color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 4 },
 });

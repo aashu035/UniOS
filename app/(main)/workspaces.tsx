@@ -49,6 +49,7 @@ export default function Workspaces() {
         ) : activeWorkspaces.map((ws) => (
           <SubjectCard
             key={ws.id}
+            workspaceId={parseInt(ws.id, 10)}
             title={ws.title}
             code={ws.code}
             attendancePercentage={ws.attendance}

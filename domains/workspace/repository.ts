@@ -21,11 +21,9 @@ export class WorkspaceRepository {
     const result = await db.select({
       workspace: workspaces,
       faculty: faculty,
-      venue: venues,
     })
     .from(workspaces)
-    .leftJoin(faculty, eq(workspaces.facultyId, faculty.id))
-    .leftJoin(venues, eq(workspaces.venueId, venues.id))
+    .leftJoin(faculty, eq(workspaces.defaultFacultyId, faculty.id))
     .where(eq(workspaces.id, id))
     .limit(1);
 
@@ -72,10 +70,6 @@ export class WorkspaceRepository {
     // Try to find exact matches (case-insensitive)
     const matches = await tx.select().from(table).where(like(table.name, name)).all();
     
-    // Exact match reuse rule: 0 matches -> create, 1 match -> reuse, >1 match -> create a new one to avoid merging incorrectly?
-    // User rule: "0 matches -> create, 1 match -> reuse, >1 exact matches -> require resolution / select one existing"
-    // Since we don't have a UI for resolution mid-transaction, we will reuse the first one if there's exactly 1.
-    // If >1, we'll pick the most recently created or first one to be safe, rather than crashing or duplicating.
     if (matches.length > 0) {
       return matches[0].id;
     }
@@ -95,41 +89,78 @@ export class WorkspaceRepository {
 
   // --- CRUD ---
 
-  static async createWorkspace(data: {
+  static async buildCompleteWorkspace(data: {
     name: string;
     code?: string;
-    facultyName?: string;
-    venueName?: string;
-    targetAttendance?: number;
     credits?: number;
-    type?: string;
-    notes?: string;
     color?: string;
+    components: Array<{
+      type: 'theory' | 'lab' | 'tutorial';
+      facultyName?: string;
+      venueName?: string;
+      durationMinutes: number;
+      sessions: Array<{
+        dayOfWeek: number;
+        startTime: string;
+        endTime: string;
+      }>;
+    }>;
   }) {
     return db.transaction(async (tx) => {
       // 1. Resolve Active Semester
-      const activeSemester = await tx.select().from(semesters).where(eq(semesters.isActive, true)).get();
+      let activeSemester = await tx.select().from(semesters).where(eq(semesters.isActive, true)).get();
       if (!activeSemester) {
-        throw new Error("No active semester found. Cannot create course.");
+        activeSemester = await tx.insert(semesters).values({
+          number: 1,
+          name: 'Semester 1',
+          isActive: true,
+          startDate: new Date().toISOString(),
+        }).returning().get();
       }
 
-      // 2. Resolve Entities
-      const facultyId = await this.resolveFaculty(tx, data.facultyName);
-      const venueId = await this.resolveVenue(tx, data.venueName);
-
-      // 3. Create Workspace
+      // 2. Create Workspace
       const workspace = await tx.insert(workspaces).values({
         semesterId: activeSemester.id,
         name: data.name.trim(),
         code: data.code?.trim() || null,
-        facultyId,
-        venueId,
-        targetAttendance: data.targetAttendance ?? 75,
         credits: data.credits ?? 3,
-        type: data.type || 'theory',
-        notes: data.notes?.trim() || null,
         color: data.color || '#6C5CE7',
       }).returning().get();
+      
+      const { courseComponents, componentVenueAssignments } = require('./model');
+      const { recurringSchedules } = require('../calendar/model');
+
+      // 3. Create Components and their Sessions
+      for (const compDef of data.components) {
+        const facultyId = await this.resolveFaculty(tx, compDef.facultyName);
+        const venueId = await this.resolveVenue(tx, compDef.venueName);
+
+        const component = await tx.insert(courseComponents).values({
+          workspaceId: workspace.id,
+          type: compDef.type,
+          facultyId: facultyId,
+          durationMinutes: compDef.durationMinutes,
+        }).returning().get();
+
+        if (venueId) {
+          await tx.insert(componentVenueAssignments).values({
+            componentId: component.id,
+            venueId: venueId,
+            effectiveFrom: new Date().toISOString()
+          });
+        }
+
+        // Insert recurring sessions for this component
+        for (const session of compDef.sessions) {
+          await tx.insert(recurringSchedules).values({
+            componentId: component.id,
+            dayOfWeek: session.dayOfWeek,
+            startTime: session.startTime,
+            endTime: session.endTime,
+            // venueOverrideId could go here if needed, but per specs we inherit from component
+          });
+        }
+      }
 
       return workspace;
     });
@@ -152,19 +183,18 @@ export class WorkspaceRepository {
       if (data.code !== undefined) updates.code = data.code?.trim() || null;
       if (data.targetAttendance !== undefined) updates.targetAttendance = data.targetAttendance;
       if (data.credits !== undefined) updates.credits = data.credits;
-      if (data.type !== undefined) updates.type = data.type;
       if (data.notes !== undefined) updates.notes = data.notes?.trim() || null;
       if (data.color !== undefined) updates.color = data.color;
 
       if (data.facultyName !== undefined) {
-        updates.facultyId = await this.resolveFaculty(tx, data.facultyName);
-      }
-      if (data.venueName !== undefined) {
-        updates.venueId = await this.resolveVenue(tx, data.venueName);
+        updates.defaultFacultyId = await this.resolveFaculty(tx, data.facultyName);
       }
 
-      const workspace = await tx.update(workspaces).set(updates).where(eq(workspaces.id, id)).returning().get();
-      return workspace;
+      // We do not handle venue/component updates here yet, this is just for basic compilation
+      if (Object.keys(updates).length > 0) {
+        return await tx.update(workspaces).set(updates).where(eq(workspaces.id, id)).returning().get();
+      }
+      return await tx.select().from(workspaces).where(eq(workspaces.id, id)).get();
     });
   }
 }

@@ -3,7 +3,7 @@ import { dcrustGrading, semesters } from '../../domains/semester/model';
 import { students } from '../../domains/profile/model';
 import { faculty } from '../../domains/faculty/model';
 import { venues } from '../../domains/venue/model';
-import { workspaces, workspaceTimeline } from '../../domains/workspace/model';
+import { workspaces, workspaceTimeline, courseComponents } from '../../domains/workspace/model';
 import { tasks } from '../../domains/task/model';
 import { resources } from '../../domains/resource/model';
 import { attendance, portalAttendance } from '../../domains/attendance/model';
@@ -67,17 +67,32 @@ export async function seedFullDatabase() {
 
   // 4. Workspaces (Subjects)
   const insertedWorkspaces = await db.insert(workspaces).values([
-    { semesterId: sem.id, name: 'Data Structures & Algorithms', code: 'CSE-301', facultyId: facSharma.id, venueId: ven304.id, color: '#6C5CE7', targetAttendance: 75.0, type: 'theory' },
-    { semesterId: sem.id, name: 'Operating Systems', code: 'CSE-302', facultyId: facGupta.id, venueId: venLab2.id, color: '#0984E3', targetAttendance: 75.0, type: 'theory' },
-    { semesterId: sem.id, name: 'Database Management Systems', code: 'CSE-303', facultyId: facVerma.id, venueId: ven201.id, color: '#00B894', targetAttendance: 75.0, type: 'theory' },
-    { semesterId: sem.id, name: 'Software Engineering', code: 'CSE-304', facultyId: facSharma.id, venueId: ven304.id, color: '#E17055', targetAttendance: 75.0, type: 'theory' },
-    { semesterId: sem.id, name: 'Web Technologies Lab', code: 'CSE-305', facultyId: facGupta.id, venueId: venLab2.id, color: '#FDCB6E', targetAttendance: 75.0, type: 'lab' },
+    { semesterId: sem.id, name: 'Data Structures & Algorithms', code: 'CSE-301', color: '#6C5CE7', targetAttendance: 75.0 },
+    { semesterId: sem.id, name: 'Operating Systems', code: 'CSE-302', color: '#0984E3', targetAttendance: 75.0 },
+    { semesterId: sem.id, name: 'Database Management Systems', code: 'CSE-303', color: '#00B894', targetAttendance: 75.0 },
+    { semesterId: sem.id, name: 'Software Engineering', code: 'CSE-304', color: '#E17055', targetAttendance: 75.0 },
+    { semesterId: sem.id, name: 'Web Technologies Lab', code: 'CSE-305', color: '#FDCB6E', targetAttendance: 75.0 },
   ]).returning();
 
   const wsDsa = insertedWorkspaces[0];
   const wsOs = insertedWorkspaces[1];
   const wsDbms = insertedWorkspaces[2];
   const wsSe = insertedWorkspaces[3];
+  const wsWeb = insertedWorkspaces[4];
+  
+  // 4.1 Course Components
+  const insertedComponents = await db.insert(courseComponents).values([
+    { workspaceId: wsDsa.id, type: 'theory', facultyId: facSharma.id, durationMinutes: 60 },
+    { workspaceId: wsOs.id, type: 'theory', facultyId: facGupta.id, durationMinutes: 60 },
+    { workspaceId: wsDbms.id, type: 'theory', facultyId: facVerma.id, durationMinutes: 60 },
+    { workspaceId: wsSe.id, type: 'theory', facultyId: facSharma.id, durationMinutes: 60 },
+    { workspaceId: wsWeb.id, type: 'lab', facultyId: facGupta.id, durationMinutes: 120 },
+  ]).returning();
+
+  const compDsa = insertedComponents[0];
+  const compOs = insertedComponents[1];
+  const compDbms = insertedComponents[2];
+  const compSe = insertedComponents[3];
   
   // 5. Tasks
   await db.insert(tasks).values([
@@ -106,9 +121,9 @@ export async function seedFullDatabase() {
   ]);
 
   await db.insert(attendance).values([
-    { workspaceId: wsDsa.id, date: 'Mon, 10th', status: 'present', notes: 'Prof. Sharma' },
-    { workspaceId: wsDsa.id, date: 'Fri, 7th', status: 'absent', notes: 'Prof. Sharma' },
-    { workspaceId: wsDsa.id, date: 'Wed, 5th', status: 'present', notes: 'Prof. Sharma' },
+    { componentId: compDsa.id, date: 'Mon, 10th', status: 'present', notes: 'Prof. Sharma' },
+    { componentId: compDsa.id, date: 'Fri, 7th', status: 'absent', notes: 'Prof. Sharma' },
+    { componentId: compDsa.id, date: 'Wed, 5th', status: 'present', notes: 'Prof. Sharma' },
   ]);
 
   // 8. Timeline Events

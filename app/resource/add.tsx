@@ -18,40 +18,41 @@ export default function AddResource() {
   const [uri, setUri] = useState('');
   const [textContent, setTextContent] = useState('');
   const [type, setType] = useState('note'); // 'note', 'link', 'file'
-  const [fileDetails, setFileDetails] = useState<{name: string, uri: string, extension: string} | null>(null);
+  const [files, setFiles] = useState<{name: string, uri: string, extension: string}[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Auto-detect if it's a link
   useEffect(() => {
-    if (fileDetails) {
+    if (files.length > 0) {
       setType('file');
     } else if (uri.startsWith('http://') || uri.startsWith('https://')) {
       setType('link');
     } else if (!uri && textContent) {
       setType('note');
     }
-  }, [uri, textContent, fileDetails]);
+  }, [uri, textContent, files]);
 
   const handlePickFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
+        multiple: true,
       });
 
       if (result.canceled) {
         return;
       }
 
-      const file = result.assets[0];
-      const extension = file.name.split('.').pop() || 'unknown';
-      setFileDetails({
+      const pickedFiles = result.assets.map(file => ({
         name: file.name,
         uri: file.uri,
-        extension,
-      });
-      if (!title) {
-        setTitle(file.name);
+        extension: file.name.split('.').pop() || 'unknown',
+      }));
+      
+      setFiles(prev => [...prev, ...pickedFiles]);
+      
+      if (!title && pickedFiles.length === 1) {
+        setTitle(pickedFiles[0].name);
       }
     } catch (e) {
       Alert.alert('Error', 'Failed to pick file');
@@ -59,8 +60,8 @@ export default function AddResource() {
   };
 
   const handleSave = async () => {
-    if (!title) {
-      Alert.alert('Error', 'Please enter a title');
+    if (!title && files.length === 0) {
+      Alert.alert('Error', 'Please enter a title or select files');
       return;
     }
     if (!workspaceId) {
@@ -71,41 +72,44 @@ export default function AddResource() {
     try {
       setIsSubmitting(true);
       
-      let finalUri = uri;
-      let finalHash: string | null = null;
-      let finalSize: number | null = null;
-      let finalType = type;
+      if (files.length > 0) {
+        // Save multiple files
+        for (const file of files) {
+          const computedHash = await FileManager.generateFileHash(file.uri);
+          const { eq } = require('drizzle-orm');
+          const existingResource = await db.select().from(resources).where(eq(resources.fileHash, computedHash)).limit(1);
+          
+          let existingHashFilename: string | undefined;
+          if (existingResource.length > 0 && existingResource[0].uri) {
+            existingHashFilename = existingResource[0].uri;
+          }
 
-      if (fileDetails) {
-        // Hash the file first for deduplication check
-        const computedHash = await FileManager.generateFileHash(fileDetails.uri);
-        
-        // Check if hash already exists in DB
-        const { eq } = require('drizzle-orm');
-        const existingResource = await db.select().from(resources).where(eq(resources.fileHash, computedHash)).limit(1);
-        
-        let existingHashFilename: string | undefined;
-        if (existingResource.length > 0 && existingResource[0].uri) {
-          existingHashFilename = existingResource[0].uri;
+          const { filename, hash, sizeBytes } = await FileManager.saveFile(file.uri, file.extension, existingHashFilename);
+          
+          await db.insert(resources).values({
+            workspaceId: parseInt(workspaceId, 10),
+            title: files.length === 1 && title ? title : file.name, // Use custom title if only 1 file
+            uri: filename,
+            textContent: '',
+            type: 'file',
+            thumbnailUrl: null,
+            fileHash: hash,
+            sizeBytes: sizeBytes,
+          });
         }
-
-        // Handle file offloading via FileManager (will skip physical copy if existingHashFilename is passed)
-        const { filename, hash, sizeBytes } = await FileManager.saveFile(fileDetails.uri, fileDetails.extension, existingHashFilename);
-        finalUri = filename;
-        finalHash = hash;
-        finalSize = sizeBytes;
+      } else {
+        // Save single note or link
+        await db.insert(resources).values({
+          workspaceId: parseInt(workspaceId, 10),
+          title,
+          uri: uri,
+          textContent,
+          type: type,
+          thumbnailUrl: null,
+          fileHash: null,
+          sizeBytes: null,
+        });
       }
-      
-      await db.insert(resources).values({
-        workspaceId: parseInt(workspaceId, 10),
-        title,
-        uri: finalUri,
-        textContent,
-        type: finalType,
-        thumbnailUrl: null, // Removed external network fetch for privacy
-        fileHash: finalHash,
-        sizeBytes: finalSize,
-      });
 
       router.back();
     } catch (error) {
@@ -137,19 +141,22 @@ export default function AddResource() {
         />
 
         <Text style={styles.label}>File Attachment</Text>
-        {fileDetails ? (
-          <View style={styles.fileAttachment}>
-            <Text style={styles.fileName} numberOfLines={1}>{fileDetails.name}</Text>
-            <TouchableOpacity onPress={() => setFileDetails(null)} style={styles.removeFileBtn}>
-              <X color={colors.light.textMuted} size={20} />
-            </TouchableOpacity>
+        {files.length > 0 && (
+          <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+            {files.map((f, i) => (
+              <View key={i} style={styles.fileAttachment}>
+                <Text style={styles.fileName} numberOfLines={1}>{f.name}</Text>
+                <TouchableOpacity onPress={() => setFiles(prev => prev.filter((_, idx) => idx !== i))} style={styles.removeFileBtn}>
+                  <X color={colors.light.textMuted} size={20} />
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
-        ) : (
-          <TouchableOpacity style={styles.pickFileBtn} onPress={handlePickFile}>
-            <FilePlus color={colors.light.primary} size={24} style={{ marginRight: spacing.sm }} />
-            <Text style={styles.pickFileText}>Select Document, Video, or Image</Text>
-          </TouchableOpacity>
         )}
+        <TouchableOpacity style={styles.pickFileBtn} onPress={handlePickFile}>
+          <FilePlus color={colors.light.primary} size={24} style={{ marginRight: spacing.sm }} />
+          <Text style={styles.pickFileText}>{files.length > 0 ? "Add More Files" : "Select Document, Video, or Image"}</Text>
+        </TouchableOpacity>
 
         <Text style={styles.label}>URL / Link (Optional)</Text>
         <TextInput 
@@ -158,7 +165,7 @@ export default function AddResource() {
           placeholderTextColor={colors.light.textMuted}
           value={uri}
           onChangeText={setUri}
-          editable={!fileDetails}
+          editable={files.length === 0}
         />
 
         <Text style={styles.label}>Note Content (Optional)</Text>
@@ -169,15 +176,15 @@ export default function AddResource() {
           value={textContent}
           onChangeText={setTextContent}
           multiline
-          editable={!fileDetails}
+          editable={files.length === 0}
         />
       </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.button, (!title.trim() || isSubmitting) && styles.buttonDisabled]}
+          style={[styles.button, ((!title.trim() && files.length === 0) || isSubmitting) && styles.buttonDisabled]}
           onPress={handleSave}
-          disabled={!title.trim() || isSubmitting}
+          disabled={(!title.trim() && files.length === 0) || isSubmitting}
         >
           <Save color={colors.dark.text} size={20} style={styles.saveIcon} />
           <Text style={styles.buttonText}>{isSubmitting ? 'Saving...' : 'Save Resource'}</Text>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput, Alert, Text } from 'react-native';
+import { View, StyleSheet, TextInput, Alert, Text, TouchableOpacity } from 'react-native';
 import { AppScaffold } from '../../components/layout/AppScaffold';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { PrimaryButton } from '../../components/buttons/PrimaryButton';
@@ -298,6 +298,12 @@ export default function PairingSettings() {
             label="Back to Profile" 
             onPress={() => router.back()} 
           />
+          <TouchableOpacity onPress={() => router.push('/settings/ai-guide')} style={{ alignItems: 'center', marginTop: spacing.xl, padding: spacing.sm }}>
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.light.primary + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+              <Text style={{ color: colors.light.primary, fontWeight: 'bold', fontSize: 16 }}>?</Text>
+            </View>
+            <Text style={{ color: colors.light.primary, fontSize: typography.fontSize.sm, fontWeight: 'bold' }}>How does this work?</Text>
+          </TouchableOpacity>
         </View>
       </PageContainer>
     </AppScaffold>

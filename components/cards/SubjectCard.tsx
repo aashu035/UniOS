@@ -18,8 +18,10 @@ export function SubjectCard({ title, code, attendancePercentage, workspaceId, on
   let displayPercentage = attendancePercentage || 100;
   
   const { metrics, isLoading } = useAttendanceMetrics(workspaceId || -1);
+  let hasData = true;
   if (workspaceId && !isLoading) {
     displayPercentage = metrics.percentage;
+    hasData = metrics.hasData;
   }
 
   const content = (

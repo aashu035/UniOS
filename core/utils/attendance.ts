@@ -16,7 +16,7 @@ export function calculateAttendanceMetrics(records: any[]) {
   const effectiveTotal = present + absent + exempt;
   const effectivePresent = present + exempt;
 
-  const percentage = effectiveTotal > 0 ? (effectivePresent / effectiveTotal) * 100 : 100;
+  const percentage = effectiveTotal > 0 ? (effectivePresent / effectiveTotal) * 100 : 0;
 
   return {
     present,
@@ -24,5 +24,6 @@ export function calculateAttendanceMetrics(records: any[]) {
     exempt,
     total: effectiveTotal,
     percentage: Math.round(percentage),
+    hasData: effectiveTotal > 0,
   };
 }

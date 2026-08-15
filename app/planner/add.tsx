@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Text, Alert, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, typography, radius } from '../../tokens';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CalendarRepository } from '../../domains/calendar/repository';
 import { useWorkspaces } from '../../domains/workspace/hooks';
-import { ArrowLeft, Save } from 'lucide-react-native';
+import { ArrowLeft, Save, Trash2 } from 'lucide-react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -44,6 +44,11 @@ type EventFormData = z.infer<typeof eventSchema>;
 
 export default function AddPlannerEvent() {
   const router = useRouter();
+  const { id, workspaceId: paramWorkspaceId } = useLocalSearchParams();
+  const eventId = id ? parseInt(id as string, 10) : null;
+  const initialWorkspaceId = paramWorkspaceId ? parseInt(paramWorkspaceId as string, 10) : null;
+  const isEditing = !!eventId;
+
   const { workspaces } = useWorkspaces();
   const [userModifiedEndTime, setUserModifiedEndTime] = useState(false);
   const [quickAddInput, setQuickAddInput] = useState('');
@@ -64,11 +69,34 @@ export default function AddPlannerEvent() {
       type: 'lecture',
       isRecurring: true,
       selectedDays: [],
-      workspaceId: null,
+      workspaceId: initialWorkspaceId,
       startDate: today.toISOString().split('T')[0],
       endDate: future.toISOString().split('T')[0],
     }
   });
+
+  useEffect(() => {
+    if (isEditing && eventId) {
+      CalendarRepository.getEventById(eventId).then(evt => {
+        if (evt) {
+          setValue('title', evt.title || '');
+          setValue('description', evt.description || '');
+          setValue('location', evt.location || '');
+          setValue('startTime', evt.startTime || '10:00 AM');
+          setValue('endTime', evt.endTime || '11:00 AM');
+          setValue('type', evt.type || 'lecture');
+          setValue('workspaceId', evt.workspaceId);
+          setValue('isRecurring', evt.dayOfWeek !== null);
+          if (evt.dayOfWeek !== null) {
+             setValue('selectedDays', [evt.dayOfWeek]);
+          }
+          if (evt.specificDate) {
+             setValue('startDate', evt.specificDate);
+          }
+        }
+      }).catch(console.error);
+    }
+  }, [isEditing, eventId, setValue]);
 
   const isRecurring = watch('isRecurring');
   const selectedDays = watch('selectedDays');
@@ -144,33 +172,48 @@ export default function AddPlannerEvent() {
 
   const onSubmit = async (data: EventFormData) => {
     try {
-      const recurrenceGroupId = data.isRecurring ? `${Date.now()}-${Math.random().toString(36).substring(2, 9)}` : null;
-
-      if (data.isRecurring) {
-        const eventsToInsert = data.selectedDays.map(day => ({
+      if (isEditing && eventId) {
+        // Edit mode
+        await CalendarRepository.updateEvent(eventId, {
           title: data.title,
           description: data.description,
           location: data.location,
           startTime: data.startTime,
           endTime: data.endTime,
           type: data.type,
-          dayOfWeek: day,
-          recurrenceGroupId,
-          endDate: data.endDate,
-          workspaceId: data.workspaceId
-        }));
-        await CalendarRepository.createEventsBatch(eventsToInsert);
-      } else {
-        await CalendarRepository.createEvent({
-          title: data.title,
-          description: data.description,
-          location: data.location,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          type: data.type,
-          specificDate: data.startDate,
           workspaceId: data.workspaceId,
+          ...(data.isRecurring ? { dayOfWeek: data.selectedDays[0] || null, specificDate: null } : { specificDate: data.startDate, dayOfWeek: null })
         });
+      } else {
+        // Create mode
+        const recurrenceGroupId = data.isRecurring ? `${Date.now()}-${Math.random().toString(36).substring(2, 9)}` : null;
+
+        if (data.isRecurring) {
+          const eventsToInsert = data.selectedDays.map(day => ({
+            title: data.title,
+            description: data.description,
+            location: data.location,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            type: data.type,
+            dayOfWeek: day,
+            recurrenceGroupId,
+            endDate: data.endDate,
+            workspaceId: data.workspaceId
+          }));
+          await CalendarRepository.createEventsBatch(eventsToInsert);
+        } else {
+          await CalendarRepository.createEvent({
+            title: data.title,
+            description: data.description,
+            location: data.location,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            type: data.type,
+            specificDate: data.startDate,
+            workspaceId: data.workspaceId,
+          });
+        }
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
@@ -181,14 +224,36 @@ export default function AddPlannerEvent() {
     }
   };
 
+  const handleDelete = () => {
+    if (!eventId) return;
+    Alert.alert('Delete Event', 'Are you sure you want to delete this event?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await CalendarRepository.deleteEvent(eventId);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.back();
+        } catch (e) {
+          Alert.alert('Error', 'Could not delete event');
+        }
+      }}
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton} accessibilityLabel="Go back">
           <ArrowLeft color={colors.light.text} size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Event</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>{isEditing ? 'Edit Event' : 'Add Event'}</Text>
+        <View style={styles.headerActions}>
+          {isEditing && (
+            <TouchableOpacity onPress={handleDelete} style={styles.iconButton} accessibilityLabel="Delete">
+              <Trash2 color={colors.light.danger} size={24} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -234,35 +299,39 @@ export default function AddPlannerEvent() {
           )}
         />
 
-        <Text style={styles.label}>Course / Workspace (Optional)</Text>
-        {workspaces && workspaces.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.courseScroll}>
-            <TouchableOpacity
-               style={[styles.courseChip, workspaceId === null && styles.courseChipActive]}
-               onPress={() => {
-                 Haptics.selectionAsync();
-                 setValue('workspaceId', null);
-               }}
-            >
-              <Text style={[styles.courseChipText, workspaceId === null && styles.courseChipTextActive]}>None</Text>
-            </TouchableOpacity>
-            {workspaces.map((ws: any) => (
-              <TouchableOpacity
-                key={ws.id}
-                style={[styles.courseChip, workspaceId === ws.id && styles.courseChipActive]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setValue('workspaceId', ws.id);
-                }}
-              >
-                <Text style={[styles.courseChipText, workspaceId === ws.id && styles.courseChipTextActive]}>
-                  {ws.code || ws.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        ) : (
-          <Text style={styles.helpText}>No courses available. Add one in the Semester tab first!</Text>
+        {!initialWorkspaceId && (
+          <>
+            <Text style={styles.label}>Course / Workspace (Optional)</Text>
+            {workspaces && workspaces.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.courseScroll}>
+                <TouchableOpacity
+                   style={[styles.courseChip, workspaceId === null && styles.courseChipActive]}
+                   onPress={() => {
+                     Haptics.selectionAsync();
+                     setValue('workspaceId', null);
+                   }}
+                >
+                  <Text style={[styles.courseChipText, workspaceId === null && styles.courseChipTextActive]}>None</Text>
+                </TouchableOpacity>
+                {workspaces.map((ws: any) => (
+                  <TouchableOpacity
+                    key={ws.id}
+                    style={[styles.courseChip, workspaceId === ws.id && styles.courseChipActive]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setValue('workspaceId', ws.id);
+                    }}
+                  >
+                    <Text style={[styles.courseChipText, workspaceId === ws.id && styles.courseChipTextActive]}>
+                      {ws.code || ws.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.helpText}>No courses available. Add one in the Semester tab first!</Text>
+            )}
+          </>
         )}
 
         <Text style={styles.label}>Description (Optional)</Text>
@@ -437,7 +506,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.light.border,
   },
-  iconButton: { padding: spacing.sm },
+  iconButton: {
+    alignItems: 'center',
+    padding: spacing.sm,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 40,
+    justifyContent: 'flex-end',
+  },
   headerTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.light.text },
   headerSpacer: { width: 40 },
   container: { flex: 1 },
