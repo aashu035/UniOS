@@ -1,6 +1,6 @@
 import { db } from '../../core/db/client';
 import { tasks } from './model';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, asc, and, lte } from 'drizzle-orm';
 import { workspaces } from '../workspace/model';
 
 export class TaskRepository {
@@ -19,6 +19,17 @@ export class TaskRepository {
     return await db.select()
       .from(tasks)
       .where(eq(tasks.status, 'pending'))
+      .orderBy(tasks.dueDate);
+  }
+
+  static async getTasksDueSoon() {
+    const today = new Date().toISOString().split('T')[0];
+    return await db.select()
+      .from(tasks)
+      .where(and(
+        eq(tasks.status, 'pending'),
+        lte(tasks.dueDate, today)
+      ))
       .orderBy(tasks.dueDate);
   }
 
@@ -48,7 +59,31 @@ export class TaskRepository {
     }).returning().get();
   }
 
-  static async updateTaskStatus(id: number, status: 'pending' | 'submitted' | 'graded' | 'overdue') {
+  static async getAllTasksWithWorkspaces() {
+    const res = await db.select({
+      id: tasks.id,
+      title: tasks.title,
+      dueDate: tasks.dueDate,
+      status: tasks.status,
+      workspaceName: workspaces.name,
+      workspaceColor: workspaces.color,
+      workspaceId: workspaces.id,
+    })
+    .from(tasks)
+    .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
+    .orderBy(asc(tasks.dueDate))
+    .all();
+
+    return res.map(r => ({
+      ...r,
+      status: (r.status === 'completed' ? 'completed' : 'pending'),
+      workspaceName: r.workspaceName || 'General',
+      workspaceColor: r.workspaceColor || '#8E8E93',
+      workspaceId: r.workspaceId || 0,
+    }));
+  }
+
+  static async updateTaskStatus(id: number, status: 'pending' | 'completed' | 'submitted' | 'graded' | 'overdue') {
     return await db.update(tasks)
       .set({ status })
       .where(eq(tasks.id, id))

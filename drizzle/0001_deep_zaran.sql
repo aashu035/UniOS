@@ -13,7 +13,7 @@ CREATE TABLE `__new_resources` (
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-INSERT INTO `__new_resources`("id", "workspace_id", "title", "type", "uri", "text_content", "thumbnail_url", "is_offline", "size_bytes", "created_at") SELECT "id", "workspace_id", "title", "type", "uri", "text_content", "thumbnail_url", "is_offline", "size_bytes", "created_at" FROM `resources`;--> statement-breakpoint
+INSERT INTO `__new_resources`("id", "workspace_id", "title", "type", "uri", "text_content", "thumbnail_url", "is_offline", "size_bytes", "created_at") SELECT "id", "workspace_id", "title", "type", "uri", NULL, NULL, "is_offline", "size_bytes", "created_at" FROM `resources`;--> statement-breakpoint
 DROP TABLE `resources`;--> statement-breakpoint
 ALTER TABLE `__new_resources` RENAME TO `resources`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;--> statement-breakpoint

@@ -15,21 +15,13 @@ export interface AttendanceStats {
     missed: number;
     exempt: number;
     total: number;
-    percentage: number;
+    percentage: number | null;
   }[];
   overallAttended: number;
   overallMissed: number;
   overallExempt: number;
   overallTotal: number;
-  overallPercentage: number;
-}
-
-export interface AttendanceRisk {
-  workspaceId: number;
-  currentPercentage: number;
-  projectedPercentage: number;
-  sessionsRequired: number;
-  riskState: 'Safe' | 'Warning' | 'Critical';
+  overallPercentage: number | null;
 }
 
 export class AttendanceService {
@@ -53,11 +45,15 @@ export class AttendanceService {
       const componentStats = comps.map(c => {
         const records = allRecords.filter(r => r.componentId === c.id);
         
-        const attended = records.filter(r => r.status === 'present').length;
-        const missed = records.filter(r => r.status === 'absent').length;
-        const exempt = records.filter(r => r.status === 'holiday' || r.status === 'cancelled').length;
-        const total = attended + missed; // Formula: attended / (attended + missed). Exempt is excluded from denominator.
-        const percentage = total > 0 ? Math.round((attended / total) * 100) : 100;
+        const present = records.filter(r => r.status === 'present').length;
+        const absent = records.filter(r => r.status === 'absent').length;
+        const exempt = records.filter(r => r.status === 'exempt').length;
+        // holiday/cancelled are ignored completely
+        
+        const attended = present + exempt; // Duty counts as present
+        const missed = absent;
+        const total = attended + missed;
+        const percentage = total > 0 ? Math.round((attended / total) * 100) : null;
 
         overallAttended += attended;
         overallMissed += missed;
@@ -75,7 +71,7 @@ export class AttendanceService {
         };
       });
 
-      const overallPercentage = overallTotal > 0 ? Math.round((overallAttended / overallTotal) * 100) : 100;
+      const overallPercentage = overallTotal > 0 ? Math.round((overallAttended / overallTotal) * 100) : null;
 
       return {
         workspaceId: ws.id,
@@ -107,7 +103,7 @@ export class AttendanceService {
       const overallTotal = record?.portalTotal || 0;
       const overallAttended = record?.portalPresent || 0;
       const overallMissed = overallTotal - overallAttended;
-      const overallPercentage = record?.portalPercent ?? 100;
+      const overallPercentage = record?.portalPercent ?? null;
 
       return {
         workspaceId: ws.id,
@@ -119,7 +115,7 @@ export class AttendanceService {
         overallMissed,
         overallExempt: 0,
         overallTotal,
-        overallPercentage: Math.round(overallPercentage)
+        overallPercentage: overallPercentage !== null ? Math.round(overallPercentage) : null
       };
     });
   }
@@ -145,43 +141,5 @@ export class AttendanceService {
    */
   static async updatePortalAttendance(): Promise<never> {
     throw new Error("SECURITY_VIOLATION: Portal attendance cannot be manually updated from the application. It is strictly read-only.");
-  }
-
-  /**
-   * Calculates the attendance risk for a workspace based on Local Records.
-   */
-  static async getAttendanceRisk(workspaceId: number): Promise<AttendanceRisk> {
-    const localState = await this.getLocalAttendanceState();
-    const ws = localState.find(w => w.workspaceId === workspaceId);
-    
-    if (!ws || ws.overallTotal === 0) {
-      return { workspaceId, currentPercentage: 100, projectedPercentage: 100, sessionsRequired: 0, riskState: 'Safe' };
-    }
-
-    const currentPercentage = ws.overallPercentage;
-    let riskState: 'Safe' | 'Warning' | 'Critical' = 'Safe';
-    let sessionsRequired = 0;
-    
-    if (currentPercentage < 75) {
-      riskState = 'Critical';
-      // Calculate how many sequential sessions are needed to hit 75%
-      let hypotheticalAttended = ws.overallAttended;
-      let hypotheticalTotal = ws.overallTotal;
-      while (hypotheticalAttended / hypotheticalTotal < 0.75) {
-        hypotheticalAttended++;
-        hypotheticalTotal++;
-        sessionsRequired++;
-      }
-    } else if (currentPercentage < 80) {
-      riskState = 'Warning';
-    }
-
-    return {
-      workspaceId,
-      currentPercentage,
-      projectedPercentage: currentPercentage, // Simplified projection
-      sessionsRequired,
-      riskState,
-    };
   }
 }

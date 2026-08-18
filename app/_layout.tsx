@@ -1,7 +1,6 @@
 import React from 'react';
 import { Stack, router } from 'expo-router';
 import { PaperProvider, MD3LightTheme, Button } from 'react-native-paper';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { db, expoDb } from '../core/db/client';
 import migrations from '../drizzle/migrations';
 import { colors } from '../tokens';
@@ -14,7 +13,7 @@ import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
 
 Sentry.init({
-  dsn: 'https://f7dbe1260e7f28e50afb2a04b1b83bf1@o4509450523049984.ingest.us.sentry.io/4509450526851072',
+  dsn: 'https://5af72a268f523c7adf67e0802a496136@o4511887364194304.ingest.us.sentry.io/4511887404367872',
   sendDefaultPii: true,
   // Capture 100% of traces in dev/preview, reduce in production
   tracesSampleRate: __DEV__ ? 1.0 : 0.2,
@@ -59,6 +58,64 @@ const reloadApp = () => {
     Alert.alert('Restart Required', 'Please close and reopen the app.');
   }
 };
+
+let globalMigrationPromise: Promise<void> | null = null;
+
+function runMigrationsSafelyGlobal(
+  dbInstance: typeof db,
+  expoDbInstance: typeof expoDb,
+  migrationsConfig: typeof migrations
+) {
+  if (globalMigrationPromise) {
+    return globalMigrationPromise;
+  }
+
+  const attempt = (async () => {
+    try {
+      expoDbInstance.execSync('PRAGMA foreign_keys = OFF;');
+      // @ts-ignore - The migrate function from drizzle-orm/expo-sqlite/migrator is not fully typed
+      const { migrate } = require('drizzle-orm/expo-sqlite/migrator');
+      await migrate(dbInstance, migrationsConfig);
+    } finally {
+      expoDbInstance.execSync('PRAGMA foreign_keys = ON;');
+      const fkCheck = expoDbInstance.getFirstSync('PRAGMA foreign_keys;') as { foreign_keys: number } | undefined;
+      
+      if (fkCheck?.foreign_keys !== 1) {
+        throw new Error('FATAL: Database failed to restore foreign key constraints.');
+      }
+    }
+  })();
+
+  globalMigrationPromise = attempt.catch((error) => {
+    globalMigrationPromise = null;
+    throw error;
+  });
+
+  return globalMigrationPromise;
+}
+
+function useSafeMigrations(
+  dbInstance: typeof db,
+  expoDbInstance: typeof expoDb,
+  migrationsConfig: typeof migrations
+) {
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    runMigrationsSafelyGlobal(dbInstance, expoDbInstance, migrationsConfig)
+      .then(() => {
+        setSuccess(true);
+        setError(null);
+      })
+      .catch((e) => {
+        setSuccess(false);
+        setError(e instanceof Error ? e : new Error(String(e)));
+      });
+  }, [dbInstance, expoDbInstance, migrationsConfig]);
+
+  return { success, error };
+}
 
 // ─── Top-Level Error Boundary (Runtime Rendering Crashes) ─────────────────────
 class AppErrorBoundary extends React.Component<
@@ -145,7 +202,7 @@ function MigrationErrorScreen({ error }: { error: Error }) {
 
 // ─── Root Layout ─────────────────────────────────────────────────────────────
 function RootLayout() {
-  const { success, error } = useMigrations(db, migrations);
+  const { success, error } = useSafeMigrations(db, expoDb, migrations);
   const [isSeeded, setIsSeeded] = useState(false);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const navRouter = useRouter();
@@ -153,6 +210,11 @@ function RootLayout() {
 
   useEffect(() => {
     if (success) {
+      // TEST A: Runtime Delivery (Controlled)
+      if (process.env.EXPO_PUBLIC_DIAGNOSTIC_SENTRY === 'true') {
+        Sentry.captureMessage("UniOS Sentry integration test — Phase C");
+      }
+
       setIsSeeded(true);
       expoDb.getAllAsync(`SELECT id FROM students LIMIT 1`)
         .then((result) => {
@@ -206,8 +268,8 @@ function RootLayout() {
             <Stack.Screen name="onboarding" />
             <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
             <Stack.Screen name="search" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="course/add" options={{ presentation: 'formSheet' }} />
-            <Stack.Screen name="course/edit" options={{ presentation: 'formSheet' }} />
+            <Stack.Screen name="course/add" options={{ presentation: 'formSheet', gestureEnabled: false }} />
+            <Stack.Screen name="course/edit" options={{ presentation: 'formSheet', gestureEnabled: false }} />
             <Stack.Screen name="planner/add" options={{ presentation: 'formSheet' }} />
           </Stack>
         </PaperProvider>

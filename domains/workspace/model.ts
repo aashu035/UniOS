@@ -14,6 +14,7 @@ export const workspaces = sqliteTable('workspaces', {
   credits: integer('credits').default(3),
   defaultFacultyId: integer('default_faculty_id').references(() => faculty.id),
   color: text('color').default('#6C5CE7'),
+  icon: text('icon').default('book'),
   targetAttendance: real('target_attendance').default(75.0),
   notes: text('notes'),
   needsReview: integer('needs_review', { mode: 'boolean' }).default(false), // Flag for ambiguous migrations
@@ -34,6 +35,14 @@ export const componentVenueAssignments = sqliteTable('component_venue_assignment
   id: integer('id').primaryKey({ autoIncrement: true }),
   componentId: integer('component_id').notNull().references(() => courseComponents.id, { onDelete: 'cascade' }),
   venueId: integer('venue_id').notNull().references(() => venues.id),
+  effectiveFrom: text('effective_from').notNull(), // ISO date
+  effectiveUntil: text('effective_until'), // ISO date (nullable if active)
+});
+
+export const componentFacultyAssignments = sqliteTable('component_faculty_assignments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  componentId: integer('component_id').notNull().references(() => courseComponents.id, { onDelete: 'cascade' }),
+  facultyId: integer('faculty_id').notNull().references(() => faculty.id),
   effectiveFrom: text('effective_from').notNull(), // ISO date
   effectiveUntil: text('effective_until'), // ISO date (nullable if active)
 });

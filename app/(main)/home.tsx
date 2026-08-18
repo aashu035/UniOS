@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Bell, Search, CloudRain, Sun, Cloud, AlertCircle, BookOpen, Clock, MapPin } from 'lucide-react-native';
 import { colors } from '../../tokens';
 import { CalendarService, EffectiveOccurrence } from '../../domains/calendar/service';
 import { AttendanceService } from '../../domains/attendance/service';
+import { TaskRepository } from '../../domains/task/repository';
+import { getLocalDateString } from '../../core/utils/date';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -19,13 +22,12 @@ export default function HomeScreen() {
         const nextWeek = new Date(today);
         nextWeek.setDate(nextWeek.getDate() + 7);
         
-        const effectiveSchedule = await CalendarService.getEffectiveSchedule(
-          today.toISOString().split('T')[0],
-          nextWeek.toISOString().split('T')[0]
-        );
+        const todayStr = getLocalDateString(today);
+        const nextWeekStr = getLocalDateString(nextWeek);
+        
+        const effectiveSchedule = await CalendarService.getEffectiveSchedule(todayStr, nextWeekStr);
         
         // Split for today's timeline
-        const todayStr = today.toISOString().split('T')[0];
         const todaysClasses = effectiveSchedule.filter(e => e.date === todayStr);
         setSchedule(todaysClasses);
 
@@ -38,20 +40,18 @@ export default function HomeScreen() {
         }
 
         // Mock tasks / exams fetch
-        const mockTasksDue = 2; 
+        const pendingTasks = await TaskRepository.getTasksDueSoon();
+        const deadlinesCount = pendingTasks.length;
         const mockExams = 0;
         
-        // Mock checking attendance risk
+        // Removed fake attendance risk projection
         let criticalCount = 0;
-        // In real app, we'd batch check risks for active workspaces
-        const risk = await AttendanceService.getAttendanceRisk(1); 
-        if (risk.riskState === 'Critical') criticalCount++;
 
         // Assemble Facts
         const facts = {
           upcomingClasses: totalClasses,
           labs: totalLabs,
-          deadlines: 2, // Mocked for now until TaskService is integrated
+          deadlines: deadlinesCount,
           exams: 0,
           attendanceRisks: criticalCount
         };
@@ -104,7 +104,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Academic Weather */}
-        <View style={styles.weatherCard}>
+        <TouchableOpacity style={styles.weatherCard} onPress={() => router.push('/tasks')}>
           <View style={styles.weatherIconBg}>
             <WeatherIcon size={24} color={colors.light.accent} />
           </View>
@@ -112,7 +112,7 @@ export default function HomeScreen() {
             <Text style={styles.weatherTitle}>{weatherState.state}</Text>
             <Text style={styles.weatherDesc}>{weatherState.description}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Classes</Text>
         

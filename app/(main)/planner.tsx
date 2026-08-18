@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, BookOpen, Search, Filter } from 'lucide-react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Search, Filter } from 'lucide-react-native';
 import { colors } from '../../tokens';
 import { CalendarService, EffectiveOccurrence } from '../../domains/calendar/service';
+import { TaskRepository } from '../../domains/task/repository';
+import { getLocalDateString } from '../../core/utils/date';
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -20,11 +23,13 @@ export default function TimetableScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [schedule, setSchedule] = useState<EffectiveOccurrence[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tasksDueSoon, setTasksDueSoon] = useState(2); // Mock for contextual tasks
+  const [tasksDueSoon, setTasksDueSoon] = useState(0);
   
-  useEffect(() => {
-    loadWeekData(currentWeekStart);
-  }, [currentWeekStart]);
+  useFocusEffect(
+    useCallback(() => {
+      loadWeekData(currentWeekStart);
+    }, [currentWeekStart])
+  );
 
   const loadWeekData = async (weekStart: Date) => {
     setLoading(true);
@@ -33,10 +38,13 @@ export default function TimetableScreen() {
       weekEnd.setDate(weekEnd.getDate() + 6);
       
       const effective = await CalendarService.getEffectiveSchedule(
-        weekStart.toISOString().split('T')[0],
-        weekEnd.toISOString().split('T')[0]
+        getLocalDateString(weekStart),
+        getLocalDateString(weekEnd)
       );
       setSchedule(effective);
+
+      const pendingTasks = await TaskRepository.getTasksDueSoon();
+      setTasksDueSoon(pendingTasks.length);
     } catch (e) {
       console.error(e);
     } finally {

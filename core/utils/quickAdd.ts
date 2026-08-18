@@ -40,6 +40,8 @@ export function parseQuickAdd(input: string): QuickAddResult {
     // format to standard
     if (!t.includes(':')) {
        t = t.replace(/(AM|PM)/, ':00 $1');
+    } else {
+       t = t.replace(/(\d{1,2}:\d{2})\s*(AM|PM)/, '$1 $2');
     }
     result.startTime = t;
     remaining = remaining.replace(timeMatch[0], '').trim();

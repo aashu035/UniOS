@@ -36,8 +36,10 @@ export default function MainLayout() {
     setSheetVisible(false);
     if (action === 'course') {
       router.push('/course/add');
-    } else {
-      console.log('Action:', action);
+    } else if (action === 'task') {
+      router.push('/task/add');
+    } else if (action === 'resource') {
+      router.push('/resource/add');
     }
   };
 

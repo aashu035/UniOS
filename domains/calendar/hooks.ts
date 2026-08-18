@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { CalendarRepository } from './repository';
 import { compareTimeStrings } from '../../core/utils/time';
+import { getLocalDateString } from '../../core/utils/date';
 
 export function useCalendar(dayOfWeek: number, specificDateString?: string) {
   const [events, setEvents] = useState<any[]>([]);
@@ -39,10 +40,12 @@ export function useHasClassToday(workspaceId: number, date: Date = new Date()) {
     if (!workspaceId) return;
     try {
       setIsLoading(true);
-      const dayOfWeek = date.getDay();
-      const specificDateStr = date.toISOString().split('T')[0];
-      const data = await CalendarRepository.getEventsForDay(dayOfWeek, specificDateStr);
-      const exists = data.some(event => event.workspaceId === workspaceId);
+      const dateStr = getLocalDateString(date);
+      // Use CalendarService (reads recurring_schedules + schedule_exceptions)
+      // instead of CalendarRepository (reads legacy calendar_events)
+      const { CalendarService } = require('./service');
+      const events = await CalendarService.getEffectiveSchedule(dateStr, dateStr);
+      const exists = events.some((event: any) => event.workspaceId === workspaceId);
       setHasClass(exists);
     } catch (err) {
       console.error(err);

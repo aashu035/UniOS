@@ -19,16 +19,31 @@ export default function EditCourse() {
   const save = async (data: CourseFormData) => {
     setIsSaving(true);
     try {
-      await WorkspaceRepository.updateWorkspace(workspaceId, {
+      await WorkspaceRepository.updateCourseIdentity(workspaceId, {
         name: data.name,
         code: data.code,
-        facultyName: data.facultyName,
-        venueName: data.venueName,
         targetAttendance: data.targetAttendance,
         credits: data.credits,
-        type: data.type,
-        notes: data.notes,
       });
+
+      const primaryComp = workspaceData?.components?.[0];
+      if (primaryComp?.id) {
+        if (data.facultyName && data.facultyName !== primaryComp.activeFacultyName) {
+          await WorkspaceRepository.changeHistoricalFaculty(
+            primaryComp.id,
+            data.facultyName,
+            new Date().toISOString().split('T')[0]
+          );
+        }
+        if (data.venueName && data.venueName !== primaryComp.activeVenueName) {
+          await WorkspaceRepository.changeHistoricalVenue(
+            primaryComp.id,
+            data.venueName,
+            new Date().toISOString().split('T')[0]
+          );
+        }
+      }
+
       router.back();
     } catch (error: any) {
       console.error('Could not update course', error);
@@ -61,7 +76,7 @@ export default function EditCourse() {
           facultyName: workspaceData.faculty?.name ?? '',
           venueName: workspaceData.venue?.name ?? '',
           credits: workspace.credits ?? 3,
-          type: workspace.type as any ?? 'theory',
+          type: (workspaceData.components?.[0]?.type as any) ?? 'theory',
           notes: workspace.notes ?? '',
         }}
         onSubmit={save}

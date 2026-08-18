@@ -4,6 +4,7 @@ import { courseComponents, workspaces, componentVenueAssignments } from '../work
 import { venues } from '../venue/model';
 import { faculty } from '../faculty/model';
 import { eq, and, gte, lte, asc, desc } from 'drizzle-orm';
+import { parseLocalDate, getLocalDateString } from '../../core/utils/date';
 
 export interface EffectiveOccurrence {
   id: string; // synthetic ID for UI keying
@@ -41,45 +42,91 @@ export class CalendarService {
    * 2. Schedule exceptions (cancellations, moves, extras).
    */
   static async getEffectiveSchedule(startDateStr: string, endDateStr: string): Promise<EffectiveOccurrence[]> {
-    const start = new Date(startDateStr);
-    const end = new Date(endDateStr);
+    const start = parseLocalDate(startDateStr);
+    const end = parseLocalDate(endDateStr);
     end.setHours(23, 59, 59, 999);
 
     const occurrences: EffectiveOccurrence[] = [];
 
-    // 1. Fetch all recurring schedules with their component, workspace, default venue/faculty
-    // For simplicity without massive joins in Drizzle, we fetch everything needed for active workspaces.
     const allWorkspaces = await db.select().from(workspaces).all();
     const allComponents = await db.select().from(courseComponents).all();
     const allRecurring = await db.select().from(recurringSchedules).all();
     
     // Fetch venue assignments
+    const { componentVenueAssignments, componentFacultyAssignments } = require('../workspace/model');
     const allVenueAssignments = await db.select({
       componentId: componentVenueAssignments.componentId,
       venueName: venues.name,
+      venueId: venues.id,
+      effectiveFrom: componentVenueAssignments.effectiveFrom,
+      effectiveUntil: componentVenueAssignments.effectiveUntil,
     })
     .from(componentVenueAssignments)
     .leftJoin(venues, eq(componentVenueAssignments.venueId, venues.id))
     .all();
 
+    // Fetch faculty assignments
+    const allFacultyAssignments = await db.select({
+      componentId: componentFacultyAssignments.componentId,
+      facultyName: faculty.name,
+      facultyId: faculty.id,
+      effectiveFrom: componentFacultyAssignments.effectiveFrom,
+      effectiveUntil: componentFacultyAssignments.effectiveUntil,
+    })
+    .from(componentFacultyAssignments)
+    .leftJoin(faculty, eq(componentFacultyAssignments.facultyId, faculty.id))
+    .all();
+
     const facultyList = await db.select().from(faculty).all();
+    const venueList = await db.select().from(venues).all();
     
     // Maps for fast lookup
     const workspaceMap = new Map(allWorkspaces.map(w => [w.id, w]));
     const compMap = new Map(allComponents.map(c => [c.id, c]));
-    const compVenueMap = new Map(allVenueAssignments.map(v => [v.componentId, v.venueName]));
     const facultyMap = new Map(facultyList.map(f => [f.id, f.name]));
+    const venueMap = new Map(venueList.map(v => [v.id, v.name]));
+
+    // Resolvers for historical assignments
+    const getActiveVenue = (componentId: number, currentDateStr: string) => {
+      const assignments = allVenueAssignments.filter(a => a.componentId === componentId);
+      let active = null;
+      for (const a of assignments) {
+        const fromDate = a.effectiveFrom ? a.effectiveFrom.split('T')[0] : '';
+        const untilDate = a.effectiveUntil ? a.effectiveUntil.split('T')[0] : null;
+        if (fromDate <= currentDateStr && (!untilDate || untilDate >= currentDateStr)) {
+          if (!active || a.effectiveFrom > active.effectiveFrom) {
+            active = a;
+          }
+        }
+      }
+      return active ? active.venueName : undefined;
+    };
+
+    const getActiveFaculty = (componentId: number, currentDateStr: string, fallbackFacultyId: number | null) => {
+      const assignments = allFacultyAssignments.filter(a => a.componentId === componentId);
+      let active = null;
+      for (const a of assignments) {
+        const fromDate = a.effectiveFrom ? a.effectiveFrom.split('T')[0] : '';
+        const untilDate = a.effectiveUntil ? a.effectiveUntil.split('T')[0] : null;
+        if (fromDate <= currentDateStr && (!untilDate || untilDate >= currentDateStr)) {
+          if (!active || a.effectiveFrom > active.effectiveFrom) {
+            active = a;
+          }
+        }
+      }
+      if (active) return active.facultyName;
+      if (fallbackFacultyId) return facultyMap.get(fallbackFacultyId) || undefined;
+      return undefined;
+    };
 
     // 2. Expand recurring schedules into dates
-    // Loop through each day in the date range
     let current = new Date(start);
     while (current <= end) {
       const currentDayOfWeek = current.getDay(); // 0=Sun, 1=Mon
-      const currentDateStr = current.toISOString().split('T')[0];
+      const currentDateStr = getLocalDateString(current);
 
       for (const rec of allRecurring) {
         if (rec.dayOfWeek === currentDayOfWeek) {
-          // Check effective dates
           if (rec.effectiveStartDate && currentDateStr < rec.effectiveStartDate) continue;
           if (rec.effectiveEndDate && currentDateStr > rec.effectiveEndDate) continue;
 
@@ -88,10 +135,8 @@ export class CalendarService {
           const ws = workspaceMap.get(comp.workspaceId);
           if (!ws) continue;
 
-          // Determine venue (Component level assignment > recurring override)
-          // For this basic version, we rely on component Venue Assignment
-          const venueName = compVenueMap.get(comp.id);
-          const facultyName = comp.facultyId ? facultyMap.get(comp.facultyId) : undefined;
+          const venueName = getActiveVenue(comp.id, currentDateStr);
+          const facultyName = getActiveFaculty(comp.id, currentDateStr, comp.facultyId);
 
           occurrences.push({
             id: `rec_${rec.id}_${currentDateStr}`,
@@ -103,10 +148,12 @@ export class CalendarService {
             date: currentDateStr,
             startTime: rec.startTime,
             endTime: rec.endTime,
-            venueName: venueName || undefined,
-            facultyName: facultyName || undefined,
+            venueName: venueName,
+            facultyName: facultyName,
             isException: false,
-          });
+            // We temporarily store the recurring schedule id to match exceptions accurately
+            _recurringScheduleId: rec.id 
+          } as any);
         }
       }
       current.setDate(current.getDate() + 1);
@@ -124,18 +171,16 @@ export class CalendarService {
     // 4. Apply Exceptions
     for (const ex of exceptions) {
       if (ex.action === 'cancel') {
-        // Remove the occurrence
-        const index = occurrences.findIndex(o => 
-          o.componentId === ex.componentId && 
+        const index = occurrences.findIndex((o: any) => 
+          o._recurringScheduleId === ex.recurringScheduleId && 
           o.date === ex.specificDate && 
           !o.isException
         );
         if (index !== -1) occurrences.splice(index, 1);
       } 
       else if (ex.action === 'move' || ex.action === 'replace') {
-        // Modify existing
-        const index = occurrences.findIndex(o => 
-          o.componentId === ex.componentId && 
+        const index = occurrences.findIndex((o: any) => 
+          o._recurringScheduleId === ex.recurringScheduleId && 
           o.date === ex.specificDate &&
           !o.isException
         );
@@ -144,17 +189,23 @@ export class CalendarService {
           occurrences[index].endTime = ex.endTime || occurrences[index].endTime;
           occurrences[index].isException = true;
           occurrences[index].exceptionAction = ex.action;
-          // Venue override would go here if we fetched it for exceptions
+          
+          if (ex.venueOverrideId) {
+            occurrences[index].venueName = venueMap.get(ex.venueOverrideId);
+          }
+          if (ex.facultyOverrideId) {
+            occurrences[index].facultyName = facultyMap.get(ex.facultyOverrideId);
+          }
         }
       }
       else if (ex.action === 'extra') {
-        // Add new
         const comp = compMap.get(ex.componentId);
         if (!comp) continue;
         const ws = workspaceMap.get(comp.workspaceId);
         if (!ws) continue;
-        const venueName = compVenueMap.get(comp.id);
-        const facultyName = comp.facultyId ? facultyMap.get(comp.facultyId) : undefined;
+        
+        const venueName = ex.venueOverrideId ? venueMap.get(ex.venueOverrideId) : getActiveVenue(comp.id, ex.specificDate);
+        const facultyName = ex.facultyOverrideId ? facultyMap.get(ex.facultyOverrideId) : getActiveFaculty(comp.id, ex.specificDate, comp.facultyId);
 
         occurrences.push({
           id: `ex_${ex.id}`,
@@ -173,6 +224,11 @@ export class CalendarService {
         });
       }
     }
+
+    // Clean up temporary _recurringScheduleId
+    occurrences.forEach((o: any) => {
+      delete o._recurringScheduleId;
+    });
 
     // 5. Sort occurrences by Date then StartTime
     occurrences.sort((a, b) => {

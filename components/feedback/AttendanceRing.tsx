@@ -4,7 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { colors, typography } from '../../tokens';
 
 interface AttendanceRingProps {
-  percentage: number;
+  percentage: number | null;
   size?: number;
   strokeWidth?: number;
 }
@@ -12,12 +12,16 @@ interface AttendanceRingProps {
 export function AttendanceRing({ percentage, size = 64, strokeWidth = 6 }: AttendanceRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  
+  const isNull = percentage === null;
+  const safePercentage = isNull ? 100 : percentage;
+  const strokeDashoffset = isNull ? 0 : circumference - (safePercentage / 100) * circumference;
 
   // Color logic based on percentage
   const getRingColor = () => {
-    if (percentage >= 75) return colors.light.success;
-    if (percentage >= 60) return colors.light.warning;
+    if (isNull) return colors.light.border; // Gray ring for null
+    if (safePercentage >= 75) return colors.light.success;
+    if (safePercentage >= 60) return colors.light.warning;
     return colors.light.danger;
   };
 
@@ -52,7 +56,7 @@ export function AttendanceRing({ percentage, size = 64, strokeWidth = 6 }: Atten
       </Svg>
       <View style={styles.textContainer}>
         <Text style={[styles.text, { fontSize: size * 0.25 }]}>
-          {Math.round(percentage)}%
+          {isNull ? '-' : `${Math.round(safePercentage)}%`}
         </Text>
       </View>
     </View>

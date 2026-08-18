@@ -1,0 +1,1 @@
+ALTER TABLE `workspaces` ADD `icon` text DEFAULT 'book';

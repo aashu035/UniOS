@@ -1,11 +1,15 @@
 {
   "cli": {
-    "version": ">= 3.8.2"
+    "version": ">= 3.8.2",
+    "appVersionSource": "local"
   },
   "build": {
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DIAGNOSTIC_SENTRY": "true"
       }
     }
   }

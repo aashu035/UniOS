@@ -78,7 +78,7 @@ CREATE TABLE `__new_calendar_events` (
 	FOREIGN KEY (`venue_override_id`) REFERENCES `venues`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-INSERT INTO `__new_calendar_events`("id", "workspace_id", "title", "description", "day_of_week", "specific_date", "start_time", "end_time", "type", "venue_override_id", "location", "recurrence_group_id", "end_date") SELECT "id", "workspace_id", "title", "description", "day_of_week", "specific_date", "start_time", "end_time", "type", "venue_override_id", "location", "recurrence_group_id", "end_date" FROM `calendar_events`;--> statement-breakpoint
+INSERT INTO `__new_calendar_events`("id", "workspace_id", "title", "description", "day_of_week", "specific_date", "start_time", "end_time", "type", "venue_override_id", "location", "recurrence_group_id", "end_date") SELECT "id", "workspace_id", "title", "description", "day_of_week", "specific_date", "start_time", "end_time", "type", "venue_override_id", NULL, "recurrence_group_id", "end_date" FROM `calendar_events`;--> statement-breakpoint
 DROP TABLE `calendar_events`;--> statement-breakpoint
 ALTER TABLE `__new_calendar_events` RENAME TO `calendar_events`;--> statement-breakpoint
 CREATE INDEX `idx_calendar_date` ON `calendar_events` (`specific_date`);--> statement-breakpoint
@@ -97,6 +97,6 @@ CREATE TABLE `__new_resources` (
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-INSERT INTO `__new_resources`("id", "workspace_id", "title", "type", "uri", "text_content", "thumbnail_url", "is_offline", "size_bytes", "file_hash", "created_at") SELECT "id", "workspace_id", "title", "type", "uri", "text_content", "thumbnail_url", "is_offline", "size_bytes", "file_hash", "created_at" FROM `resources`;--> statement-breakpoint
+INSERT INTO `__new_resources`("id", "workspace_id", "title", "type", "uri", "text_content", "thumbnail_url", "is_offline", "size_bytes", "file_hash", "created_at") SELECT "id", "workspace_id", "title", "type", "uri", "text_content", "thumbnail_url", "is_offline", "size_bytes", NULL, "created_at" FROM `resources`;--> statement-breakpoint
 DROP TABLE `resources`;--> statement-breakpoint
 ALTER TABLE `__new_resources` RENAME TO `resources`;

@@ -3,11 +3,11 @@ import { dcrustGrading, semesters } from '../../domains/semester/model';
 import { students } from '../../domains/profile/model';
 import { faculty } from '../../domains/faculty/model';
 import { venues } from '../../domains/venue/model';
-import { workspaces, workspaceTimeline, courseComponents } from '../../domains/workspace/model';
+import { workspaces, workspaceTimeline, courseComponents, componentVenueAssignments, componentFacultyAssignments } from '../../domains/workspace/model';
 import { tasks } from '../../domains/task/model';
 import { resources } from '../../domains/resource/model';
 import { attendance, portalAttendance } from '../../domains/attendance/model';
-import { calendarEvents } from '../../domains/calendar/model';
+import { calendarEvents, recurringSchedules } from '../../domains/calendar/model';
 
 export async function seedDcrustGrading() {
   const existing = await db.select().from(dcrustGrading).limit(1);
@@ -93,14 +93,54 @@ export async function seedFullDatabase() {
   const compOs = insertedComponents[1];
   const compDbms = insertedComponents[2];
   const compSe = insertedComponents[3];
+  const compWeb = insertedComponents[4];
+
+  const nowIso = new Date().toISOString();
+
+  // 4.2 Assignments
+  await db.insert(componentVenueAssignments).values([
+    { componentId: compDsa.id, venueId: ven304.id, effectiveFrom: nowIso },
+    { componentId: compOs.id, venueId: ven201.id, effectiveFrom: nowIso },
+    { componentId: compDbms.id, venueId: ven304.id, effectiveFrom: nowIso },
+    { componentId: compSe.id, venueId: ven201.id, effectiveFrom: nowIso },
+    { componentId: compWeb.id, venueId: venLab2.id, effectiveFrom: nowIso },
+  ]);
+
+  await db.insert(componentFacultyAssignments).values([
+    { componentId: compDsa.id, facultyId: facSharma.id, effectiveFrom: nowIso },
+    { componentId: compOs.id, facultyId: facGupta.id, effectiveFrom: nowIso },
+    { componentId: compDbms.id, facultyId: facVerma.id, effectiveFrom: nowIso },
+    { componentId: compSe.id, facultyId: facSharma.id, effectiveFrom: nowIso },
+    { componentId: compWeb.id, facultyId: facGupta.id, effectiveFrom: nowIso },
+  ]);
+
+  // 4.3 Recurring Schedules
+  await db.insert(recurringSchedules).values([
+    { componentId: compDsa.id, dayOfWeek: 1, startTime: '10:00', endTime: '11:00' },
+    { componentId: compDsa.id, dayOfWeek: 3, startTime: '10:00', endTime: '11:00' },
+    { componentId: compDsa.id, dayOfWeek: 5, startTime: '10:00', endTime: '11:00' },
+    { componentId: compOs.id, dayOfWeek: 1, startTime: '11:30', endTime: '12:30' },
+    { componentId: compOs.id, dayOfWeek: 3, startTime: '11:30', endTime: '12:30' },
+    { componentId: compDbms.id, dayOfWeek: 2, startTime: '09:00', endTime: '10:00' },
+    { componentId: compDbms.id, dayOfWeek: 4, startTime: '09:00', endTime: '10:00' },
+    { componentId: compSe.id, dayOfWeek: 2, startTime: '11:00', endTime: '12:00' },
+    { componentId: compWeb.id, dayOfWeek: 4, startTime: '14:00', endTime: '16:00' },
+  ]);
   
-  // 5. Tasks
+  // 5. Tasks (ISO dates)
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const nextFriday = new Date(today);
+  nextFriday.setDate(nextFriday.getDate() + 4);
+  const lastWeek = new Date(today);
+  lastWeek.setDate(lastWeek.getDate() - 7);
+
   await db.insert(tasks).values([
-    { workspaceId: wsDsa.id, title: 'Programming Assignment 3', type: 'assignment', dueDate: 'Tomorrow, 11:59 PM', priority: 'high', status: 'pending' },
-    { workspaceId: wsDsa.id, title: 'Programming Assignment 2', type: 'assignment', dueDate: 'Last Week', status: 'graded', marksObtained: 18, marksTotal: 20 },
-    { workspaceId: wsDsa.id, title: 'Programming Assignment 1', type: 'assignment', dueDate: '2 Weeks Ago', status: 'graded', marksObtained: 20, marksTotal: 20 },
-    { workspaceId: wsOs.id, title: 'OS Assignment 2', type: 'assignment', dueDate: 'Tonight at 11:59 PM', priority: 'high', status: 'pending' },
-    { workspaceId: wsDbms.id, title: 'Midterm Preparation Quiz', type: 'quiz', dueDate: 'Friday, 5:00 PM', priority: 'medium', status: 'pending' },
+    { workspaceId: wsDsa.id, title: 'Programming Assignment 3', type: 'assignment', dueDate: tomorrow.toISOString().split('T')[0], priority: 'high', status: 'pending' },
+    { workspaceId: wsDsa.id, title: 'Programming Assignment 2', type: 'assignment', dueDate: lastWeek.toISOString().split('T')[0], status: 'graded', marksObtained: 18, marksTotal: 20 },
+    { workspaceId: wsOs.id, title: 'OS Assignment 2', type: 'assignment', dueDate: today.toISOString().split('T')[0], priority: 'high', status: 'pending' },
+    { workspaceId: wsDbms.id, title: 'Midterm Preparation Quiz', type: 'quiz', dueDate: nextFriday.toISOString().split('T')[0], priority: 'medium', status: 'pending' },
   ]);
 
   // 6. Resources
@@ -112,18 +152,23 @@ export async function seedFullDatabase() {
     { workspaceId: wsOs.id, title: 'Process Scheduling Notes', type: 'pdf', uri: 'file://scheduling.pdf', sizeBytes: 1500000 },
   ]);
 
-  // 7. Attendance
+  // 7. Attendance (ISO dates)
+  const todayStr = today.toISOString().split('T')[0];
+  const day1Ago = new Date(today); day1Ago.setDate(day1Ago.getDate() - 2);
+  const day2Ago = new Date(today); day2Ago.setDate(day2Ago.getDate() - 4);
+  const day3Ago = new Date(today); day3Ago.setDate(day3Ago.getDate() - 7);
+
   await db.insert(portalAttendance).values([
-    { workspaceId: wsDsa.id, portalTotal: 40, portalPresent: 34, portalPercent: 85.0, checkedDate: 'Today' },
-    { workspaceId: wsOs.id, portalTotal: 30, portalPresent: 28, portalPercent: 93.3, checkedDate: 'Today' },
-    { workspaceId: wsDbms.id, portalTotal: 35, portalPresent: 25, portalPercent: 71.4, checkedDate: 'Today' },
-    { workspaceId: wsSe.id, portalTotal: 45, portalPresent: 45, portalPercent: 100.0, checkedDate: 'Today' },
+    { workspaceId: wsDsa.id, portalTotal: 40, portalPresent: 34, portalPercent: 85.0, checkedDate: todayStr },
+    { workspaceId: wsOs.id, portalTotal: 30, portalPresent: 28, portalPercent: 93.3, checkedDate: todayStr },
+    { workspaceId: wsDbms.id, portalTotal: 35, portalPresent: 25, portalPercent: 71.4, checkedDate: todayStr },
+    { workspaceId: wsSe.id, portalTotal: 45, portalPresent: 45, portalPercent: 100.0, checkedDate: todayStr },
   ]);
 
   await db.insert(attendance).values([
-    { componentId: compDsa.id, date: 'Mon, 10th', status: 'present', notes: 'Prof. Sharma' },
-    { componentId: compDsa.id, date: 'Fri, 7th', status: 'absent', notes: 'Prof. Sharma' },
-    { componentId: compDsa.id, date: 'Wed, 5th', status: 'present', notes: 'Prof. Sharma' },
+    { componentId: compDsa.id, date: day1Ago.toISOString().split('T')[0], status: 'present', notes: 'Prof. Sharma' },
+    { componentId: compDsa.id, date: day2Ago.toISOString().split('T')[0], status: 'absent', notes: 'Prof. Sharma' },
+    { componentId: compDsa.id, date: day3Ago.toISOString().split('T')[0], status: 'present', notes: 'Prof. Sharma' },
   ]);
 
   // 8. Timeline Events
@@ -133,7 +178,7 @@ export async function seedFullDatabase() {
     { workspaceId: wsDsa.id, eventType: 'Announcement', title: 'Midterm Syllabus Announced', description: 'Chapters 1-5' },
   ]);
 
-  // 9. Timetable (Calendar)
+  // 9. Timetable (Calendar Events for backwards compatibility)
   await db.insert(calendarEvents).values([
     { workspaceId: wsDsa.id, dayOfWeek: 1, startTime: '10:00', endTime: '11:00', type: 'lecture' },
     { workspaceId: wsOs.id, dayOfWeek: 1, startTime: '11:30', endTime: '12:30', type: 'lecture' },

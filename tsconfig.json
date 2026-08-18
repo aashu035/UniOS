@@ -3,5 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "types": ["jest"]
-  }
+  },
+  "exclude": [
+    "scratch/**/*"
+  ]
 }

@@ -8,6 +8,7 @@ export class AttendanceRepository {
     return await db.select({
       id: attendance.id,
       componentId: attendance.componentId,
+      componentType: courseComponents.type,
       date: attendance.date,
       status: attendance.status,
       markedAt: attendance.markedAt,
@@ -44,7 +45,21 @@ export class AttendanceRepository {
       if (components.length === 1) {
         targetComponentId = components[0].id;
       } else {
-        throw new Error("Ambiguous attendance marking: workspace has multiple components. A specific componentId is required.");
+        // Resolve component scheduled on this date
+        try {
+          const { CalendarService } = require('../calendar/service');
+          const events = await CalendarService.getEffectiveSchedule(date, date);
+          const wsEvents = events.filter((e: any) => e.workspaceId === workspaceId && e.componentId);
+          if (wsEvents.length > 0) {
+            targetComponentId = wsEvents[0].componentId;
+          } else {
+            const theoryComp = components.find((c: any) => c.type === 'theory');
+            targetComponentId = theoryComp ? theoryComp.id : components[0].id;
+          }
+        } catch {
+          const theoryComp = components.find((c: any) => c.type === 'theory');
+          targetComponentId = theoryComp ? theoryComp.id : components[0].id;
+        }
       }
     }
 

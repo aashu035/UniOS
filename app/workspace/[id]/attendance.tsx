@@ -13,6 +13,7 @@ import { AttendanceRepository } from '../../../domains/attendance/repository';
 import { Check, X, Ban, CalendarOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { getLocalDateString } from '../../../core/utils/date';
 
 import { useWorkspace } from '../../../domains/workspace/hooks';
 import { calculateAttendanceMetrics } from '../../../core/utils/attendance';
@@ -27,7 +28,7 @@ export default function WorkspaceAttendance() {
   const [viewMode, setViewMode] = useState<'self' | 'portal'>('self');
 
   const targetAttendance = workspaceData?.workspace?.targetAttendance || 75;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString(new Date());
 
   // Check if today already has a record
   const todayRecord = history.find(r => r.date === todayStr);
@@ -96,7 +97,7 @@ export default function WorkspaceAttendance() {
       recoveryText = "Connect/sync to retrieve the official record.\n\nOFFICIAL • READ ONLY";
     }
   } else {
-    if (displayTotal === 0) {
+    if (displayTotal === 0 || finalPercentage === null) {
       recoveryText = "Mark today's attendance above to start tracking";
     } else if (finalPercentage >= targetAttendance) {
       const margin = Math.floor(((displayAttended + exempt) * 100 - targetAttendance * displayTotal) / targetAttendance);
@@ -186,7 +187,7 @@ export default function WorkspaceAttendance() {
         <AppCard style={styles.heroCard}>
           <AttendanceRing percentage={finalPercentage} size={120} strokeWidth={12} />
           <View style={styles.heroText}>
-            <Text style={styles.heroTitle}>{isPortalMode && !portalData ? "No Data" : (!isPortalMode && !hasData ? "No Data" : `${finalPercentage}%`)}</Text>
+            <Text style={styles.heroTitle}>{finalPercentage === null ? "No Data" : `${finalPercentage}%`}</Text>
             <Text style={[styles.heroSubtitle, isPortalMode && { fontWeight: '600' }]}>{recoveryText}</Text>
           </View>
         </AppCard>
@@ -219,18 +220,18 @@ export default function WorkspaceAttendance() {
             <View style={styles.reconRow}>
               <View style={styles.reconCol}>
                 <Text style={styles.reconLabel}>My Tracking</Text>
-                <Text style={styles.reconValue}>{percentage}%</Text>
+                <Text style={styles.reconValue}>{percentage === null ? '-' : `${percentage}%`}</Text>
                 <Text style={styles.reconSub}>{present} / {total}</Text>
               </View>
               <View style={styles.reconCol}>
                 <Text style={styles.reconLabel}>Official Portal</Text>
-                <Text style={styles.reconValue}>{portalData.portalPercent}%</Text>
+                <Text style={styles.reconValue}>{portalData.portalPercent === null ? '-' : `${portalData.portalPercent}%`}</Text>
                 <Text style={styles.reconSub}>{portalData.portalPresent} / {portalData.portalTotal}</Text>
               </View>
             </View>
             <View style={styles.reconFooter}>
               <Text style={styles.reconDiff}>
-                Difference: {percentage - (portalData.portalPercent || 0) > 0 ? '+' : ''}{percentage - (portalData.portalPercent || 0)} percentage points
+                Difference: {percentage === null || portalData.portalPercent === null ? 'N/A' : `${percentage - portalData.portalPercent > 0 ? '+' : ''}${percentage - portalData.portalPercent} percentage points`}
               </Text>
             </View>
           </AppCard>
@@ -252,7 +253,7 @@ export default function WorkspaceAttendance() {
                 <TimelineCard 
                   time={record.date} 
                   title={record.status.charAt(0).toUpperCase() + record.status.slice(1)} 
-                  subtitle={record.notes || 'Lecture'} 
+                  subtitle={record.componentType ? `${record.componentType.charAt(0).toUpperCase() + record.componentType.slice(1)}${record.notes ? ` • ${record.notes}` : ''}` : (record.notes || 'Lecture')} 
                   venue={''}
                   isActive={record.status === 'present' || record.status === 'exempt'}
                 />

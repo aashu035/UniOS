@@ -13,6 +13,7 @@
 -- H. Rebuild workspaces (drop type/faculty_id/venue_id, add default_faculty_id/needs_review)
 
 PRAGMA foreign_keys=OFF;
+--> statement-breakpoint
 
 -- ============================================================
 -- A. CREATE NEW TABLES
@@ -76,7 +77,7 @@ CREATE INDEX `idx_exception_date` ON `schedule_exceptions` (`specific_date`);
 --        type IS NULL or type NOT IN those three -> flag needs_review, default to 'theory'
 -- ============================================================
 --> statement-breakpoint
-INSERT INTO course_components (workspace_id, type, faculty_id, duration_minutes)
+INSERT INTO course_components (workspace_id, type, faculty_id, duration_minutes, assessment_allocation)
 SELECT
     id,
     CASE
@@ -87,7 +88,8 @@ SELECT
     CASE
         WHEN type = 'lab' THEN 120
         ELSE 60
-    END
+    END,
+    100
 FROM workspaces;
 
 -- ============================================================
@@ -250,5 +252,5 @@ DROP TABLE `calendar_events`;
 ALTER TABLE `__new_calendar_events` RENAME TO `calendar_events`;
 --> statement-breakpoint
 CREATE INDEX `idx_calendar_date` ON `calendar_events` (`specific_date`);
-
+--> statement-breakpoint
 PRAGMA foreign_keys=ON;

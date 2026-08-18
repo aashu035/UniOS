@@ -9,13 +9,13 @@ import { useAttendanceMetrics } from '../../domains/attendance/hooks';
 interface SubjectCardProps {
   title: string;
   code: string;
-  attendancePercentage?: number;
+  attendancePercentage?: number | null;
   workspaceId?: number;
   onPress?: () => void;
 }
 
 export function SubjectCard({ title, code, attendancePercentage, workspaceId, onPress }: SubjectCardProps) {
-  let displayPercentage = attendancePercentage || 100;
+  let displayPercentage: number | null = attendancePercentage ?? 100;
   
   const { metrics, isLoading } = useAttendanceMetrics(workspaceId || -1);
   let hasData = true;

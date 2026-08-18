@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Search, Folder, File, Download, Image as ImageIcon, FileText, LayoutGrid, FileType } from 'lucide-react-native';
 import { colors } from '../../tokens';
@@ -43,6 +44,8 @@ export default function KnowledgeHubScreen() {
 
         setAllResources(res.map(r => ({
           ...r,
+          type: r.type || 'unknown',
+          sizeBytes: r.sizeBytes ?? undefined,
           workspaceName: r.workspaceName || 'General',
           workspaceColor: r.workspaceColor || colors.light.textMuted,
           workspaceId: r.workspaceId || 0,
@@ -177,7 +180,7 @@ export default function KnowledgeHubScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No files yet.</Text>
-            <Text style={styles.emptySub}>Upload materials from the FAB menu.</Text>
+            <Text style={styles.emptySub}>Tap the + button to add a new resource.</Text>
           </View>
         )}
 

@@ -50,7 +50,7 @@ export default function AttendanceScreen() {
   });
   
   const totalRelevant = totalAttended + totalMissed;
-  const overallPercentage = totalRelevant > 0 ? Math.round((totalAttended / totalRelevant) * 100) : 100;
+  const overallPercentage = totalRelevant > 0 ? Math.round((totalAttended / totalRelevant) * 100) : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -106,11 +106,11 @@ export default function AttendanceScreen() {
         <View style={styles.heroSection}>
           <View style={styles.circleProgressWrapper}>
             <View style={styles.circleProgress}>
-              <Text style={styles.percentageText}>{overallPercentage}%</Text>
+              <Text style={styles.percentageText}>{overallPercentage !== null ? `${overallPercentage}%` : '-'}</Text>
               <Text style={styles.percentageSub}>Current projection</Text>
             </View>
           </View>
-          {activeTab === 'local' && overallPercentage < 75 && totalRelevant > 0 && (
+          {activeTab === 'local' && overallPercentage !== null && overallPercentage < 75 && totalRelevant > 0 && (
             <View style={styles.actionBanner}>
               <AlertCircle size={16} color={colors.light.danger} />
               <Text style={styles.actionBannerText}>Critically below 75% threshold.</Text>
@@ -184,7 +184,7 @@ export default function AttendanceScreen() {
                 });
               }
               const courseTot = courseAtt + courseMiss;
-              const coursePerc = courseTot > 0 ? Math.round((courseAtt / courseTot) * 100) : 100;
+              const coursePerc = courseTot > 0 ? Math.round((courseAtt / courseTot) * 100) : null;
 
               return (
                 <View key={course.workspaceId} style={styles.subjectCard}>
@@ -193,12 +193,12 @@ export default function AttendanceScreen() {
                       <View style={[styles.colorDot, { backgroundColor: course.workspaceColor }]} />
                       <Text style={styles.subjectNameText}>{course.workspaceName}</Text>
                     </View>
-                    <Text style={[styles.subjectPercText, coursePerc < 75 ? { color: colors.light.danger } : { color: colors.light.success }]}>
-                      {coursePerc}%
+                    <Text style={[styles.subjectPercText, coursePerc !== null && coursePerc < 75 ? { color: colors.light.danger } : { color: colors.light.success }]}>
+                      {coursePerc !== null ? `${coursePerc}%` : '-'}
                     </Text>
                   </View>
                   <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${coursePerc}%`, backgroundColor: coursePerc < 75 ? colors.light.danger : colors.light.success }]} />
+                    <View style={[styles.progressBarFill, { width: coursePerc !== null ? `${coursePerc}%` : '0%', backgroundColor: coursePerc !== null && coursePerc < 75 ? colors.light.danger : colors.light.success }]} />
                   </View>
                   <View style={styles.componentsRow}>
                     {comps.map(c => (

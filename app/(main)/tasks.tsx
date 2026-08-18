@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Search, Filter, CheckCircle, Circle, Clock } from 'lucide-react-native';
 import { colors } from '../../tokens';
-import { db } from '../../core/db/client';
-import { tasks } from '../../domains/task/model';
-import { workspaces } from '../../domains/workspace/model';
-import { eq, asc, desc } from 'drizzle-orm';
+import { TaskRepository } from '../../domains/task/repository';
+import * as Haptics from 'expo-haptics';
 
 type FilterState = 'all' | 'due_soon' | 'upcoming' | 'completed';
 
@@ -26,39 +25,23 @@ export default function TasksScreen() {
   const [loading, setLoading] = useState(true);
   const [allTasks, setAllTasks] = useState<TaskView[]>([]);
 
-  useEffect(() => {
-    const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
+    try {
       setLoading(true);
-      try {
-        const res = await db.select({
-          id: tasks.id,
-          title: tasks.title,
-          dueDate: tasks.dueDate,
-          status: tasks.status,
-          workspaceName: workspaces.name,
-          workspaceColor: workspaces.color,
-          workspaceId: workspaces.id,
-        })
-        .from(tasks)
-        .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-        .orderBy(asc(tasks.dueDate))
-        .all();
-
-        // Fallback for nulls
-        setAllTasks(res.map(r => ({
-          ...r,
-          workspaceName: r.workspaceName || 'General',
-          workspaceColor: r.workspaceColor || colors.light.textMuted,
-          workspaceId: r.workspaceId || 0,
-        })));
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadTasks();
+      const data = await TaskRepository.getAllTasksWithWorkspaces();
+      setAllTasks(data);
+    } catch (e) {
+      console.error('Failed to load tasks:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [loadTasks])
+  );
 
   const getFilteredTasks = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -74,10 +57,18 @@ export default function TasksScreen() {
   const filteredTasks = getFilteredTasks();
 
   const toggleTask = async (id: number, currentStatus: string) => {
-    // In a real app, we would await TaskRepository.updateTask
-    // Here we optimistically update UI
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-    setAllTasks(allTasks.map(t => t.id === id ? { ...t, status: newStatus } : t));
+    // Optimistic UI update
+    setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      await TaskRepository.updateTaskStatus(id, newStatus);
+    } catch (e) {
+      console.error('Failed to update task status:', e);
+      // Revert optimistic update on failure
+      setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status: currentStatus } : t));
+    }
   };
 
   return (

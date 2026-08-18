@@ -40,38 +40,33 @@ export class AITimetableService {
 
       if (!workspaceId) {
         // Create new workspace if not found
-        // Default credits: 3 for theory, 1 for lab, 1 for tutorial as a rough guess.
         let credits = 3;
         if (session.type === 'lab') credits = 1;
         if (session.type === 'tutorial') credits = 1;
 
-        const newWs = await WorkspaceRepository.createWorkspace({
-          name: code, // Fallback to using code as name, user can edit later
+        const newWs = await WorkspaceRepository.buildCompleteWorkspace({
+          name: code,
           code: code,
           credits: credits,
-          facultyName: session.faculty,
-          venueName: session.venue
+          color: '#3B82F6',
+          components: [
+            {
+              type: (session.type === 'theory' || session.type === 'tutorial' || session.type === 'lab') ? session.type : 'theory',
+              durationMinutes: session.type === 'lab' ? 120 : 60,
+              venueName: session.venue,
+              facultyName: session.faculty,
+              sessions: [{
+                dayOfWeek: daysMap[session.day] ?? 1,
+                startTime: session.startTime,
+                endTime: session.endTime,
+              }]
+            }
+          ]
         });
 
-        workspaceId = newWs.id;
-        workspaceIdMap.set(code, workspaceId as number);
+        workspaceIdMap.set(code, newWs.id);
       }
-
-      eventsToCreate.push({
-        workspaceId: workspaceId as number,
-        title: session.subjectCode,
-        dayOfWeek: daysMap[session.day] ?? 1,
-        startTime: session.startTime,
-        endTime: session.endTime,
-        type: session.type === 'theory' ? 'lecture' : session.type, // map theory to lecture
-        description: userBatch ? `Batch: ${userBatch}` : null,
-        // venueOverrideId / facultyOverrideId would require looking up the IDs or creating them.
-        // For simplicity in MVP, we might skip overrides or create them later.
-      });
     }
-
-    // 5. Bulk insert calendar events
-    await CalendarRepository.createEventsBatch(eventsToCreate);
 
     return sessions;
   }
