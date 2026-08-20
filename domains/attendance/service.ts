@@ -26,6 +26,15 @@ export interface AttendanceStats {
 
 export class AttendanceService {
   /**
+   * Retrieves the specific schedule occurrences eligible for attendance today.
+   */
+  static async getEligibleOccurrences(workspaceId: number, dateStr: string) {
+    const { CalendarService } = require('../calendar/service');
+    const events = await CalendarService.getEffectiveSchedule(dateStr, dateStr);
+    return events.filter((e: any) => e.workspaceId === workspaceId && e.componentId);
+  }
+
+  /**
    * Calculates the local attendance state by querying the `attendance` table.
    * This represents the user's manual "Live Planning" tracker.
    */
@@ -123,14 +132,35 @@ export class AttendanceService {
   /**
    * Write path for Local Record.
    */
-  static async markLocalAttendance(componentId: number, date: string, status: 'present'|'absent'|'holiday'|'cancelled'): Promise<void> {
+  static async markLocalAttendance(
+    occurrenceKey: string,
+    componentId: number,
+    date: string,
+    status: 'present' | 'absent' | 'exempt' | 'holiday' | 'cancelled'
+  ): Promise<void> {
+    const { CalendarService } = require('../calendar/service');
+    // Security: Validate the occurrence actually exists for this component and date
+    const eligible = await CalendarService.getEffectiveSchedule(date, date);
+    const validOccurrence = eligible.find((e: any) => e.id === occurrenceKey && e.componentId === componentId);
+    
+    if (!validOccurrence) {
+      throw new Error(`SECURITY_VIOLATION: Occurrence ${occurrenceKey} is not valid for component ${componentId} on ${date}`);
+    }
+
     // Check if exists
-    const existing = await db.select().from(attendance).where(and(eq(attendance.componentId, componentId), eq(attendance.date, date))).get();
+    const existing = await db.select().from(attendance).where(eq(attendance.occurrenceId, occurrenceKey)).get();
     
     if (existing) {
-      await db.update(attendance).set({ status }).where(eq(attendance.id, existing.id));
+      await db.update(attendance).set({ status, identityStatus: 'resolved' }).where(eq(attendance.id, existing.id));
     } else {
-      await db.insert(attendance).values({ componentId, date, status, source: 'local' });
+      await db.insert(attendance).values({ 
+        occurrenceId: occurrenceKey,
+        identityStatus: 'resolved',
+        componentId: validOccurrence.componentId, 
+        date: validOccurrence.date, 
+        status, 
+        source: 'local' 
+      });
     }
   }
 

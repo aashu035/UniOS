@@ -23,7 +23,8 @@ export default function Workspaces() {
     id: ws.id.toString(),
     title: ws.name,
     code: ws.code,
-    attendance: ws.targetAttendance ?? 75
+    attendance: ws.actualAttendancePercentage,
+    targetAttendance: ws.targetAttendance
   }));
 
   return (

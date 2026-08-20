@@ -1,6 +1,7 @@
 import { db } from '../../core/db/client';
 import { tasks } from './model';
 import { eq, desc, asc, and, lte } from 'drizzle-orm';
+import { getLocalDateString } from '../../core/utils/date';
 import { workspaces } from '../workspace/model';
 
 export class TaskRepository {
@@ -23,7 +24,7 @@ export class TaskRepository {
   }
 
   static async getTasksDueSoon() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     return await db.select()
       .from(tasks)
       .where(and(
@@ -76,7 +77,7 @@ export class TaskRepository {
 
     return res.map(r => ({
       ...r,
-      status: (r.status === 'completed' ? 'completed' : 'pending'),
+      status: r.status || 'pending',
       workspaceName: r.workspaceName || 'General',
       workspaceColor: r.workspaceColor || '#8E8E93',
       workspaceId: r.workspaceId || 0,

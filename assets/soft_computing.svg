@@ -1,0 +1,6 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Three overlapping soft shapes to represent fuzzy logic sets -->
+<circle cx="80" cy="80" r="40" stroke="#1A1A1A" stroke-width="8" stroke-dasharray="10 6" fill="none"/>
+<circle cx="120" cy="80" r="40" stroke="#1A1A1A" stroke-width="8" fill="none"/>
+<circle cx="100" cy="120" r="40" stroke="#1A1A1A" stroke-width="8" stroke-dasharray="2 10" stroke-linecap="round" fill="none"/>
+</svg>

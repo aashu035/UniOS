@@ -6,8 +6,9 @@ import { Search, Filter, CheckCircle, Circle, Clock } from 'lucide-react-native'
 import { colors } from '../../tokens';
 import { TaskRepository } from '../../domains/task/repository';
 import * as Haptics from 'expo-haptics';
+import { getLocalDateString } from '../../core/utils/date';
 
-type FilterState = 'all' | 'due_soon' | 'upcoming' | 'completed';
+type FilterState = 'all' | 'due_soon' | 'upcoming' | 'submitted';
 
 interface TaskView {
   id: number;
@@ -44,20 +45,20 @@ export default function TasksScreen() {
   );
 
   const getFilteredTasks = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     
     switch (activeFilter) {
-      case 'completed': return allTasks.filter(t => t.status === 'completed');
-      case 'due_soon': return allTasks.filter(t => t.status !== 'completed' && t.dueDate && t.dueDate <= today);
-      case 'upcoming': return allTasks.filter(t => t.status !== 'completed' && t.dueDate && t.dueDate > today);
-      default: return allTasks.filter(t => t.status !== 'completed'); // 'all' shows pending
+      case 'submitted': return allTasks.filter(t => t.status === 'submitted');
+      case 'due_soon': return allTasks.filter(t => t.status !== 'submitted' && t.dueDate && t.dueDate <= today);
+      case 'upcoming': return allTasks.filter(t => t.status !== 'submitted' && t.dueDate && t.dueDate > today);
+      default: return allTasks.filter(t => t.status !== 'submitted'); // 'all' shows pending
     }
   };
 
   const filteredTasks = getFilteredTasks();
 
   const toggleTask = async (id: number, currentStatus: string) => {
-    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    const newStatus = currentStatus === 'submitted' ? 'pending' : 'submitted';
     // Optimistic UI update
     setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -96,8 +97,8 @@ export default function TasksScreen() {
             <TouchableOpacity style={[styles.tabBtn, activeFilter === 'upcoming' && styles.tabBtnActive]} onPress={() => setActiveFilter('upcoming')}>
               <Text style={[styles.tabText, activeFilter === 'upcoming' && styles.tabTextActive]}>Upcoming</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.tabBtn, activeFilter === 'completed' && styles.tabBtnActive]} onPress={() => setActiveFilter('completed')}>
-              <Text style={[styles.tabText, activeFilter === 'completed' && styles.tabTextActive]}>Completed</Text>
+            <TouchableOpacity style={[styles.tabBtn, activeFilter === 'submitted' && styles.tabBtnActive]} onPress={() => setActiveFilter('submitted')}>
+              <Text style={[styles.tabText, activeFilter === 'submitted' && styles.tabTextActive]}>Completed</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -111,13 +112,13 @@ export default function TasksScreen() {
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statValue, { color: colors.light.danger }]}>
-            {allTasks.filter(t => t.status !== 'completed' && t.dueDate && t.dueDate <= new Date().toISOString().split('T')[0]).length}
+            {allTasks.filter(t => t.status !== 'submitted' && t.dueDate && t.dueDate <= getLocalDateString(new Date())).length}
           </Text>
           <Text style={styles.statLabel}>Due Soon</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statValue, { color: colors.light.success }]}>
-            {allTasks.filter(t => t.status === 'completed').length}
+            {allTasks.filter(t => t.status === 'submitted').length}
           </Text>
           <Text style={styles.statLabel}>Done</Text>
         </View>
@@ -131,14 +132,14 @@ export default function TasksScreen() {
             {filteredTasks.map(task => (
               <TouchableOpacity key={task.id} style={styles.taskCard} onPress={() => router.push(`/workspace/${task.workspaceId}`)}>
                 <TouchableOpacity style={styles.checkbox} onPress={() => toggleTask(task.id, task.status)}>
-                  {task.status === 'completed' ? (
+                  {task.status === 'submitted' ? (
                     <CheckCircle size={24} color={colors.light.success} />
                   ) : (
                     <Circle size={24} color={colors.light.border} />
                   )}
                 </TouchableOpacity>
                 <View style={styles.taskContent}>
-                  <Text style={[styles.taskTitle, task.status === 'completed' && styles.taskTitleDone]}>{task.title}</Text>
+                  <Text style={[styles.taskTitle, task.status === 'submitted' && styles.taskTitleDone]}>{task.title}</Text>
                   <View style={styles.taskMeta}>
                     <View style={[styles.subjectBadge, { backgroundColor: task.workspaceColor + '15' }]}>
                       <Text style={[styles.subjectBadgeText, { color: task.workspaceColor }]}>{task.workspaceName}</Text>

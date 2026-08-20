@@ -1,0 +1,8 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Shield Outline -->
+<path d="M100 20 L40 50 V100 C40 140 80 170 100 180 C120 170 160 140 160 100 V50 L100 20 Z" stroke="#1A1A1A" stroke-width="12" stroke-linejoin="round" fill="none"/>
+
+<!-- Keyhole -->
+<circle cx="100" cy="85" r="16" fill="#1A1A1A"/>
+<path d="M90 95 L85 130 H115 L110 95 Z" fill="#1A1A1A"/>
+</svg>

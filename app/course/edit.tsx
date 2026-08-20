@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
+import { getLocalDateString } from '../../core/utils/date';
 import { WorkspaceRepository } from '../../domains/workspace/repository';
 import { useWorkspace } from '../../domains/workspace/hooks';
 import { colors, radius, spacing, typography } from '../../tokens';
@@ -17,6 +18,11 @@ export default function EditCourse() {
   const [isSaving, setIsSaving] = useState(false);
 
   const save = async (data: CourseFormData) => {
+    const trimmedName = data.name.trim();
+    if (trimmedName.length === 0 || trimmedName.length > 100) {
+      Alert.alert('Invalid Name', 'Course name must be between 1 and 100 characters.');
+      return;
+    }
     setIsSaving(true);
     try {
       await WorkspaceRepository.updateCourseIdentity(workspaceId, {
@@ -28,18 +34,18 @@ export default function EditCourse() {
 
       const primaryComp = workspaceData?.components?.[0];
       if (primaryComp?.id) {
-        if (data.facultyName && data.facultyName !== primaryComp.activeFacultyName) {
+        if (data.facultyName && data.facultyName !== primaryComp.activeFaculty?.name) {
           await WorkspaceRepository.changeHistoricalFaculty(
             primaryComp.id,
             data.facultyName,
-            new Date().toISOString().split('T')[0]
+            getLocalDateString(new Date())
           );
         }
-        if (data.venueName && data.venueName !== primaryComp.activeVenueName) {
+        if (data.venueName && data.venueName !== primaryComp.activeVenue?.name) {
           await WorkspaceRepository.changeHistoricalVenue(
             primaryComp.id,
             data.venueName,
-            new Date().toISOString().split('T')[0]
+            getLocalDateString(new Date())
           );
         }
       }
@@ -56,7 +62,7 @@ export default function EditCourse() {
   if (isLoading) return <SafeAreaView style={styles.safeArea}><View style={styles.loader}><Skeleton height={400} borderRadius={16} /></View></SafeAreaView>;
   if (!workspaceData) return <SafeAreaView style={styles.safeArea}><View style={styles.loader}><Text style={styles.notFound}>Course not found.</Text></View></SafeAreaView>;
 
-  const workspace = workspaceData.workspace;
+  const workspace = workspaceData.course;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -73,8 +79,8 @@ export default function EditCourse() {
           name: workspace.name ?? '',
           code: workspace.code ?? '',
           targetAttendance: workspace.targetAttendance ?? 75,
-          facultyName: workspaceData.faculty?.name ?? '',
-          venueName: workspaceData.venue?.name ?? '',
+          facultyName: workspaceData.components?.[0]?.activeFaculty?.name ?? '',
+          venueName: workspaceData.components?.[0]?.activeVenue?.name ?? '',
           credits: workspace.credits ?? 3,
           type: (workspaceData.components?.[0]?.type as any) ?? 'theory',
           notes: workspace.notes ?? '',

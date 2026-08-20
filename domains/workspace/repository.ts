@@ -1,6 +1,7 @@
 import { db } from '../../core/db/client';
 import { workspaces, workspaceTimeline } from './model';
 import { eq, desc, sql, like, inArray } from 'drizzle-orm';
+import { getLocalDateString } from '../../core/utils/date';
 import { faculty } from '../faculty/model';
 import { venues } from '../venue/model';
 import { semesters } from '../semester/model';
@@ -87,7 +88,7 @@ export class WorkspaceRepository {
       ? await db.select().from(attendance).where(inArray(attendance.componentId, componentIds)).all()
       : [];
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString(new Date());
 
     // Resolve active assignment (most recent effectiveFrom that is <= today and effectiveUntil is null or >= today)
     const resolveActive = (assignments: any[], componentId: number) => {
@@ -122,20 +123,9 @@ export class WorkspaceRepository {
       };
     });
 
-    // 7. Legacy-compatible faculty/venue (from the first component, typically Theory)
-    const primaryComponent = enrichedComponents[0] ?? null;
-    const legacyFaculty = primaryComponent
-      ? { name: primaryComponent.activeFacultyName, email: primaryComponent.activeFacultyEmail, id: primaryComponent.activeFacultyId }
-      : null;
-    const legacyVenue = primaryComponent
-      ? { name: primaryComponent.activeVenueName, id: primaryComponent.activeVenueId }
-      : null;
-
     return {
       workspace,
       components: enrichedComponents,
-      faculty: legacyFaculty,
-      venue: legacyVenue,
       // Legacy fields for backward compatibility
       targetAttendance: workspace.targetAttendance,
     };
@@ -304,13 +294,13 @@ export class WorkspaceRepository {
           durationMinutes: compDef.durationMinutes,
         }).returning().get();
 
-        const nowIso = new Date().toISOString().split('T')[0];
+        const initialEffectiveFrom = activeSemester.startDate || getLocalDateString(new Date());
 
         if (venueId) {
           await tx.insert(componentVenueAssignments).values({
             componentId: component.id,
             venueId: venueId,
-            effectiveFrom: nowIso
+            effectiveFrom: initialEffectiveFrom
           });
         }
         
@@ -318,7 +308,7 @@ export class WorkspaceRepository {
           await tx.insert(componentFacultyAssignments).values({
             componentId: component.id,
             facultyId: facultyId,
-            effectiveFrom: nowIso
+            effectiveFrom: initialEffectiveFrom
           });
         }
 
@@ -439,7 +429,7 @@ export class WorkspaceRepository {
       const dateOnly = effectiveFromDateStr.split('T')[0];
       const d = new Date(dateOnly);
       d.setDate(d.getDate() - 1);
-      const effectiveUntilStr = d.toISOString().split('T')[0];
+      const effectiveUntilStr = getLocalDateString(d);
 
       // 2. End previous active assignment
       const currentActive = await tx.select().from(componentVenueAssignments)
@@ -471,7 +461,7 @@ export class WorkspaceRepository {
       const dateOnly = effectiveFromDateStr.split('T')[0];
       const d = new Date(dateOnly);
       d.setDate(d.getDate() - 1);
-      const effectiveUntilStr = d.toISOString().split('T')[0];
+      const effectiveUntilStr = getLocalDateString(d);
 
       const currentActive = await tx.select().from(componentFacultyAssignments)
         .where(

@@ -10,7 +10,8 @@ export function useWorkspaces() {
   const loadWorkspaces = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await WorkspaceRepository.getAllWorkspaces();
+      const { CourseListService } = require('./CourseListService');
+      const data = await CourseListService.getCourses();
       setWorkspaces(data);
       setError(null);
     } catch (err) {
@@ -38,7 +39,8 @@ export function useWorkspace(id: number) {
   const loadWorkspace = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await WorkspaceRepository.getWorkspaceById(id);
+      const { CourseOverviewService } = require('./CourseOverviewService');
+      const data = await CourseOverviewService.getCourseDetail(id);
       const timelineData = await WorkspaceRepository.getTimelineEvents(id);
       setWorkspaceData(data);
       setTimeline(timelineData);

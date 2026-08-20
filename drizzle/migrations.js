@@ -13,6 +13,8 @@ import m0008 from './0008_academic_refactor.sql';
 import m0009 from './0010_abandoned_spencer_smythe.sql';
 import m0010 from './0011_red_groot.sql';
 import m0011 from './0012_add_workspace_icon.sql';
+import m0012 from './0012_orange_fat_cobra.sql';
+import m0013 from './0013_fix_initial_assignment_dates.sql';
 
   export default {
     journal,
@@ -28,6 +30,9 @@ m0007,
 m0008,
 m0009,
 m0010,
-m0011
+m0011,
+m0012,
+m0013
     }
   }
+  

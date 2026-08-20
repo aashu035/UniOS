@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Bell, Search, CloudRain, Sun, Cloud, AlertCircle, BookOpen, Clock, MapPin } from 'lucide-react-native';
 import { colors } from '../../tokens';
 import { CalendarService, EffectiveOccurrence } from '../../domains/calendar/service';
 import { AttendanceService } from '../../domains/attendance/service';
 import { TaskRepository } from '../../domains/task/repository';
-import { getLocalDateString } from '../../core/utils/date';
+import { getLocalDateString, formatTime12Hour } from '../../core/utils/date';
+import { CourseIcon } from '../../components/ui/CourseIcon';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -15,12 +16,13 @@ export default function HomeScreen() {
   const [weatherState, setWeatherState] = useState({ state: 'Balanced week', description: '', icon: Cloud });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
+  useFocusEffect(
+    useCallback(() => {
+      const loadData = async () => {
+        try {
         const today = new Date();
         const nextWeek = new Date(today);
-        nextWeek.setDate(nextWeek.getDate() + 7);
+        nextWeek.setDate(nextWeek.getDate() + 6);
         
         const todayStr = getLocalDateString(today);
         const nextWeekStr = getLocalDateString(nextWeek);
@@ -71,8 +73,10 @@ export default function HomeScreen() {
         setLoading(false);
       }
     };
+    
     loadData();
-  }, []);
+  }, [])
+);
 
   const WeatherIcon = weatherState.icon;
 
@@ -121,8 +125,8 @@ export default function HomeScreen() {
             {schedule.map((item, index) => (
               <View key={item.id} style={styles.timelineItem}>
                 <View style={styles.timelineTime}>
-                  <Text style={styles.timeText}>{item.startTime}</Text>
-                  <Text style={styles.timeSubText}>{item.endTime}</Text>
+                  <Text style={styles.timeText}>{formatTime12Hour(item.startTime)}</Text>
+                  <Text style={styles.timeSubText}>{formatTime12Hour(item.endTime)}</Text>
                 </View>
                 <View style={styles.timelineLine}>
                   <View style={[styles.timelineDot, { backgroundColor: item.workspaceColor }]} />
@@ -134,7 +138,7 @@ export default function HomeScreen() {
                 >
                   <View style={styles.cardHeader}>
                     <View style={[styles.subjectIcon, { backgroundColor: item.workspaceColor + '20' }]}>
-                      <BookOpen size={20} color={item.workspaceColor} />
+                      <CourseIcon name={item.workspaceIcon} size={20} color={item.workspaceColor} />
                     </View>
                     <View style={styles.cardInfo}>
                       <Text style={styles.subjectName}>{item.workspaceName}</Text>

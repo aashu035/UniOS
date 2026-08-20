@@ -115,8 +115,9 @@ export async function seedFullDatabase() {
   ]);
 
   // 4.3 Recurring Schedules
-  await db.insert(recurringSchedules).values([
+  const insertedSchedules = await db.insert(recurringSchedules).values([
     { componentId: compDsa.id, dayOfWeek: 1, startTime: '10:00', endTime: '11:00' },
+    { componentId: compDsa.id, dayOfWeek: 1, startTime: '11:00', endTime: '12:00' }, // Second session on same day
     { componentId: compDsa.id, dayOfWeek: 3, startTime: '10:00', endTime: '11:00' },
     { componentId: compDsa.id, dayOfWeek: 5, startTime: '10:00', endTime: '11:00' },
     { componentId: compOs.id, dayOfWeek: 1, startTime: '11:30', endTime: '12:30' },
@@ -124,9 +125,13 @@ export async function seedFullDatabase() {
     { componentId: compDbms.id, dayOfWeek: 2, startTime: '09:00', endTime: '10:00' },
     { componentId: compDbms.id, dayOfWeek: 4, startTime: '09:00', endTime: '10:00' },
     { componentId: compSe.id, dayOfWeek: 2, startTime: '11:00', endTime: '12:00' },
-    { componentId: compWeb.id, dayOfWeek: 4, startTime: '14:00', endTime: '16:00' },
-  ]);
+    { componentId: compWeb.id, dayOfWeek: 2, startTime: '14:00', endTime: '16:00' }, // Theory and Lab on same day (Day 2)
+  ]).returning();
   
+  const dsaSched1 = insertedSchedules[0];
+  const dsaSched2 = insertedSchedules[1];
+  const seSched = insertedSchedules[8];
+  const webSched = insertedSchedules[9];
   // 5. Tasks (ISO dates)
   const today = new Date();
   const tomorrow = new Date(today);
@@ -165,10 +170,19 @@ export async function seedFullDatabase() {
     { workspaceId: wsSe.id, portalTotal: 45, portalPresent: 45, portalPercent: 100.0, checkedDate: todayStr },
   ]);
 
+  const date1Str = day1Ago.toISOString().split('T')[0];
+  const date2Str = day2Ago.toISOString().split('T')[0];
+  const date3Str = day3Ago.toISOString().split('T')[0];
+
   await db.insert(attendance).values([
-    { componentId: compDsa.id, date: day1Ago.toISOString().split('T')[0], status: 'present', notes: 'Prof. Sharma' },
-    { componentId: compDsa.id, date: day2Ago.toISOString().split('T')[0], status: 'absent', notes: 'Prof. Sharma' },
-    { componentId: compDsa.id, date: day3Ago.toISOString().split('T')[0], status: 'present', notes: 'Prof. Sharma' },
+    // Two sessions of DSA on day 1
+    { occurrenceId: `rec_${dsaSched1.id}_${date1Str}`, identityStatus: 'resolved', componentId: compDsa.id, date: date1Str, status: 'present', notes: 'Session 1' },
+    { occurrenceId: `rec_${dsaSched2.id}_${date1Str}`, identityStatus: 'resolved', componentId: compDsa.id, date: date1Str, status: 'absent', notes: 'Session 2' },
+    // Theory and Lab on day 2
+    { occurrenceId: `rec_${seSched.id}_${date2Str}`, identityStatus: 'resolved', componentId: compSe.id, date: date2Str, status: 'exempt', notes: 'Duty leave' },
+    { occurrenceId: `rec_${webSched.id}_${date2Str}`, identityStatus: 'resolved', componentId: compWeb.id, date: date2Str, status: 'present', notes: 'Lab completed' },
+    // Cancelled/Holiday on day 3
+    { occurrenceId: `rec_${dsaSched1.id}_${date3Str}`, identityStatus: 'resolved', componentId: compDsa.id, date: date3Str, status: 'holiday', notes: 'Public Holiday' },
   ]);
 
   // 8. Timeline Events

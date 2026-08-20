@@ -7,8 +7,7 @@ import { AttendanceRing } from '../../../components/feedback/AttendanceRing';
 import { TimelineCard } from '../../../components/cards/TimelineCard';
 import { colors, spacing, typography, radius } from '../../../tokens';
 import { useLocalSearchParams } from 'expo-router';
-import { useAttendance } from '../../../domains/attendance/hooks';
-import { useHasClassToday } from '../../../domains/calendar/hooks';
+import { useAttendance, useEligibleOccurrences } from '../../../domains/attendance/hooks';
 import { AttendanceRepository } from '../../../domains/attendance/repository';
 import { Check, X, Ban, CalendarOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -23,8 +22,9 @@ export default function WorkspaceAttendance() {
   const workspaceId = parseInt(id as string, 10);
   const { history, portalData, isLoading, refreshAttendance } = useAttendance(workspaceId);
   const { workspaceData } = useWorkspace(workspaceId);
-  const { hasClass, isLoading: checkingClass } = useHasClassToday(workspaceId);
-  const [isMarking, setIsMarking] = useState(false);
+  const { occurrences, isLoading: checkingClass } = useEligibleOccurrences(workspaceId);
+  const hasClass = occurrences.length > 0;
+  const [isMarking, setIsMarking] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'self' | 'portal'>('self');
 
   const targetAttendance = workspaceData?.workspace?.targetAttendance || 75;
@@ -33,11 +33,11 @@ export default function WorkspaceAttendance() {
   // Check if today already has a record
   const todayRecord = history.find(r => r.date === todayStr);
 
-  const handleMark = async (status: 'present' | 'absent' | 'cancelled' | 'holiday' | 'exempt', notes?: string) => {
+  const handleMark = async (occurrence: any, status: 'present' | 'absent' | 'cancelled' | 'holiday' | 'exempt', notes?: string) => {
     setIsMarking(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await AttendanceRepository.markAttendance(workspaceId, todayStr, status, notes);
+      await AttendanceRepository.markAttendance(workspaceId, todayStr, status, occurrence.id, occurrence.componentId, notes);
       await refreshAttendance();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
@@ -55,10 +55,10 @@ export default function WorkspaceAttendance() {
       `Change ${record.date}`,
       `Currently marked as: ${record.status.toUpperCase()}\nWhat should it be?`,
       [
-        { text: 'Present', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'present'); refreshAttendance(); } },
-        { text: 'Absent', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'absent'); refreshAttendance(); } },
-        { text: 'Exempt (Duty/Med)', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'exempt', 'Duty / Medical'); refreshAttendance(); } },
-        { text: 'Cancelled / Off', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'cancelled', 'Class cancelled'); refreshAttendance(); } },
+        { text: 'Present', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'present', record.occurrenceId, record.componentId); refreshAttendance(); } },
+        { text: 'Absent', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'absent', record.occurrenceId, record.componentId); refreshAttendance(); } },
+        { text: 'Exempt (Duty/Med)', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'exempt', record.occurrenceId, record.componentId, 'Duty / Medical'); refreshAttendance(); } },
+        { text: 'Cancelled / Off', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'cancelled', record.occurrenceId, record.componentId, 'Class cancelled'); refreshAttendance(); } },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
@@ -140,46 +140,53 @@ export default function WorkspaceAttendance() {
             <AppCard style={styles.todayCard}>
               <Skeleton height={60} borderRadius={radius.lg} />
             </AppCard>
-          ) : hasClass !== false ? (
-            <AppCard style={styles.todayCard}>
-              <Text style={styles.todayTitle}>Today — {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}</Text>
-              {todayRecord ? (
-                <View style={styles.todayMarked}>
-                  <View style={[styles.statusBadge, { backgroundColor: todayRecord.status === 'present' || todayRecord.status === 'exempt' ? colors.light.success + '20' : todayRecord.status === 'absent' ? colors.light.danger + '20' : colors.light.warning + '20' }]}>
-                    <Text style={[styles.statusBadgeText, { color: todayRecord.status === 'present' || todayRecord.status === 'exempt' ? colors.light.success : todayRecord.status === 'absent' ? colors.light.danger : colors.light.warning }]}>
-                      {todayRecord.status.charAt(0).toUpperCase() + todayRecord.status.slice(1)}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => handleChangeRecord(todayRecord)} style={styles.changeButton}>
-                    <Text style={styles.changeText}>Change</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : isMarking ? (
-                <Skeleton height={48} borderRadius={radius.lg} />
-              ) : (
-                <View style={styles.markRow}>
-                  <TouchableOpacity style={[styles.markButton, styles.presentButton]} onPress={() => handleMark('present')}>
-                    <Check size={18} color="#fff" />
-                    <Text style={styles.markButtonText}>Present</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.markButton, styles.absentButton]} onPress={() => handleMark('absent')}>
-                    <X size={18} color="#fff" />
-                    <Text style={styles.markButtonText}>Absent</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.markButton, styles.cancelledButton]} onPress={() => {
-                    Alert.alert('Other Option', 'What happened?', [
-                      { text: 'Duty/Medical', onPress: () => handleMark('exempt', 'Duty / Medical') },
-                      { text: 'Cancelled', onPress: () => handleMark('cancelled', 'Class cancelled') },
-                      { text: 'Holiday', onPress: () => handleMark('holiday', 'Holiday') },
-                      { text: 'Back', style: 'cancel' },
-                    ]);
-                  }}>
-                    <CalendarOff size={18} color="#fff" />
-                    <Text style={styles.markButtonText}>Other</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </AppCard>
+          ) : hasClass && occurrences.length > 0 ? (
+            <>
+              {occurrences.map((occ: any) => {
+                const occRecord = history.find(r => r.occurrenceId === occ.id);
+                return (
+                  <AppCard key={occ.id} style={styles.todayCard}>
+                    <Text style={styles.todayTitle}>Today — {occ.startTime}–{occ.endTime} ({occ.componentType})</Text>
+                    {occRecord ? (
+                      <View style={styles.todayMarked}>
+                        <View style={[styles.statusBadge, { backgroundColor: occRecord.status === 'present' || occRecord.status === 'exempt' ? colors.light.success + '20' : occRecord.status === 'absent' ? colors.light.danger + '20' : colors.light.warning + '20' }]}>
+                          <Text style={[styles.statusBadgeText, { color: occRecord.status === 'present' || occRecord.status === 'exempt' ? colors.light.success : occRecord.status === 'absent' ? colors.light.danger : colors.light.warning }]}>
+                            {occRecord.status.charAt(0).toUpperCase() + occRecord.status.slice(1)}
+                          </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => handleChangeRecord(occRecord)} style={styles.changeButton}>
+                          <Text style={styles.changeText}>Change</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : isMarking ? (
+                      <Skeleton height={48} borderRadius={radius.lg} />
+                    ) : (
+                      <View style={styles.markRow}>
+                        <TouchableOpacity style={[styles.markButton, styles.presentButton]} onPress={() => handleMark(occ, 'present')}>
+                          <Check size={18} color="#fff" />
+                          <Text style={styles.markButtonText}>Present</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.markButton, styles.absentButton]} onPress={() => handleMark(occ, 'absent')}>
+                          <X size={18} color="#fff" />
+                          <Text style={styles.markButtonText}>Absent</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.markButton, styles.cancelledButton]} onPress={() => {
+                          Alert.alert('Other Option', 'What happened?', [
+                            { text: 'Duty/Medical', onPress: () => handleMark(occ, 'exempt', 'Duty / Medical') },
+                            { text: 'Cancelled', onPress: () => handleMark(occ, 'cancelled', 'Class cancelled') },
+                            { text: 'Holiday', onPress: () => handleMark(occ, 'holiday', 'Holiday') },
+                            { text: 'Back', style: 'cancel' },
+                          ]);
+                        }}>
+                          <CalendarOff size={18} color="#fff" />
+                          <Text style={styles.markButtonText}>Other</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </AppCard>
+                );
+              })}
+            </>
           ) : null
         )}
 
@@ -325,6 +332,31 @@ const styles = StyleSheet.create({
     color: colors.light.text,
     marginBottom: spacing.md,
     textAlign: 'center',
+  },
+  occurrenceItem: {
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  occurrenceItemBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.light.border,
+    marginTop: spacing.sm,
+  },
+  occurrenceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  occurrenceTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.light.text,
+  },
+  occurrenceTime: {
+    fontSize: typography.fontSize.sm,
+    color: colors.light.textMuted,
   },
   todayMarked: {
     flexDirection: 'row',

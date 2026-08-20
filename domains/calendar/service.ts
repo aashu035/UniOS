@@ -11,6 +11,7 @@ export interface EffectiveOccurrence {
   workspaceId: number;
   workspaceName: string;
   workspaceColor: string;
+  workspaceIcon: string;
   componentId?: number;
   componentType: string;
   date: string; // ISO date string (YYYY-MM-DD)
@@ -55,6 +56,7 @@ export class CalendarService {
     // Fetch venue assignments
     const { componentVenueAssignments, componentFacultyAssignments } = require('../workspace/model');
     const allVenueAssignments = await db.select({
+      id: componentVenueAssignments.id,
       componentId: componentVenueAssignments.componentId,
       venueName: venues.name,
       venueId: venues.id,
@@ -67,6 +69,7 @@ export class CalendarService {
 
     // Fetch faculty assignments
     const allFacultyAssignments = await db.select({
+      id: componentFacultyAssignments.id,
       componentId: componentFacultyAssignments.componentId,
       facultyName: faculty.name,
       facultyId: faculty.id,
@@ -86,37 +89,17 @@ export class CalendarService {
     const facultyMap = new Map(facultyList.map(f => [f.id, f.name]));
     const venueMap = new Map(venueList.map(v => [v.id, v.name]));
 
-    // Resolvers for historical assignments
+    const { AssignmentResolutionService } = require('../workspace/AssignmentResolutionService');
+
     const getActiveVenue = (componentId: number, currentDateStr: string) => {
-      const assignments = allVenueAssignments.filter(a => a.componentId === componentId);
-      let active = null;
-      for (const a of assignments) {
-        const fromDate = a.effectiveFrom ? a.effectiveFrom.split('T')[0] : '';
-        const untilDate = a.effectiveUntil ? a.effectiveUntil.split('T')[0] : null;
-        if (fromDate <= currentDateStr && (!untilDate || untilDate >= currentDateStr)) {
-          if (!active || a.effectiveFrom > active.effectiveFrom) {
-            active = a;
-          }
-        }
-      }
-      return active ? active.venueName : undefined;
+      const active = AssignmentResolutionService.getActiveVenueAssignment(allVenueAssignments, componentId, currentDateStr);
+      return active ? active.name : undefined;
     };
 
     const getActiveFaculty = (componentId: number, currentDateStr: string, fallbackFacultyId: number | null) => {
-      const assignments = allFacultyAssignments.filter(a => a.componentId === componentId);
-      let active = null;
-      for (const a of assignments) {
-        const fromDate = a.effectiveFrom ? a.effectiveFrom.split('T')[0] : '';
-        const untilDate = a.effectiveUntil ? a.effectiveUntil.split('T')[0] : null;
-        if (fromDate <= currentDateStr && (!untilDate || untilDate >= currentDateStr)) {
-          if (!active || a.effectiveFrom > active.effectiveFrom) {
-            active = a;
-          }
-        }
-      }
-      if (active) return active.facultyName;
-      if (fallbackFacultyId) return facultyMap.get(fallbackFacultyId) || undefined;
-      return undefined;
+      const fallbackName = fallbackFacultyId ? facultyMap.get(fallbackFacultyId) : null;
+      const active = AssignmentResolutionService.getActiveFacultyAssignment(allFacultyAssignments, componentId, currentDateStr, fallbackFacultyId, fallbackName);
+      return active ? active.name : undefined;
     };
 
     // 2. Expand recurring schedules into dates
@@ -143,6 +126,7 @@ export class CalendarService {
             workspaceId: ws.id,
             workspaceName: ws.name,
             workspaceColor: ws.color || '#3B82F6',
+            workspaceIcon: ws.icon || 'book',
             componentId: comp.id,
             componentType: comp.type,
             date: currentDateStr,
@@ -212,6 +196,7 @@ export class CalendarService {
           workspaceId: ws.id,
           workspaceName: ws.name,
           workspaceColor: ws.color || '#3B82F6',
+          workspaceIcon: ws.icon || 'book',
           componentId: comp.id,
           componentType: comp.type,
           date: ex.specificDate,

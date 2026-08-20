@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Nodes -->
+<circle cx="100" cy="50" r="16" fill="#1A1A1A"/>
+<circle cx="40" cy="120" r="16" fill="#1A1A1A"/>
+<circle cx="160" cy="120" r="16" fill="#1A1A1A"/>
+<circle cx="100" cy="160" r="16" fill="#1A1A1A"/>
+
+<!-- Edges -->
+<path d="M100 66 L50 110" stroke="#1A1A1A" stroke-width="8" stroke-linecap="round"/>
+<path d="M100 66 L150 110" stroke="#1A1A1A" stroke-width="8" stroke-linecap="round"/>
+<path d="M50 130 L90 155" stroke="#1A1A1A" stroke-width="8" stroke-linecap="round"/>
+<path d="M150 130 L110 155" stroke="#1A1A1A" stroke-width="8" stroke-linecap="round"/>
+<path d="M56 120 H144" stroke="#1A1A1A" stroke-width="8" stroke-linecap="round"/>
+</svg>

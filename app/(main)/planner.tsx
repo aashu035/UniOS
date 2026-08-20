@@ -6,7 +6,8 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Sea
 import { colors } from '../../tokens';
 import { CalendarService, EffectiveOccurrence } from '../../domains/calendar/service';
 import { TaskRepository } from '../../domains/task/repository';
-import { getLocalDateString } from '../../core/utils/date';
+import { getLocalDateString, formatTime12Hour } from '../../core/utils/date';
+import { CourseIcon } from '../../components/ui/CourseIcon';
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -14,10 +15,10 @@ export default function TimetableScreen() {
   const router = useRouter();
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     const d = new Date();
-    // Set to Monday of current week
-    const day = d.getDay() === 0 ? 7 : d.getDay();
-    d.setDate(d.getDate() - day + 1);
     d.setHours(0,0,0,0);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff);
     return d;
   });
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -63,8 +64,6 @@ export default function TimetableScreen() {
   const shiftWeek = (direction: 'prev' | 'next' | 'today') => {
     if (direction === 'today') {
       const d = new Date();
-      const day = d.getDay() === 0 ? 7 : d.getDay();
-      d.setDate(d.getDate() - day + 1);
       d.setHours(0,0,0,0);
       setCurrentWeekStart(d);
       setSelectedDate(new Date());
@@ -77,7 +76,7 @@ export default function TimetableScreen() {
     }
   };
 
-  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+  const selectedDateStr = getLocalDateString(selectedDate);
   const daySchedule = schedule.filter(s => s.date === selectedDateStr);
 
   return (
@@ -110,8 +109,8 @@ export default function TimetableScreen() {
           {[0,1,2,3,4,5,6].map((offset) => {
             const d = new Date(currentWeekStart);
             d.setDate(d.getDate() + offset);
-            const isSelected = d.toISOString().split('T')[0] === selectedDateStr;
-            const isToday = d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+            const isSelected = getLocalDateString(d) === selectedDateStr;
+            const isToday = getLocalDateString(d) === getLocalDateString(new Date());
             
             return (
               <TouchableOpacity 
@@ -148,7 +147,7 @@ export default function TimetableScreen() {
             {daySchedule.map((item, index) => (
               <View key={item.id} style={styles.timelineItem}>
                 <View style={styles.timeColumn}>
-                  <Text style={styles.timeText}>{item.startTime}</Text>
+                  <Text style={styles.timeText}>{formatTime12Hour(item.startTime)}</Text>
                 </View>
                 
                 <TouchableOpacity 
@@ -164,7 +163,10 @@ export default function TimetableScreen() {
                   
                   <View style={styles.classCardContent}>
                     <View style={styles.classHeader}>
-                      <Text style={[styles.classTitle, { color: item.workspaceColor }]}>{item.workspaceName}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <CourseIcon name={item.workspaceIcon} size={16} color={item.workspaceColor} />
+                        <Text style={[styles.classTitle, { color: item.workspaceColor }]}>{item.workspaceName}</Text>
+                      </View>
                       {item.isException && (
                         <View style={[styles.exceptionBadge, { backgroundColor: item.workspaceColor + '30' }]}>
                           <Text style={[styles.exceptionText, { color: item.workspaceColor }]}>{item.exceptionAction}</Text>
@@ -177,7 +179,7 @@ export default function TimetableScreen() {
                     <View style={styles.classMeta}>
                       <View style={styles.metaItem}>
                         <Clock size={14} color={colors.light.textMuted} />
-                        <Text style={styles.metaText}>{item.startTime} - {item.endTime}</Text>
+                        <Text style={styles.metaText}>{formatTime12Hour(item.startTime)} - {formatTime12Hour(item.endTime)}</Text>
                       </View>
                       <View style={styles.metaItem}>
                         <MapPin size={14} color={colors.light.textMuted} />

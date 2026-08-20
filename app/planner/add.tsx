@@ -10,6 +10,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import * as Haptics from 'expo-haptics';
+import { useDatabaseCoordinator } from '../../core/db/coordinator';
+import { getLocalDateString } from '../../core/utils/date';
 import { parseTime } from '../../core/utils/time';
 import { parseQuickAdd } from '../../core/utils/quickAdd';
 
@@ -70,8 +72,8 @@ export default function AddPlannerEvent() {
       isRecurring: true,
       selectedDays: [],
       workspaceId: initialWorkspaceId,
-      startDate: today.toISOString().split('T')[0],
-      endDate: future.toISOString().split('T')[0],
+      startDate: getLocalDateString(today),
+      endDate: getLocalDateString(future),
     }
   });
 

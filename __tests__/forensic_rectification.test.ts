@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+// @ts-ignore
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../core/db/schema';
 
@@ -139,13 +140,16 @@ sqlite.exec(`
   CREATE TABLE attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     component_id INTEGER NOT NULL,
+    occurrence_id TEXT NOT NULL,
     date TEXT NOT NULL,
     source TEXT DEFAULT 'local',
     status TEXT NOT NULL,
     marked_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    identity_status TEXT DEFAULT 'pending',
+    identity_synced_at TEXT,
     notes TEXT,
     FOREIGN KEY (component_id) REFERENCES course_components(id) ON DELETE CASCADE,
-    UNIQUE(component_id, date)
+    UNIQUE(occurrence_id)
   );
 
   CREATE TABLE portal_attendance (
@@ -273,6 +277,10 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     expect(workspace).toBeDefined();
     expect(workspace.id).toBeGreaterThan(0);
 
+    // Backdate assignments so they are active on 2026-08-17 (Monday)
+    sqlite.exec("UPDATE component_venue_assignments SET effective_from = '2026-08-01'");
+    sqlite.exec("UPDATE component_faculty_assignments SET effective_from = '2026-08-01'");
+
     // Direct SQLite queries verifying raw database state
     const wsRow = sqlite.prepare('SELECT * FROM workspaces WHERE id = ?').get(workspace.id) as any;
     expect(wsRow.name).toBe('Embedded System');
@@ -336,8 +344,8 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     expect(complete!.workspace.icon).toBe('cpu');
 
     // Primary faculty & venue (resolved from active assignment, eliminating Root Cause A)
-    expect(complete!.faculty?.name).toBe('Dr. RD');
-    expect(complete!.venue?.name).toBe('JCB 213');
+    // We are no longer exposing legacy faculty and venue directly on complete
+    // The active faculty and venue are verified below on the theoryComp.
 
     // Components array with active faculty and venue resolved per component
     expect(complete!.components).toHaveLength(2);
@@ -382,6 +390,10 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     };
 
     await WorkspaceRepository.buildCompleteWorkspace(courseBPayload);
+
+    // Backdate assignments so they are active on 2026-08-17 (Monday)
+    sqlite.exec("UPDATE component_venue_assignments SET effective_from = '2026-08-01'");
+    sqlite.exec("UPDATE component_faculty_assignments SET effective_from = '2026-08-01'");
 
     // 2026-08-17 is a Monday
     const mondayStr = '2026-08-17';
@@ -436,7 +448,9 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     const wsRow = sqlite.prepare("SELECT id FROM workspaces WHERE name = 'Embedded System'").get() as any;
 
     // Mark attendance for Monday session
-    const marked = await AttendanceRepository.markAttendance(wsRow.id, '2026-08-17', 'present', 'Lecture 1');
+    const mondaySchedule = await CalendarService.getEffectiveSchedule('2026-08-17', '2026-08-17');
+    const mondayScheduleForWs = mondaySchedule.find((e: any) => e.workspaceId === wsRow.id);
+    const marked = await AttendanceRepository.markAttendance(wsRow.id, '2026-08-17', 'present', mondayScheduleForWs!.id, mondayScheduleForWs!.componentId!, 'Lecture 1');
     expect(marked).toBeDefined();
     expect(marked.status).toBe('present');
 
@@ -459,7 +473,9 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     expect(metrics1.percentage).toBe(100);
 
     // Mark second date as absent
-    await AttendanceRepository.markAttendance(wsRow.id, '2026-08-24', 'absent');
+    const monday2Schedule = await CalendarService.getEffectiveSchedule('2026-08-24', '2026-08-24');
+    const monday2ScheduleForWs = monday2Schedule.find((e: any) => e.workspaceId === wsRow.id);
+    await AttendanceRepository.markAttendance(wsRow.id, '2026-08-24', 'absent', monday2ScheduleForWs!.id, monday2ScheduleForWs!.componentId!);
     const updatedHistory = await AttendanceRepository.getAttendanceHistory(wsRow.id);
     expect(updatedHistory).toHaveLength(2);
 
@@ -479,7 +495,9 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
 
     // Wednesday (2026-08-19) is Lab day
     const wednesdayStr = '2026-08-19';
-    const markedLab = await AttendanceRepository.markAttendance(wsRow.id, wednesdayStr, 'present', 'Lab Session 1');
+    const wednesdaySchedule = await CalendarService.getEffectiveSchedule(wednesdayStr, wednesdayStr);
+    const labOcc = wednesdaySchedule.find((e: any) => e.workspaceId === wsRow.id);
+    const markedLab = await AttendanceRepository.markAttendance(wsRow.id, wednesdayStr, 'present', labOcc!.id, labOcc!.componentId!, 'Lab Session 1');
     expect(markedLab).toBeDefined();
     expect(markedLab.componentId).toBe(labComp.id);
 
@@ -520,7 +538,9 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     expect(initialMetrics.total).toBe(0);
 
     // After 1 Present record
-    await AttendanceRepository.markAttendance(freshCourse.id, '2026-08-18', 'present');
+    const tuesdaySch = await CalendarService.getEffectiveSchedule('2026-08-18', '2026-08-18');
+    const tuesdayOcc = tuesdaySch.find((e: any) => e.workspaceId === freshCourse.id);
+    await AttendanceRepository.markAttendance(freshCourse.id, '2026-08-18', 'present', tuesdayOcc!.id, tuesdayOcc!.componentId!);
     const updatedHistory = await AttendanceRepository.getAttendanceHistory(freshCourse.id);
     const updatedMetrics = calculateAttendanceMetrics(updatedHistory);
 

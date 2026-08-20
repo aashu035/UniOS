@@ -1,3 +1,160 @@
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as schema from '../core/db/schema';
+
+// Setup in-memory SQLite database with Drizzle ORM
+const sqlite = new Database(':memory:');
+sqlite.pragma('foreign_keys = ON');
+
+sqlite.exec(`
+  CREATE TABLE semesters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    number INTEGER NOT NULL,
+    name TEXT,
+    type TEXT DEFAULT 'odd',
+    start_date TEXT,
+    end_date TEXT,
+    is_active INTEGER DEFAULT 0,
+    sgpa REAL
+  );
+  CREATE TABLE venues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    building TEXT,
+    floor TEXT,
+    map_link TEXT
+  );
+  CREATE TABLE faculty (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    department TEXT,
+    cabin TEXT,
+    office_hours TEXT,
+    photo_uri TEXT,
+    notes TEXT
+  );
+  CREATE TABLE workspaces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    semester_id INTEGER,
+    name TEXT NOT NULL,
+    short_name TEXT,
+    code TEXT,
+    credits INTEGER DEFAULT 3,
+    default_faculty_id INTEGER,
+    color TEXT DEFAULT '#6C5CE7',
+    icon TEXT DEFAULT 'book',
+    target_attendance REAL DEFAULT 75.0,
+    notes TEXT,
+    needs_review INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    FOREIGN KEY (semester_id) REFERENCES semesters(id),
+    FOREIGN KEY (default_faculty_id) REFERENCES faculty(id)
+  );
+  CREATE TABLE course_components (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    faculty_id INTEGER,
+    duration_minutes INTEGER NOT NULL,
+    assessment_allocation INTEGER,
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (faculty_id) REFERENCES faculty(id)
+  );
+  CREATE TABLE component_venue_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    component_id INTEGER NOT NULL,
+    venue_id INTEGER NOT NULL,
+    effective_from TEXT NOT NULL,
+    effective_until TEXT,
+    FOREIGN KEY (component_id) REFERENCES course_components(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venues(id)
+  );
+  CREATE TABLE component_faculty_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    component_id INTEGER NOT NULL,
+    faculty_id INTEGER NOT NULL,
+    effective_from TEXT NOT NULL,
+    effective_until TEXT,
+    FOREIGN KEY (component_id) REFERENCES course_components(id) ON DELETE CASCADE,
+    FOREIGN KEY (faculty_id) REFERENCES faculty(id)
+  );
+  CREATE TABLE recurring_schedules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    component_id INTEGER NOT NULL,
+    day_of_week INTEGER NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    venue_override_id INTEGER,
+    effective_start_date TEXT,
+    effective_end_date TEXT,
+    FOREIGN KEY (component_id) REFERENCES course_components(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_override_id) REFERENCES venues(id)
+  );
+  CREATE TABLE schedule_exceptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    component_id INTEGER NOT NULL,
+    recurring_schedule_id INTEGER,
+    specific_date TEXT NOT NULL,
+    action TEXT NOT NULL,
+    start_time TEXT,
+    end_time TEXT,
+    venue_override_id INTEGER,
+    faculty_override_id INTEGER,
+    FOREIGN KEY (component_id) REFERENCES course_components(id) ON DELETE CASCADE,
+    FOREIGN KEY (recurring_schedule_id) REFERENCES recurring_schedules(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_override_id) REFERENCES venues(id),
+    FOREIGN KEY (faculty_override_id) REFERENCES faculty(id)
+  );
+  CREATE TABLE calendar_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER,
+    title TEXT,
+    description TEXT,
+    day_of_week INTEGER,
+    specific_date TEXT,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    type TEXT DEFAULT 'lecture',
+    venue_override_id INTEGER,
+    location TEXT,
+    recurrence_group_id TEXT,
+    end_date TEXT,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (venue_override_id) REFERENCES venues(id)
+  );
+  CREATE TABLE attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    component_id INTEGER NOT NULL,
+    occurrence_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    source TEXT DEFAULT 'local',
+    status TEXT NOT NULL,
+    marked_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+    identity_status TEXT DEFAULT 'pending',
+    identity_synced_at TEXT,
+    notes TEXT,
+    FOREIGN KEY (component_id) REFERENCES course_components(id) ON DELETE CASCADE,
+    UNIQUE(occurrence_id)
+  );
+`);
+
+const testDb = drizzle(sqlite, { schema });
+(testDb as any).transaction = async (cb: any) => {
+  return await cb(testDb);
+};
+
+jest.mock('../core/db/client', () => ({
+  db: testDb,
+  expoDb: {
+    execSync: (sql: string) => sqlite.exec(sql),
+    getFirstSync: (sql: string) => sqlite.prepare(sql).get(),
+    getAllAsync: async (sql: string) => sqlite.prepare(sql).all(),
+  },
+}));
+
 import { db } from '../core/db/client';
 import { eq } from 'drizzle-orm';
 import { workspaces, courseComponents, componentFacultyAssignments, componentVenueAssignments } from '../domains/workspace/model';
@@ -76,11 +233,11 @@ describe('Course Setup Lineage', () => {
     const labId = comps.find(c => c.type === 'lab')!.id;
 
     // Theory: 1 present, 1 absent
-    await db.insert(attendance).values({ componentId: theoryId, date: '2025-01-01', status: 'present' });
-    await db.insert(attendance).values({ componentId: theoryId, date: '2025-01-08', status: 'absent' });
+    await db.insert(attendance).values({ occurrenceId: 'theory_occ_1', identityStatus: 'resolved', componentId: theoryId, date: '2025-01-01', status: 'present' });
+    await db.insert(attendance).values({ occurrenceId: 'theory_occ_2', identityStatus: 'resolved', componentId: theoryId, date: '2025-01-08', status: 'absent' });
 
     // Lab: 1 present
-    await db.insert(attendance).values({ componentId: labId, date: '2025-01-05', status: 'present' });
+    await db.insert(attendance).values({ occurrenceId: 'lab_occ_1', identityStatus: 'resolved', componentId: labId, date: '2025-01-05', status: 'present' });
 
     // 4. Extract Canonical View Model
     const viewData = await WorkspaceRepository.getCompleteWorkspace(newCourse.id);

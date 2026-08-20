@@ -1,6 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { AttendanceRepository } from './repository';
+import { AttendanceService } from './service';
+import { getLocalDateString } from '../../core/utils/date';
+import { calculateAttendanceMetrics } from '../../core/utils/attendance';
 
 export function useAttendance(workspaceId: number) {
   const [history, setHistory] = useState<any[]>([]);
@@ -24,19 +27,43 @@ export function useAttendance(workspaceId: number) {
     }
   }, [workspaceId]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadAttendance();
-    }, [loadAttendance])
-  );
+  useEffect(() => {
+    loadAttendance();
+  }, [loadAttendance]);
 
   return { history, portalData, isLoading, error, refreshAttendance: loadAttendance };
 }
-
-import { calculateAttendanceMetrics } from '../../core/utils/attendance';
 
 export function useAttendanceMetrics(workspaceId: number) {
   const { history, isLoading } = useAttendance(workspaceId);
   const metrics = calculateAttendanceMetrics(history);
   return { metrics, isLoading };
+}
+
+export function useEligibleOccurrences(workspaceId: number, dateStr?: string) {
+  const [occurrences, setOccurrences] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Derive target date string once per render. It remains stable as a primitive.
+  const targetDateStr = dateStr || getLocalDateString(new Date());
+
+  const checkOccurrences = useCallback(async () => {
+    if (!workspaceId) return;
+    try {
+      setIsLoading(true);
+      const events = await AttendanceService.getEligibleOccurrences(workspaceId, targetDateStr);
+      setOccurrences(events);
+    } catch (err) {
+      console.error(err);
+      setOccurrences([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [workspaceId, targetDateStr]);
+
+  useEffect(() => {
+    checkOccurrences();
+  }, [checkOccurrences]);
+
+  return { occurrences, isLoading, refreshOccurrences: checkOccurrences };
 }

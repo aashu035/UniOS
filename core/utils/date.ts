@@ -28,3 +28,17 @@ export function parseLocalDate(dateStr: string): Date {
 export function getLocalDayOfWeek(dateStr: string): number {
   return parseLocalDate(dateStr).getDay();
 }
+
+/**
+ * Formats a 24-hour time string (HH:MM) into a 12-hour string with AM/PM.
+ */
+export function formatTime12Hour(time24: string): string {
+  if (!time24) return '';
+  const [h, m] = time24.split(':');
+  if (!h || !m) return time24;
+  let hour = parseInt(h, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  hour = hour ? hour : 12; 
+  return `${hour}:${m} ${ampm}`;
+}

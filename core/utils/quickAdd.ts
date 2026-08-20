@@ -1,3 +1,5 @@
+import { getLocalDateString } from './date';
+
 export type QuickAddResult = {
   title?: string;
   type?: string;
@@ -54,7 +56,7 @@ export function parseQuickAdd(input: string): QuickAddResult {
     if (dayMatch[1].toLowerCase() === 'tomorrow') {
       today.setDate(today.getDate() + 1);
     }
-    result.startDate = today.toISOString().split('T')[0];
+    result.startDate = getLocalDateString(today);
     remaining = remaining.replace(dayMatch[0], '').trim();
   }
 

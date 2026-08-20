@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useNavigation } from 'expo-router';
 import { ArrowLeft, Plus, Trash2, Clock, MapPin, User, Check, ChevronRight, BookOpen, AlertCircle, Cpu, GitMerge, Shield, Network, Code, Brain, HardHat, Sigma, Atom, FlaskConical, Database, Book, X } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -63,6 +64,7 @@ export default function CourseBuilder() {
   const navigation = useNavigation();
   const [step, setStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = React.useRef(false);
   const [isDraftRestored, setIsDraftRestored] = useState(false);
   
   const [activeTimePicker, setActiveTimePicker] = useState<{compId: string, sessionId: string} | null>(null);
@@ -102,31 +104,56 @@ export default function CourseBuilder() {
   ]);
 
   useEffect(() => {
-    // Restore draft on mount
-    const loadDraft = async () => {
+    const checkDraft = async () => {
       try {
         const saved = await AsyncStorage.getItem(DRAFT_KEY);
         if (saved) {
-          const draft = JSON.parse(saved);
-          setName(draft.name || '');
-          setCode(draft.code || '');
-          setCredits(draft.credits || '3');
-          setSelectedColor(draft.selectedColor || colors.subjects[0].base);
-          if (draft.icon) {
-            setIcon(draft.icon);
-            setIconTouched(draft.iconTouched || false);
-          }
-          if (draft.components) setComponents(draft.components);
-          if (draft.template) setTemplate(draft.template);
-          if (draft.step) setStep(draft.step);
+          Alert.alert(
+            'Resume Draft?',
+            'You have an unfinished course draft. Do you want to resume it or start a new course?',
+            [
+              {
+                text: 'Start New',
+                style: 'destructive',
+                onPress: async () => {
+                  await clearDraft();
+                  setIsDraftRestored(true);
+                }
+              },
+              {
+                text: 'Resume',
+                onPress: () => {
+                  try {
+                    const draft = JSON.parse(saved);
+                    setName(draft.name || '');
+                    setCode(draft.code || '');
+                    setCredits(draft.credits || '3');
+                    setSelectedColor(draft.selectedColor || colors.subjects[0].base);
+                    if (draft.icon) {
+                      setIcon(draft.icon);
+                      setIconTouched(draft.iconTouched || false);
+                    }
+                    if (draft.components) setComponents(draft.components);
+                    if (draft.template) setTemplate(draft.template);
+                    if (draft.step) setStep(draft.step);
+                  } catch (e) {
+                    console.warn('Failed to parse draft', e);
+                  } finally {
+                    setIsDraftRestored(true);
+                  }
+                }
+              }
+            ]
+          );
+        } else {
+          setIsDraftRestored(true);
         }
       } catch (e) {
-        console.warn('Failed to load draft:', e);
-      } finally {
+        console.warn('Failed to check draft:', e);
         setIsDraftRestored(true);
       }
     };
-    loadDraft();
+    checkDraft();
   }, []);
 
   const saveDraft = async () => {
@@ -152,7 +179,7 @@ export default function CourseBuilder() {
 
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       // If we are saving normally (isSaving = true), don't show alert
-      if (isSaving) return;
+      if (isSavingRef.current) return;
 
       // If form is completely empty (no changes), just go back
       if (!name.trim() && !code.trim() && components.every(c => c.sessions.length === 0) && !iconTouched && step === 1) {
@@ -309,6 +336,11 @@ export default function CourseBuilder() {
       Alert.alert('Missing Info', 'Course name is required.');
       return;
     }
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0 || trimmedName.length > 100) {
+      Alert.alert('Invalid Name', 'Course name must be between 1 and 100 characters.');
+      return;
+    }
     setStep(2);
   };
 
@@ -355,6 +387,7 @@ export default function CourseBuilder() {
 
   const handleConfirmAndCreate = async () => {
     setIsSaving(true);
+    isSavingRef.current = true;
     try {
       await WorkspaceRepository.buildCompleteWorkspace({
         name,
@@ -374,6 +407,7 @@ export default function CourseBuilder() {
           }))
         }))
       });
+      await clearDraft();
       router.back();
     } catch (error: any) {
       console.error(error);
@@ -383,6 +417,7 @@ export default function CourseBuilder() {
         Alert.alert('Error', error.message || 'Failed to save course.');
       }
       setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 

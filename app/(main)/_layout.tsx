@@ -119,7 +119,6 @@ export default function MainLayout() {
         
         {/* Hidden screens that are still part of the main stack */}
         <Tabs.Screen name="workspaces" options={{ href: null }} />
-        <Tabs.Screen name="tutor" options={{ href: null }} />
         <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="semester" options={{ href: null }} />
         <Tabs.Screen name="resources" options={{ href: null }} />

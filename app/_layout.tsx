@@ -1,8 +1,8 @@
 import React from 'react';
 import { Stack, router } from 'expo-router';
 import { PaperProvider, MD3LightTheme, Button } from 'react-native-paper';
-import { db, expoDb } from '../core/db/client';
-import migrations from '../drizzle/migrations';
+import { expoDb } from '../core/db/client';
+import { useDatabaseCoordinator } from '../core/db/coordinator';
 import { colors } from '../tokens';
 import { View, Text, Alert } from 'react-native';
 import { useEffect, useState, useCallback } from 'react';
@@ -59,63 +59,6 @@ const reloadApp = () => {
   }
 };
 
-let globalMigrationPromise: Promise<void> | null = null;
-
-function runMigrationsSafelyGlobal(
-  dbInstance: typeof db,
-  expoDbInstance: typeof expoDb,
-  migrationsConfig: typeof migrations
-) {
-  if (globalMigrationPromise) {
-    return globalMigrationPromise;
-  }
-
-  const attempt = (async () => {
-    try {
-      expoDbInstance.execSync('PRAGMA foreign_keys = OFF;');
-      // @ts-ignore - The migrate function from drizzle-orm/expo-sqlite/migrator is not fully typed
-      const { migrate } = require('drizzle-orm/expo-sqlite/migrator');
-      await migrate(dbInstance, migrationsConfig);
-    } finally {
-      expoDbInstance.execSync('PRAGMA foreign_keys = ON;');
-      const fkCheck = expoDbInstance.getFirstSync('PRAGMA foreign_keys;') as { foreign_keys: number } | undefined;
-      
-      if (fkCheck?.foreign_keys !== 1) {
-        throw new Error('FATAL: Database failed to restore foreign key constraints.');
-      }
-    }
-  })();
-
-  globalMigrationPromise = attempt.catch((error) => {
-    globalMigrationPromise = null;
-    throw error;
-  });
-
-  return globalMigrationPromise;
-}
-
-function useSafeMigrations(
-  dbInstance: typeof db,
-  expoDbInstance: typeof expoDb,
-  migrationsConfig: typeof migrations
-) {
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    runMigrationsSafelyGlobal(dbInstance, expoDbInstance, migrationsConfig)
-      .then(() => {
-        setSuccess(true);
-        setError(null);
-      })
-      .catch((e) => {
-        setSuccess(false);
-        setError(e instanceof Error ? e : new Error(String(e)));
-      });
-  }, [dbInstance, expoDbInstance, migrationsConfig]);
-
-  return { success, error };
-}
 
 // ─── Top-Level Error Boundary (Runtime Rendering Crashes) ─────────────────────
 class AppErrorBoundary extends React.Component<
@@ -158,7 +101,7 @@ class AppErrorBoundary extends React.Component<
 }
 
 // ─── Migration Error Screen (Database Startup Failures) ──────────────────────
-function MigrationErrorScreen({ error }: { error: Error }) {
+function DatabaseErrorScreen({ error, onRetry }: { error: Error; onRetry: () => void }) {
   const handleResetDatabase = () => {
     Alert.alert(
       'Reset Database',
@@ -185,13 +128,13 @@ function MigrationErrorScreen({ error }: { error: Error }) {
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.light.background }}>
-      <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.light.danger, marginBottom: 12 }}>Database Migration Failed</Text>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.light.danger, marginBottom: 12 }}>Database Initialization Failed</Text>
       <Text style={{ textAlign: 'center', marginBottom: 8, color: colors.light.text }}>{error.message}</Text>
       <Text style={{ textAlign: 'center', marginBottom: 24, color: colors.light.textMuted, fontSize: 13 }}>
         This usually happens after an app update. Try retrying first. If the problem persists, resetting the database will fix it but erase all local data.
       </Text>
-      <Button mode="contained" onPress={reloadApp} style={{ marginBottom: 12, width: '80%' }}>
-        Retry / Reload App
+      <Button mode="contained" onPress={onRetry} style={{ marginBottom: 12, width: '80%' }}>
+        Retry
       </Button>
       <Button mode="outlined" onPress={handleResetDatabase} style={{ width: '80%' }} textColor={colors.light.danger}>
         Reset Database (lose all data)
@@ -202,20 +145,18 @@ function MigrationErrorScreen({ error }: { error: Error }) {
 
 // ─── Root Layout ─────────────────────────────────────────────────────────────
 function RootLayout() {
-  const { success, error } = useSafeMigrations(db, expoDb, migrations);
-  const [isSeeded, setIsSeeded] = useState(false);
+  const { isReady, error, retry } = useDatabaseCoordinator();
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const navRouter = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    if (success) {
+    if (isReady) {
       // TEST A: Runtime Delivery (Controlled)
       if (process.env.EXPO_PUBLIC_DIAGNOSTIC_SENTRY === 'true') {
         Sentry.captureMessage("UniOS Sentry integration test — Phase C");
       }
 
-      setIsSeeded(true);
       expoDb.getAllAsync(`SELECT id FROM students LIMIT 1`)
         .then((result) => {
           setHasProfile(result.length > 0);
@@ -225,10 +166,10 @@ function RootLayout() {
           setHasProfile(false);
         });
     }
-  }, [success]);
+  }, [isReady]);
 
   useEffect(() => {
-    if (isSeeded && hasProfile !== null) {
+    if (isReady && hasProfile !== null) {
       const onOnboarding = segments[0] === 'onboarding';
 
       if (!hasProfile && !onOnboarding) {
@@ -245,13 +186,13 @@ function RootLayout() {
         navRouter.replace('/(main)/home');
       }
     }
-  }, [isSeeded, hasProfile, segments]);
+  }, [isReady, hasProfile, segments]);
 
   if (error) {
-    return <MigrationErrorScreen error={error} />;
+    return <DatabaseErrorScreen error={error} onRetry={retry} />;
   }
 
-  if (!success || !isSeeded || hasProfile === null) {
+  if (!isReady || hasProfile === null) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Loading UniOS...</Text>

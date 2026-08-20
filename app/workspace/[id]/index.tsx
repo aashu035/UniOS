@@ -37,6 +37,7 @@ export default function WorkspaceOverview() {
   const { metrics: overallMetrics } = useAttendanceMetrics(workspaceId);
 
   // Resolve from new getCompleteWorkspace shape
+  const course = workspaceData?.course;
   const components = workspaceData?.components ?? [];
 
   return (
@@ -45,9 +46,9 @@ export default function WorkspaceOverview() {
         <View style={styles.statsRow}>
           <StatCard 
             title="Target Attendance" 
-            value={workspaceData?.targetAttendance ? `${workspaceData.targetAttendance}%` : "No Target"} 
-            trend={overallMetrics?.hasData ? `Actual: ${overallMetrics.percentage}%` : "Actual: —"}
-            trendDirection={overallMetrics?.hasData && overallMetrics.percentage !== null && overallMetrics.percentage >= (workspaceData?.targetAttendance || 0) ? "up" : "down"}
+            value={course?.targetAttendance ? `${course.targetAttendance}%` : "No Target"} 
+            trend={workspaceData?.attendance?.actualPercentage !== null ? `Actual: ${workspaceData?.attendance.actualPercentage}%` : "Actual: —"}
+            trendDirection={workspaceData?.attendance?.actualPercentage !== null && workspaceData?.attendance?.actualPercentage >= (course?.targetAttendance || 0) ? "up" : "down"}
             icon={<BookOpen size={20} color={colors.light.primary} />}
             style={styles.flexHalf}
           />
@@ -70,10 +71,10 @@ export default function WorkspaceOverview() {
                 </View>
 
                 {/* Faculty */}
-                {comp.activeFacultyName ? (
+                {comp.activeFaculty?.name ? (
                   <View style={styles.componentDetail}>
                     <Text style={styles.detailLabel}>Faculty</Text>
-                    <Text style={styles.detailValue}>{comp.activeFacultyName}</Text>
+                    <Text style={styles.detailValue}>{comp.activeFaculty.name}</Text>
                   </View>
                 ) : (
                   <View style={styles.componentDetail}>
@@ -83,10 +84,10 @@ export default function WorkspaceOverview() {
                 )}
 
                 {/* Venue */}
-                {comp.activeVenueName ? (
+                {comp.activeVenue?.name ? (
                   <View style={styles.componentDetail}>
                     <MapPin size={14} color={colors.light.textMuted} />
-                    <Text style={styles.detailValue}>{comp.activeVenueName}</Text>
+                    <Text style={styles.detailValue}>{comp.activeVenue.name}</Text>
                   </View>
                 ) : (
                   <View style={styles.componentDetail}>
@@ -115,14 +116,14 @@ export default function WorkspaceOverview() {
                 )}
 
                 {/* Attendance */}
-                {comp.attendanceMetrics && (
+                {comp.attendance && (
                   <View style={styles.attendanceDetail}>
                     <Text style={styles.attendanceValue}>
-                      {comp.attendanceMetrics.hasData ? `${comp.attendanceMetrics.percentage}%` : '—'}
+                      {comp.attendance.actualPercentage !== null ? `${comp.attendance.actualPercentage}%` : '—'}
                     </Text>
                     <Text style={styles.attendanceLabel}>
-                      {comp.attendanceMetrics.hasData 
-                        ? `${comp.attendanceMetrics.present} Present · ${comp.attendanceMetrics.absent} Absent`
+                      {comp.attendance.actualPercentage !== null
+                        ? `${comp.attendance.present} Present · ${comp.attendance.absent} Absent`
                         : 'Attendance'}
                     </Text>
                   </View>

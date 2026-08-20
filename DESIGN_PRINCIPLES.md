@@ -26,5 +26,47 @@ Before implementing any new feature, ask the following checklist:
 
 **If any answer is "No", stop and refactor before continuing.**
 
+## Attendance Identity Contract
+
+Attendance records are uniquely identified by an **occurrence identity** derived from the academic schedule:
+
+- Recurring sessions: `rec_{recurringScheduleId}_{localDate}` (e.g. `rec_42_2026-08-18`)
+- Exception sessions: `ex_{exceptionId}` (e.g. `ex_7`)
+
+### Rules
+
+1. IDs are generated **only** by `CalendarService.getEffectiveSchedule()`. The UI never constructs occurrence IDs.
+2. Recurring schedule IDs are **never reused** after deletion.
+3. Same-day move/replacement retains the original recurring identity with modified times.
+4. Cross-day moves produce a cancellation (of the original) plus a new extra occurrence.
+5. Cancelled occurrences **cannot** receive new attendance.
+6. Exception IDs are stable across app restarts.
+7. New attendance writes **must explicitly set** `occurrence_id` and `identity_status = 'resolved'`. Never rely on database defaults for domain writes.
+
+## Unresolved Legacy Attendance Policy
+
+Historical attendance rows from before the identity system was introduced carry `identity_status = 'unresolved_legacy'` and `occurrence_id = NULL`.
+
+### Visibility Rules
+
+| Context | Unresolved rows |
+|---|---|
+| **Occurrence cards** (timetable UI) | Excluded — cannot be assigned to a specific session |
+| **Occurrence editing** | Unavailable — not editable through session cards |
+| **Course/component attendance totals** | **Included** — they represent real historical evidence |
+| **New attendance** | Always occurrence-resolved |
+
+### One-Record Limitation
+
+An unresolved record counts as **one historical attendance instance**, even if multiple possible sessions existed on that date. This is an unavoidable limitation of the old identity model and must not be presented as session-level certainty.
+
+### Repair Behavior
+
+The `AttendanceRepairService` runs on every app initialization (idempotent):
+- **Exactly one matching occurrence** → resolve
+- **Zero matches** → remain unresolved
+- **Multiple matches** → remain unresolved
+- **No first-match heuristic. No deletion.**
+
 ## Product Vision
 UniOS is not just an attendance app. It is a premium Academic Operating System designed to replace scattered tools (WhatsApp, Drive, PDF Readers, ERPs) into a unified, elegant, Apple/Notion-inspired workflow.
