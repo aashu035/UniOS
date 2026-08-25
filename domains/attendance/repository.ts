@@ -64,4 +64,12 @@ export class AttendanceRepository {
     
     return result[0];
   }
+
+  static async deleteAttendance(occurrenceId: string) {
+    const result = await db.delete(attendance)
+      .where(eq(attendance.occurrenceId, occurrenceId))
+      .returning();
+      
+    return result[0];
+  }
 }

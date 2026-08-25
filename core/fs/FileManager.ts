@@ -1,5 +1,4 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import ReactNativeBlobUtil from 'react-native-blob-util';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -34,6 +33,7 @@ export const FileManager = {
       if (path.startsWith('file://')) {
         path = path.replace('file://', '');
       }
+      const ReactNativeBlobUtil = require('react-native-blob-util').default;
       const hash = await ReactNativeBlobUtil.fs.hash(path, 'sha256');
       return hash;
     } catch (e) {

@@ -15,14 +15,18 @@ export function calculateAttendanceMetrics(records: any[]) {
     else if (record.status === 'holiday' || record.status === 'cancelled') cancelledOrHoliday++;
   });
 
-  // Exempt (Duty/Medical) counts as present. Holiday/Cancelled are completely ignored.
+  // According to the original business rules:
+  // Present: conducted +1, attended +1
+  // Absent: conducted +1, attended +0
+  // Exempt/Leave: conducted +1, attended +1 (counts as attended)
+  // Cancelled: conducted +0, attended +0 (excluded)
   const effectiveTotal = present + absent + exempt;
   const effectivePresent = present + exempt;
 
   const percentage = effectiveTotal > 0 ? (effectivePresent / effectiveTotal) * 100 : null;
 
   return {
-    present: effectivePresent,
+    present,
     absent,
     exempt,
     cancelledOrHoliday,
@@ -31,3 +35,4 @@ export function calculateAttendanceMetrics(records: any[]) {
     hasData: effectiveTotal > 0,
   };
 }
+

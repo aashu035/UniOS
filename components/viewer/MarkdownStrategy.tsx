@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, ActivityIndicator, Text } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { colors, spacing, typography } from '../../tokens';
 
 export default function MarkdownStrategy({ uri }: { uri: string }) {
@@ -11,7 +11,15 @@ export default function MarkdownStrategy({ uri }: { uri: string }) {
   useEffect(() => {
     const loadFile = async () => {
       try {
-        const text = await FileSystem.readAsStringAsync(uri);
+        // Use legacy filesystem API for Expo SDK 54+ compatibility
+        let text = '';
+        if (FileSystem.readAsStringAsync) {
+          text = await FileSystem.readAsStringAsync(uri);
+        } else {
+          // Fallback if imported from legacy in future
+          const FileSystemLegacy = require('expo-file-system/legacy');
+          text = await FileSystemLegacy.readAsStringAsync(uri);
+        }
         setContent(text);
       } catch (e) {
         console.error('Failed to load markdown file', e);

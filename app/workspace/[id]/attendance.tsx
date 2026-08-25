@@ -1,44 +1,88 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { SectionHeader } from '../../../components/layout/SectionHeader';
 import { AppCard } from '../../../components/cards/AppCard';
 import { AttendanceRing } from '../../../components/feedback/AttendanceRing';
-import { TimelineCard } from '../../../components/cards/TimelineCard';
+import { AttendanceChart } from '../../../components/feedback/AttendanceChart';
+import { AttendanceWeekStrip } from '../../../components/ui/AttendanceWeekStrip';
+import { AttendanceDayList } from '../../../components/ui/AttendanceDayList';
+import { AttendanceItem } from '../../../components/cards/AttendanceItem';
 import { colors, spacing, typography, radius } from '../../../tokens';
 import { useLocalSearchParams } from 'expo-router';
-import { useAttendance, useEligibleOccurrences } from '../../../domains/attendance/hooks';
+import { useAttendance, useAttendanceViewModel } from '../../../domains/attendance/hooks';
 import { AttendanceRepository } from '../../../domains/attendance/repository';
-import { Check, X, Ban, CalendarOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { getLocalDateString } from '../../../core/utils/date';
-
 import { useWorkspace } from '../../../domains/workspace/hooks';
-import { calculateAttendanceMetrics } from '../../../core/utils/attendance';
 
 export default function WorkspaceAttendance() {
   const { id } = useLocalSearchParams();
   const workspaceId = parseInt(id as string, 10);
-  const { history, portalData, isLoading, refreshAttendance } = useAttendance(workspaceId);
+  
+  // Keep standard attendance hook for portal data
+  const { portalData, refreshAttendance: refreshPortal } = useAttendance(workspaceId);
   const { workspaceData } = useWorkspace(workspaceId);
-  const { occurrences, isLoading: checkingClass } = useEligibleOccurrences(workspaceId);
-  const hasClass = occurrences.length > 0;
+  
+  const today = new Date();
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(getLocalDateString(today));
+  
+  // Calculate Week boundaries based on selectedDateStr
+  const { weekStartStr, weekEndStr } = useMemo(() => {
+    const d = new Date(selectedDateStr);
+    const day = d.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day; // 0 is Sunday
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return {
+      weekStartStr: getLocalDateString(monday),
+      weekEndStr: getLocalDateString(sunday)
+    };
+  }, [selectedDateStr]);
+
+  const scope = useMemo(() => ({ workspaceId }), [workspaceId]);
+
+  const { viewModel, isLoading, refreshViewModel } = useAttendanceViewModel(
+    scope, 
+    weekStartStr, 
+    weekEndStr, 
+    selectedDateStr
+  );
+
   const [isMarking, setIsMarking] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'self' | 'portal'>('self');
+  const isPortalMode = viewMode === 'portal';
 
   const targetAttendance = workspaceData?.workspace?.targetAttendance || 75;
-  const todayStr = getLocalDateString(new Date());
 
-  // Check if today already has a record
-  const todayRecord = history.find(r => r.date === todayStr);
+  const handlePreviousWeek = () => {
+    const d = new Date(weekStartStr);
+    d.setDate(d.getDate() - 7);
+    setSelectedDateStr(getLocalDateString(d)); // Select Monday of previous week
+  };
+
+  const handleNextWeek = () => {
+    const d = new Date(weekStartStr);
+    d.setDate(d.getDate() + 7);
+    setSelectedDateStr(getLocalDateString(d)); // Select Monday of next week
+  };
 
   const handleMark = async (occurrence: any, status: 'present' | 'absent' | 'cancelled' | 'holiday' | 'exempt', notes?: string) => {
     setIsMarking(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await AttendanceRepository.markAttendance(workspaceId, todayStr, status, occurrence.id, occurrence.componentId, notes);
-      await refreshAttendance();
+      await AttendanceRepository.markAttendance(
+        workspaceId, 
+        selectedDateStr, 
+        status, 
+        occurrence.occurrenceId, 
+        occurrence.componentId, 
+        notes
+      );
+      await refreshViewModel();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       console.error(e);
@@ -49,68 +93,95 @@ export default function WorkspaceAttendance() {
     }
   };
 
-  const handleChangeRecord = (record: any) => {
-    if (viewMode === 'portal') return; // Read-only in portal mode
+  const promptMarkAttendance = (occurrence: any) => {
     Alert.alert(
-      `Change ${record.date}`,
-      `Currently marked as: ${record.status.toUpperCase()}\nWhat should it be?`,
+      `Mark Attendance`,
+      `How would you like to mark ${occurrence.componentType} class?`,
       [
-        { text: 'Present', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'present', record.occurrenceId, record.componentId); refreshAttendance(); } },
-        { text: 'Absent', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'absent', record.occurrenceId, record.componentId); refreshAttendance(); } },
-        { text: 'Exempt (Duty/Med)', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'exempt', record.occurrenceId, record.componentId, 'Duty / Medical'); refreshAttendance(); } },
-        { text: 'Cancelled / Off', onPress: async () => { await AttendanceRepository.markAttendance(workspaceId, record.date, 'cancelled', record.occurrenceId, record.componentId, 'Class cancelled'); refreshAttendance(); } },
+        { text: 'Present', onPress: () => handleMark(occurrence, 'present') },
+        { text: 'Absent', onPress: () => handleMark(occurrence, 'absent') },
+        { text: 'On Leave (Exempt)', onPress: () => handleMark(occurrence, 'exempt', 'Duty / Medical') },
+        { text: 'Cancelled', onPress: () => handleMark(occurrence, 'cancelled', 'Class cancelled') },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
   };
 
-  const { present, absent, exempt, total, percentage, hasData } = calculateAttendanceMetrics(history);
-  
-  const isPortalMode = viewMode === 'portal';
-  
-  let displayTotal = total;
-  let displayAttended = present;
-  let displayMissed = total - present - exempt;
-  let finalPercentage = percentage;
+  const handleChangeRecord = (occurrence: any) => {
+    if (viewMode === 'portal') return;
+    Alert.alert(
+      `Change Record`,
+      `Currently marked as: ${occurrence.status.toUpperCase()}\nWhat should it be?`,
+      [
+        { text: 'Present', onPress: () => handleMark(occurrence, 'present') },
+        { text: 'Absent', onPress: () => handleMark(occurrence, 'absent') },
+        { text: 'On Leave (Exempt)', onPress: () => handleMark(occurrence, 'exempt', 'Duty / Medical') },
+        { text: 'Cancelled', onPress: () => handleMark(occurrence, 'cancelled', 'Class cancelled') },
+        { text: 'Clear / Delete', style: 'destructive', onPress: async () => { 
+            await AttendanceRepository.deleteAttendance(occurrence.occurrenceId); 
+            await refreshViewModel(); 
+          } 
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  // Metrics resolution
+  let displayTotal = 0;
+  let displayAttended = 0;
+  let displayMissed = 0;
+  let displayExempt = 0;
+  let finalPercentage: number | null = null;
+  let recoveryText = "";
 
   if (isPortalMode) {
     if (portalData) {
       displayTotal = portalData.portalTotal || 0;
       displayAttended = portalData.portalPresent || 0;
       displayMissed = displayTotal - displayAttended;
-      finalPercentage = portalData.portalPercent || 0;
-    } else {
-      displayTotal = 0;
-      displayAttended = 0;
-      displayMissed = 0;
-      finalPercentage = 0;
-    }
-  }
-
-  // Recovery math logic & Text
-  let recoveryText = "";
-  if (isPortalMode) {
-    if (portalData) {
+      finalPercentage = portalData.portalPercent || null;
       const syncDate = new Date(portalData.checkedDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
       recoveryText = `Last synced: ${syncDate}\n\nOFFICIAL • READ ONLY`;
     } else {
       recoveryText = "Connect/sync to retrieve the official record.\n\nOFFICIAL • READ ONLY";
     }
-  } else {
-    if (displayTotal === 0 || finalPercentage === null) {
-      recoveryText = "Mark today's attendance above to start tracking";
-    } else if (finalPercentage >= targetAttendance) {
-      const margin = Math.floor(((displayAttended + exempt) * 100 - targetAttendance * displayTotal) / targetAttendance);
-      recoveryText = margin > 0 ? `You can miss ${margin} class${margin !== 1 ? 'es' : ''} and stay above ${targetAttendance}%` : `You are exactly at target (${targetAttendance}%)`;
-    } else {
-      const t = targetAttendance / 100;
-      const required = Math.ceil((t * displayTotal - (displayAttended + exempt)) / (1 - t));
-      recoveryText = `Attend the next ${required} class${required !== 1 ? 'es' : ''} to reach ${targetAttendance}%`;
+  } else if (viewModel) {
+    displayTotal = viewModel.summary.totalScheduled;
+    displayAttended = viewModel.summary.present;
+    displayMissed = viewModel.summary.absent;
+    displayExempt = viewModel.summary.exempt;
+    finalPercentage = viewModel.summary.percentage;
+    
+    if (viewModel.summary.denominator === 0) {
+      recoveryText = "Mark attendance to start tracking";
+    } else if (finalPercentage !== null) {
+      if (finalPercentage >= targetAttendance) {
+        const attendedEffective = displayAttended + displayExempt;
+        const denomEffective = viewModel.summary.denominator;
+        const margin = Math.floor((attendedEffective * 100 - targetAttendance * denomEffective) / targetAttendance);
+        recoveryText = margin > 0 ? `You can miss ${margin} class${margin !== 1 ? 'es' : ''} and stay above ${targetAttendance}%` : `You are exactly at target (${targetAttendance}%)`;
+      } else {
+        const t = targetAttendance / 100;
+        const denomEffective = viewModel.summary.denominator;
+        const attendedEffective = displayAttended + displayExempt;
+        const required = Math.ceil((t * denomEffective - attendedEffective) / (1 - t));
+        recoveryText = `Attend the next ${required} class${required !== 1 ? 'es' : ''} to reach ${targetAttendance}%`;
+      }
     }
   }
 
+  const handleRefresh = async () => {
+    await refreshViewModel();
+    await refreshPortal();
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={handleRefresh} />}
+    >
       <PageContainer>
         {/* View Mode Toggle */}
         <View style={styles.toggleContainer}>
@@ -134,65 +205,14 @@ export default function WorkspaceAttendance() {
           </View>
         )}
 
-        {/* Today's Quick Mark */}
-        {!isPortalMode && (
-          checkingClass ? (
-            <AppCard style={styles.todayCard}>
-              <Skeleton height={60} borderRadius={radius.lg} />
-            </AppCard>
-          ) : hasClass && occurrences.length > 0 ? (
-            <>
-              {occurrences.map((occ: any) => {
-                const occRecord = history.find(r => r.occurrenceId === occ.id);
-                return (
-                  <AppCard key={occ.id} style={styles.todayCard}>
-                    <Text style={styles.todayTitle}>Today — {occ.startTime}–{occ.endTime} ({occ.componentType})</Text>
-                    {occRecord ? (
-                      <View style={styles.todayMarked}>
-                        <View style={[styles.statusBadge, { backgroundColor: occRecord.status === 'present' || occRecord.status === 'exempt' ? colors.light.success + '20' : occRecord.status === 'absent' ? colors.light.danger + '20' : colors.light.warning + '20' }]}>
-                          <Text style={[styles.statusBadgeText, { color: occRecord.status === 'present' || occRecord.status === 'exempt' ? colors.light.success : occRecord.status === 'absent' ? colors.light.danger : colors.light.warning }]}>
-                            {occRecord.status.charAt(0).toUpperCase() + occRecord.status.slice(1)}
-                          </Text>
-                        </View>
-                        <TouchableOpacity onPress={() => handleChangeRecord(occRecord)} style={styles.changeButton}>
-                          <Text style={styles.changeText}>Change</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : isMarking ? (
-                      <Skeleton height={48} borderRadius={radius.lg} />
-                    ) : (
-                      <View style={styles.markRow}>
-                        <TouchableOpacity style={[styles.markButton, styles.presentButton]} onPress={() => handleMark(occ, 'present')}>
-                          <Check size={18} color="#fff" />
-                          <Text style={styles.markButtonText}>Present</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.markButton, styles.absentButton]} onPress={() => handleMark(occ, 'absent')}>
-                          <X size={18} color="#fff" />
-                          <Text style={styles.markButtonText}>Absent</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.markButton, styles.cancelledButton]} onPress={() => {
-                          Alert.alert('Other Option', 'What happened?', [
-                            { text: 'Duty/Medical', onPress: () => handleMark(occ, 'exempt', 'Duty / Medical') },
-                            { text: 'Cancelled', onPress: () => handleMark(occ, 'cancelled', 'Class cancelled') },
-                            { text: 'Holiday', onPress: () => handleMark(occ, 'holiday', 'Holiday') },
-                            { text: 'Back', style: 'cancel' },
-                          ]);
-                        }}>
-                          <CalendarOff size={18} color="#fff" />
-                          <Text style={styles.markButtonText}>Other</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </AppCard>
-                );
-              })}
-            </>
-          ) : null
-        )}
-
-        {/* Stats Ring */}
+        {/* Dashboard Visualization */}
         <AppCard style={styles.heroCard}>
-          <AttendanceRing percentage={finalPercentage} size={120} strokeWidth={12} />
+          {isPortalMode ? (
+            <AttendanceRing percentage={finalPercentage} size={120} strokeWidth={12} />
+          ) : (
+            viewModel && <AttendanceChart metrics={viewModel.summary} size={120} strokeWidth={12} />
+          )}
+          
           <View style={styles.heroText}>
             <Text style={styles.heroTitle}>{finalPercentage === null ? "No Data" : `${finalPercentage}%`}</Text>
             <Text style={[styles.heroSubtitle, isPortalMode && { fontWeight: '600' }]}>{recoveryText}</Text>
@@ -201,76 +221,77 @@ export default function WorkspaceAttendance() {
 
         <View style={styles.statsRow}>
           <AppCard style={styles.statBox} padding="md">
-            <Text style={[styles.statValue, { color: colors.light.success }]}>{isPortalMode && !portalData ? '-' : displayAttended}</Text>
-            <Text style={styles.statLabel}>Attended</Text>
+            <Text style={[styles.statValue, { color: (colors.light.attendanceStatus as any).present.color }]}>{isPortalMode && !portalData ? '-' : displayAttended}</Text>
+            <Text style={styles.statLabel}>Present</Text>
           </AppCard>
           <AppCard style={styles.statBox} padding="md">
-            <Text style={[styles.statValue, { color: colors.light.danger }]}>{isPortalMode && !portalData ? '-' : displayMissed}</Text>
-            <Text style={styles.statLabel}>Missed</Text>
+            <Text style={[styles.statValue, { color: (colors.light.attendanceStatus as any).absent.color }]}>{isPortalMode && !portalData ? '-' : displayMissed}</Text>
+            <Text style={styles.statLabel}>Absent</Text>
           </AppCard>
           {!isPortalMode && (
             <AppCard style={styles.statBox} padding="md">
-              <Text style={[styles.statValue, { color: colors.light.primary }]}>{exempt}</Text>
-              <Text style={styles.statLabel}>Exempt</Text>
+              <Text style={[styles.statValue, { color: (colors.light.attendanceStatus as any).exempt.color }]}>{displayExempt}</Text>
+              <Text style={styles.statLabel}>Leave</Text>
             </AppCard>
           )}
           <AppCard style={styles.statBox} padding="md">
-            <Text style={styles.statValue}>{isPortalMode && !portalData ? '-' : displayTotal}</Text>
+            <Text style={styles.statValue}>{isPortalMode && !portalData ? '-' : (isPortalMode ? displayTotal : displayTotal)}</Text>
             <Text style={styles.statLabel}>Total</Text>
           </AppCard>
         </View>
 
-        {/* Reconciliation View */}
-        {isPortalMode && portalData && total > 0 && (
-          <AppCard style={styles.reconCard} padding="lg">
-            <Text style={styles.reconTitle}>Reconciliation</Text>
-            <View style={styles.reconRow}>
-              <View style={styles.reconCol}>
-                <Text style={styles.reconLabel}>My Tracking</Text>
-                <Text style={styles.reconValue}>{percentage === null ? '-' : `${percentage}%`}</Text>
-                <Text style={styles.reconSub}>{present} / {total}</Text>
-              </View>
-              <View style={styles.reconCol}>
-                <Text style={styles.reconLabel}>Official Portal</Text>
-                <Text style={styles.reconValue}>{portalData.portalPercent === null ? '-' : `${portalData.portalPercent}%`}</Text>
-                <Text style={styles.reconSub}>{portalData.portalPresent} / {portalData.portalTotal}</Text>
-              </View>
-            </View>
-            <View style={styles.reconFooter}>
-              <Text style={styles.reconDiff}>
-                Difference: {percentage === null || portalData.portalPercent === null ? 'N/A' : `${percentage - portalData.portalPercent > 0 ? '+' : ''}${percentage - portalData.portalPercent} percentage points`}
-              </Text>
-            </View>
-          </AppCard>
-        )}
+        {/* Self Tracking Interactive UI */}
+        {!isPortalMode && viewModel && (
+          <>
+            <AttendanceWeekStrip
+              days={viewModel.week.days}
+              selectedDate={selectedDateStr}
+              onSelectDate={setSelectedDateStr}
+              weekStartDate={weekStartStr}
+              weekEndDate={weekEndStr}
+              onPreviousWeek={handlePreviousWeek}
+              onNextWeek={handleNextWeek}
+            />
 
-        <SectionHeader title={isPortalMode ? "Official Portal Snapshot" : "Recent History"} />
-        {isPortalMode ? (
-          <AppCard padding="md">
-            <Text style={styles.emptyText}>
-              {portalData 
-                ? "Portal attendance only tracks aggregate totals, not individual lecture dates."
-                : "No teacher-marked attendance has been synced from the portal yet."}
-            </Text>
-          </AppCard>
-        ) : (
-          history.length > 0 ? (
-            history.map(record => (
-              <TouchableOpacity key={record.id} onLongPress={() => handleChangeRecord(record)} activeOpacity={0.7}>
-                <TimelineCard 
-                  time={record.date} 
-                  title={record.status.charAt(0).toUpperCase() + record.status.slice(1)} 
-                  subtitle={record.componentType ? `${record.componentType.charAt(0).toUpperCase() + record.componentType.slice(1)}${record.notes ? ` • ${record.notes}` : ''}` : (record.notes || 'Lecture')} 
-                  venue={''}
-                  isActive={record.status === 'present' || record.status === 'exempt'}
-                />
-              </TouchableOpacity>
-            ))
-          ) : (
-            <AppCard padding="md">
-              <Text style={styles.emptyText}>No attendance history yet. Mark today's class above to get started!</Text>
-            </AppCard>
-          )
+            <AttendanceDayList
+              date={selectedDateStr}
+              occurrences={viewModel.selectedDay.occurrences}
+              onMarkAttendance={(occ) => {
+                if (occ.status === 'unmarked' || occ.status === 'upcoming') {
+                  promptMarkAttendance(occ);
+                } else {
+                  handleChangeRecord(occ);
+                }
+              }}
+              isLoading={isMarking}
+            />
+            
+            <SectionHeader title="Recent History" />
+            {viewModel.recent.length > 0 ? (
+              viewModel.recent.map(group => (
+                <View key={group.date} style={styles.historyGroup}>
+                  <Text style={styles.historyGroupDate}>
+                    {new Date(group.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </Text>
+                  {group.occurrences.map(occ => (
+                    <AttendanceItem
+                      key={occ.occurrenceId}
+                      isTimeline={false}
+                      date={occ.date}
+                      status={occ.status as any}
+                      type={occ.componentType}
+                      notes={occ.notes}
+                      onLongPress={() => handleChangeRecord(occ)}
+                    />
+                  ))}
+                </View>
+              ))
+            ) : (
+              <AppCard padding="md">
+                <Text style={styles.emptyText}>No marked attendance history yet.</Text>
+              </AppCard>
+            )}
+          </>
         )}
       </PageContainer>
     </ScrollView>
@@ -322,93 +343,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
   },
-  todayCard: {
-    marginBottom: spacing.md,
-    paddingVertical: spacing.lg,
-  },
-  todayTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.light.text,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  occurrenceItem: {
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  occurrenceItemBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.light.border,
-    marginTop: spacing.sm,
-  },
-  occurrenceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.md,
-  },
-  occurrenceTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.light.text,
-  },
-  occurrenceTime: {
-    fontSize: typography.fontSize.sm,
-    color: colors.light.textMuted,
-  },
-  todayMarked: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-  },
-  statusBadgeText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-  },
-  changeButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  changeText: {
-    color: colors.light.primary,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  markRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'center',
-  },
-  markButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-  },
-  markButtonText: {
-    color: '#fff',
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-  },
-  presentButton: {
-    backgroundColor: colors.light.success,
-  },
-  absentButton: {
-    backgroundColor: colors.light.danger,
-  },
-  cancelledButton: {
-    backgroundColor: colors.light.warning,
-  },
   heroCard: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
@@ -433,7 +367,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xl,
   },
   statBox: {
     flex: 1,
@@ -442,61 +376,26 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.light.text,
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
     color: colors.light.textMuted,
     marginTop: 4,
   },
+  historyGroup: {
+    marginBottom: spacing.md,
+  },
+  historyGroupDate: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.light.textMuted,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
   emptyText: {
     color: colors.light.textMuted,
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
-  },
-  reconCard: {
-    marginBottom: spacing.md,
-    backgroundColor: colors.light.primary + '10', // light tint
-    borderColor: colors.light.primary + '40',
-    borderWidth: 1,
-  },
-  reconTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.light.primary,
-    marginBottom: spacing.md,
-  },
-  reconRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  reconCol: {
-    flex: 1,
-  },
-  reconLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.light.textMuted,
-    marginBottom: 2,
-  },
-  reconValue: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.light.text,
-  },
-  reconSub: {
-    fontSize: typography.fontSize.xs,
-    color: colors.light.textMuted,
-    marginTop: 2,
-  },
-  reconFooter: {
-    marginTop: spacing.md,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.light.border,
-  },
-  reconDiff: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.light.text,
   }
 });
