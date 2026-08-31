@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Search, Filter, CheckCircle, Circle, Clock } from 'lucide-react-native';
 import { colors } from '../../tokens';
 import { TaskRepository } from '../../domains/task/repository';
+import { TaskPriority, PRIORITY_ORDER } from '../../domains/task/model';
 import * as Haptics from 'expo-haptics';
 import { getLocalDateString } from '../../core/utils/date';
 
@@ -18,6 +19,7 @@ interface TaskView {
   workspaceName: string;
   workspaceColor: string;
   workspaceId: number;
+  priority: TaskPriority;
 }
 
 export default function TasksScreen() {
@@ -46,7 +48,7 @@ export default function TasksScreen() {
 
   const getFilteredTasks = () => {
     const today = getLocalDateString(new Date());
-    
+
     switch (activeFilter) {
       case 'submitted': return allTasks.filter(t => t.status === 'submitted');
       case 'due_soon': return allTasks.filter(t => t.status !== 'submitted' && t.dueDate && t.dueDate <= today);
@@ -62,7 +64,6 @@ export default function TasksScreen() {
     // Optimistic UI update
     setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
     try {
       await TaskRepository.updateTaskStatus(id, newStatus);
     } catch (e) {
@@ -150,10 +151,14 @@ export default function TasksScreen() {
                   )}
                 </TouchableOpacity>
                 <View style={styles.taskContent}>
-                  <Text style={[styles.taskTitle, task.status === 'submitted' && styles.taskTitleDone]}>{task.title}</Text>
+                  <Text style={[styles.taskTitle, task.status === 'submitted' && styles.taskTitleDone]}>
+                    {task.title}</Text>
                   <View style={styles.taskMeta}>
                     <View style={[styles.subjectBadge, { backgroundColor: task.workspaceColor + '15' }]}>
                       <Text style={[styles.subjectBadgeText, { color: task.workspaceColor }]}>{task.workspaceName}</Text>
+                    </View>
+                    <View style={styles.priorityBadge} style={{ backgroundColor: priorityColor(task.priority) }}>
+                      <Text style={priorityTextStyle(task.priority)}>{task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}</Text>
                     </View>
                     {task.dueDate && (
                       <View style={styles.dueDateBadge}>
@@ -176,6 +181,22 @@ export default function TasksScreen() {
     </SafeAreaView>
   );
 }
+
+const priorityColor = (p: TaskPriority) => {
+  switch (p) {
+    case 'high': return colors.light.danger;
+    case 'medium': return colors.light.warning;
+    case 'low': return colors.light.success;
+  }
+};
+
+const priorityTextStyle = (p: TaskPriority) => {
+  switch (p) {
+    case 'high': return { color: colors.dark.text, fontWeight: 'bold' };
+    case 'medium': return { color: colors.light.textMuted };
+    case 'low': return { color: colors.light.success, fontWeight: '500' };
+  }
+};
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.light.background },
@@ -203,26 +224,31 @@ const styles = StyleSheet.create({
 
   content: { flex: 1 },
   taskList: { paddingHorizontal: 20, gap: 12, paddingBottom: 40 },
-  
-  taskCard: { 
-    flexDirection: 'row', alignItems: 'flex-start', padding: 16, 
-    backgroundColor: colors.light.surfaceElevated, borderRadius: 16, 
+
+  taskCard: {
+    flexDirection: 'row', alignItems: 'flex-start', padding: 16,
+    backgroundColor: colors.light.surfaceElevated, borderRadius: 16,
     borderWidth: 1, borderColor: colors.light.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 2
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 2,
   },
   checkbox: { marginRight: 16, marginTop: 2 },
   taskContent: { flex: 1 },
   taskTitle: { fontSize: 16, fontWeight: '500', color: colors.light.text, fontFamily: 'Inter', marginBottom: 12, lineHeight: 22 },
   taskTitleDone: { color: colors.light.textMuted, textDecorationLine: 'line-through' },
-  
+
   taskMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   subjectBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   subjectBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: 'Inter' },
-  
+
   dueDateBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dueDateText: { fontSize: 12, color: colors.light.textMuted, fontFamily: 'Inter', fontWeight: '500' },
 
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.light.text, fontFamily: 'Inter' },
-  emptySub: { fontSize: 14, color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 8 },
+  // NEW: Priority badge
+  priorityBadge: {
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  },
+  priorityText: {
+    fontSize: 10, fontWeight: '600', textTransform: 'uppercase',
+  },
 });
