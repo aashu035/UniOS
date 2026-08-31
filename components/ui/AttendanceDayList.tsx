@@ -63,9 +63,15 @@ export function AttendanceDayList({ date, occurrences, onMarkAttendance, isLoadi
         const config = getStatusConfig(occ.status);
         const StatusIcon = config.icon;
         
-        const isTheory = occ.componentType === 'theory';
-        const TypeIcon = isTheory ? BookOpen : FlaskConical;
-        const typeLabel = isTheory ? 'Theory' : 'Lab';
+        let TypeIcon = BookOpen;
+        let typeLabel = 'Theory';
+        if (occ.componentType === 'lab') {
+          TypeIcon = FlaskConical;
+          typeLabel = 'Lab';
+        } else if (occ.componentType === 'tutorial') {
+          TypeIcon = BookOpen;
+          typeLabel = 'Tutorial';
+        }
         
         return (
           <AppCard key={occ.occurrenceId} style={styles.card} padding="lg">

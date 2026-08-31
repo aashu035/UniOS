@@ -14,6 +14,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [schedule, setSchedule] = useState<EffectiveOccurrence[]>([]);
   const [weatherState, setWeatherState] = useState({ state: 'Balanced week', description: '', icon: Cloud });
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
@@ -41,11 +42,14 @@ export default function HomeScreen() {
           if (occ.componentType === 'lab') totalLabs++;
         }
 
-        // Mock tasks / exams fetch
+        // Tasks / exams derived from real data (no mocked values)
         const pendingTasks = await TaskRepository.getTasksDueSoon();
         const deadlinesCount = pendingTasks.length;
-        const mockExams = 0;
-        
+        const examCount = pendingTasks.filter(t => t.type === 'exam').length;
+        // Honest unread signal: tasks already due or due today need attention.
+        const attentionCount = pendingTasks.filter(t => t.dueDate && t.dueDate <= todayStr).length;
+        setUnreadCount(attentionCount);
+
         // Removed fake attendance risk projection
         let criticalCount = 0;
 
@@ -54,7 +58,7 @@ export default function HomeScreen() {
           upcomingClasses: totalClasses,
           labs: totalLabs,
           deadlines: deadlinesCount,
-          exams: 0,
+          exams: examCount,
           attendanceRisks: criticalCount
         };
 
@@ -95,10 +99,10 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.topBar}>
         <Search size={24} color={colors.light.text} />
-        <View style={styles.bellWrapper}>
+        <TouchableOpacity style={styles.bellWrapper} onPress={() => router.push('/notifications')}>
           <Bell size={24} color={colors.light.text} />
-          <View style={styles.redDot} />
-        </View>
+          {unreadCount > 0 && <View style={styles.redDot} />}
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.container}>
@@ -108,9 +112,10 @@ export default function HomeScreen() {
         </View>
 
         {/* Academic Weather */}
-        <TouchableOpacity style={styles.weatherCard} onPress={() => router.push('/tasks')}>
+        <TouchableOpacity style={styles.weatherCard} onPress={() => router.push('/tasks')} activeOpacity={0.95}>
+          <View style={styles.weatherSheen} pointerEvents="none" />
           <View style={styles.weatherIconBg}>
-            <WeatherIcon size={24} color={colors.light.accent} />
+            <WeatherIcon size={24} color={colors.light.primary} />
           </View>
           <View style={styles.weatherContent}>
             <Text style={styles.weatherTitle}>{weatherState.state}</Text>
@@ -148,7 +153,7 @@ export default function HomeScreen() {
                   <View style={styles.cardFooter}>
                     <View style={styles.footerItem}>
                       <MapPin size={14} color={colors.light.textMuted} />
-                      <Text style={styles.footerText}>{item.venueName || 'TBD'}</Text>
+                      <Text style={styles.footerText}>{item.venueName || 'Venue TBA'}</Text>
                     </View>
                     {item.isException && (
                       <View style={styles.exceptionBadge}>
@@ -185,15 +190,22 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 34, fontWeight: '700', color: colors.light.text, fontFamily: 'Inter', letterSpacing: -1 },
   headerSubtitle: { fontSize: 16, color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 4 },
   
-  weatherCard: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.light.surface, 
-    borderRadius: 20, padding: 16, marginBottom: 32,
-    borderWidth: 1, borderColor: colors.light.border
+  weatherCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.light.primary,
+    borderRadius: 20, padding: 18, marginBottom: 32,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.45)',
+    overflow: 'hidden',
+    shadowColor: colors.light.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 16, elevation: 6,
   },
-  weatherIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.light.surfaceElevated, justifyContent: 'center', alignItems: 'center', marginRight: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  weatherSheen: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+  },
+  weatherIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   weatherContent: { flex: 1 },
-  weatherTitle: { fontSize: 16, fontWeight: '600', color: colors.light.text, fontFamily: 'Inter' },
-  weatherDesc: { fontSize: 14, color: colors.light.textMuted, fontFamily: 'Inter', marginTop: 2 },
+  weatherTitle: { fontSize: 17, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Inter' },
+  weatherDesc: { fontSize: 13.5, color: 'rgba(255,255,255,0.82)', fontFamily: 'Inter', marginTop: 2 },
 
   sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.light.text, fontFamily: 'Inter', marginBottom: 16 },
   

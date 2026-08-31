@@ -8,13 +8,18 @@ interface AttendanceChartProps {
   metrics: AttendanceMetrics;
   size?: number;
   strokeWidth?: number;
+  onPrimary?: boolean;
 }
 
-export function AttendanceChart({ metrics, size = 120, strokeWidth = 12 }: AttendanceChartProps) {
+export function AttendanceChart({ metrics, size = 120, strokeWidth = 12, onPrimary = false }: AttendanceChartProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   
   const isNull = metrics.percentage === null || metrics.denominator === 0;
+
+  // On a metallic (primary) surface we invert the track + center text for contrast.
+  const trackColor = onPrimary ? 'rgba(255,255,255,0.22)' : colors.light.border;
+  const centerColor = onPrimary ? '#FFFFFF' : colors.light.text;
 
   // We want to show three segments: Present, Absent, Exempt
   const presentPct = isNull ? 0 : (metrics.present / metrics.denominator);
@@ -35,7 +40,7 @@ export function AttendanceChart({ metrics, size = 120, strokeWidth = 12 }: Atten
       <Svg width={size} height={size} style={styles.svg}>
         {/* Background Ring */}
         <Circle
-          stroke={colors.light.border}
+          stroke={trackColor}
           fill="none"
           cx={size / 2}
           cy={size / 2}
@@ -94,7 +99,7 @@ export function AttendanceChart({ metrics, size = 120, strokeWidth = 12 }: Atten
       </Svg>
       
       <View style={styles.textContainer}>
-        <Text style={[styles.text, { fontSize: size * 0.22 }]}>
+        <Text style={[styles.text, { fontSize: size * 0.22, color: centerColor }]}>
           {isNull ? '-' : `${metrics.percentage}%`}
         </Text>
       </View>

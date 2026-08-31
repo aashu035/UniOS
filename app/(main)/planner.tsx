@@ -85,8 +85,9 @@ export default function TimetableScreen() {
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Timetable</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconBtn}><Search size={20} color={colors.light.text} /></TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}><Filter size={20} color={colors.light.text} /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/search')}>
+              <Search size={20} color={colors.light.text} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -183,7 +184,7 @@ export default function TimetableScreen() {
                       </View>
                       <View style={styles.metaItem}>
                         <MapPin size={14} color={colors.light.textMuted} />
-                        <Text style={styles.metaText}>{item.venueName || 'TBD'}</Text>
+                        <Text style={styles.metaText}>{item.venueName || 'Venue TBA'}</Text>
                       </View>
                     </View>
                   </View>

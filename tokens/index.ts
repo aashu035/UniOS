@@ -8,3 +8,4 @@ export * from './opacity';
 export * from './iconSize';
 export * from './breakpoints';
 export * from './zIndex';
+export * from './surface';

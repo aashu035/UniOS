@@ -208,7 +208,7 @@ export class AttendanceViewModelBuilder {
         componentId: comp.id,
         componentType: comp.type,
         date: record.date,
-        startTime: '00:00', // Legacy fallback
+        startTime: '00:00', // Legacy fallback (pre-occurrenceId records lack timing)
         endTime: '00:00',
         status: stat,
         notes: record.notes ?? undefined

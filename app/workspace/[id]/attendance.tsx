@@ -206,11 +206,11 @@ export default function WorkspaceAttendance() {
         )}
 
         {/* Dashboard Visualization */}
-        <AppCard style={styles.heroCard}>
+        <AppCard variant="glassPrimary" style={styles.heroCard}>
           {isPortalMode ? (
-            <AttendanceRing percentage={finalPercentage} size={120} strokeWidth={12} />
+            <AttendanceRing percentage={finalPercentage} size={120} strokeWidth={12} onPrimary />
           ) : (
-            viewModel && <AttendanceChart metrics={viewModel.summary} size={120} strokeWidth={12} />
+            viewModel && <AttendanceChart metrics={viewModel.summary} size={120} strokeWidth={12} onPrimary />
           )}
           
           <View style={styles.heroText}>
@@ -346,6 +346,7 @@ const styles = StyleSheet.create({
   heroCard: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
   heroText: {
@@ -353,14 +354,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   heroTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.light.text,
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
   heroSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.light.textMuted,
+    color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
   },
@@ -372,6 +374,11 @@ const styles = StyleSheet.create({
   statBox: {
     flex: 1,
     alignItems: 'center',
+    backgroundColor: colors.light.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(17,24,39,0.05)',
   },
   statValue: {
     fontSize: typography.fontSize.xl,

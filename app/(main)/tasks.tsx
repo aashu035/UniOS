@@ -78,8 +78,19 @@ export default function TasksScreen() {
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Tasks</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconBtn}><Search size={20} color={colors.light.text} /></TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}><Filter size={20} color={colors.light.text} /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/search')}>
+              <Search size={20} color={colors.light.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => {
+                const order: FilterState[] = ['all', 'due_soon', 'upcoming', 'submitted'];
+                const next = order[(order.indexOf(activeFilter) + 1) % order.length];
+                setActiveFilter(next);
+              }}
+            >
+              <Filter size={20} color={activeFilter === 'all' ? colors.light.textMuted : colors.light.primary} />
+            </TouchableOpacity>
           </View>
         </View>
       </View>

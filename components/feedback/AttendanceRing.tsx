@@ -7,9 +7,10 @@ interface AttendanceRingProps {
   percentage: number | null;
   size?: number;
   strokeWidth?: number;
+  onPrimary?: boolean;
 }
 
-export function AttendanceRing({ percentage, size = 64, strokeWidth = 6 }: AttendanceRingProps) {
+export function AttendanceRing({ percentage, size = 64, strokeWidth = 6, onPrimary = false }: AttendanceRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   
@@ -17,9 +18,13 @@ export function AttendanceRing({ percentage, size = 64, strokeWidth = 6 }: Atten
   const safePercentage = isNull ? 100 : percentage;
   const strokeDashoffset = isNull ? 0 : circumference - (safePercentage / 100) * circumference;
 
+  // On a metallic (primary) surface we invert the track + center text for contrast.
+  const trackColor = onPrimary ? 'rgba(255,255,255,0.22)' : colors.light.border;
+  const centerColor = onPrimary ? '#FFFFFF' : colors.light.text;
+
   // Color logic based on percentage
   const getRingColor = () => {
-    if (isNull) return colors.light.border; // Gray ring for null
+    if (isNull) return onPrimary ? 'rgba(255,255,255,0.55)' : colors.light.border; // Gray ring for null
     if (safePercentage >= 75) return colors.light.success;
     if (safePercentage >= 60) return colors.light.warning;
     return colors.light.danger;
@@ -32,7 +37,7 @@ export function AttendanceRing({ percentage, size = 64, strokeWidth = 6 }: Atten
       <Svg width={size} height={size} style={styles.svg}>
         {/* Background Ring */}
         <Circle
-          stroke={colors.light.border}
+          stroke={trackColor}
           fill="none"
           cx={size / 2}
           cy={size / 2}
@@ -55,7 +60,7 @@ export function AttendanceRing({ percentage, size = 64, strokeWidth = 6 }: Atten
         />
       </Svg>
       <View style={styles.textContainer}>
-        <Text style={[styles.text, { fontSize: size * 0.25 }]}>
+        <Text style={[styles.text, { fontSize: size * 0.25, color: centerColor }]}>
           {isNull ? '-' : `${Math.round(safePercentage)}%`}
         </Text>
       </View>

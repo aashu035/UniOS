@@ -327,6 +327,81 @@ export class WorkspaceRepository {
     });
   }
 
+  static async addComponentToWorkspace(workspaceId: number, compDef: {
+    type: 'theory' | 'lab' | 'tutorial';
+    facultyName?: string;
+    venueName?: string;
+    durationMinutes: number;
+    sessions: Array<{
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+    }>;
+  }) {
+    return db.transaction(async (tx) => {
+      // 1. Resolve Active Semester
+      let activeSemester = await tx.select().from(semesters).where(eq(semesters.isActive, true)).get();
+      if (!activeSemester) {
+        throw new Error('NO_ACTIVE_SEMESTER');
+      }
+
+      const { courseComponents, componentVenueAssignments, componentFacultyAssignments } = require('./model');
+      const { recurringSchedules } = require('../calendar/model');
+
+      const facultyId = await this.resolveFaculty(tx, compDef.facultyName);
+      const venueId = await this.resolveVenue(tx, compDef.venueName);
+
+      // Check if a component of this type already exists. If so, maybe we just add sessions to it?
+      // Wait, if it's the SAME type (e.g. another lab session), we should add the session to the EXISTING component.
+      let component = await tx.select().from(courseComponents)
+        .where(sql`${courseComponents.workspaceId} = ${workspaceId} AND ${courseComponents.type} = ${compDef.type}`)
+        .get();
+
+      let componentId: number;
+      if (!component) {
+        const created = await tx.insert(courseComponents).values({
+          workspaceId: workspaceId,
+          type: compDef.type,
+          facultyId: facultyId,
+          durationMinutes: compDef.durationMinutes,
+        }).returning().get();
+        componentId = created.id;
+
+        const initialEffectiveFrom = activeSemester.startDate || getLocalDateString(new Date());
+
+        if (venueId) {
+          await tx.insert(componentVenueAssignments).values({
+            componentId,
+            venueId: venueId,
+            effectiveFrom: initialEffectiveFrom
+          });
+        }
+
+        if (facultyId) {
+          await tx.insert(componentFacultyAssignments).values({
+            componentId,
+            facultyId: facultyId,
+            effectiveFrom: initialEffectiveFrom
+          });
+        }
+      } else {
+        componentId = component.id;
+      }
+
+      // Insert recurring sessions for this component
+      for (const session of compDef.sessions) {
+        await tx.insert(recurringSchedules).values({
+          componentId,
+          dayOfWeek: session.dayOfWeek,
+          startTime: session.startTime,
+          endTime: session.endTime,
+        });
+      }
+
+      return component;
+    });
+  }
+
   // --- EDIT LIFECYCLE OPERATIONS ---
 
   static async updateCourseIdentity(id: number, data: { name?: string; code?: string; credits?: number; color?: string; targetAttendance?: number; icon?: string }) {
