@@ -24,7 +24,10 @@ export default function Workspaces() {
     title: ws.name,
     code: ws.code,
     attendance: ws.actualAttendancePercentage,
-    targetAttendance: ws.targetAttendance
+    targetAttendance: ws.targetAttendance,
+    iconName: ws.iconId,
+    iconColor: ws.color,
+    venue: ws.primaryVenueName,
   }));
 
   return (
@@ -54,6 +57,9 @@ export default function Workspaces() {
             title={ws.title}
             code={ws.code}
             attendancePercentage={ws.attendance}
+            iconName={ws.iconName}
+            iconColor={ws.iconColor}
+            venue={ws.venue}
             onPress={() => router.push(`/workspace/${ws.id}`)}
           />
         ))}

@@ -27,11 +27,14 @@ export default function Semester() {
           <Text style={styles.emptyText}>Loading...</Text>
         ) : workspaces.length > 0 ? (
           workspaces.map(ws => (
-            <SubjectCard 
+            <SubjectCard
               key={ws.id}
               title={ws.name}
               code={ws.code || 'Course'}
-              attendancePercentage={ws.targetAttendance || 75}
+              attendancePercentage={ws.actualAttendancePercentage ?? ws.targetAttendance ?? 75}
+              iconName={ws.iconId}
+              iconColor={ws.color}
+              venue={ws.primaryVenueName}
               onPress={() => router.push(`/workspace/${ws.id}`)}
             />
           ))
