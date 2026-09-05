@@ -5,6 +5,7 @@
     "types": ["jest"]
   },
   "exclude": [
-    "scratch/**/*"
+    "scratch/**/*",
+    "_fable_review/**/*"
   ]
 }

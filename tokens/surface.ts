@@ -64,11 +64,17 @@ export const sheenOverlay = {
   borderTopRightRadius: 20,
 };
 
-// Text colors that sit correctly on the primary metallic surface.
+// Text + decorative colors that sit correctly on the primary metallic surface.
+//
+// PROPOSED HOIST (no new value, just de-duplication): AttendanceRing.tsx and
+// AttendanceChart.tsx both hardcode 'rgba(255,255,255,0.22)' as the on-primary
+// track colour. FrostedChip (NEW_PRIMITIVE in Fable's home design) reuses it.
+// Hoisting here means one place to change the translucent-on-primary value.
 export const onPrimary = {
   title: '#FFFFFF',
   subtitle: 'rgba(255,255,255,0.82)',
   accent: 'rgba(255,255,255,0.92)',
+  track: 'rgba(255,255,255,0.22)',
 };
 
 export const premium = { premiumShadow, topHighlight, glassCard, sheenOverlay, onPrimary };

@@ -1,12 +1,25 @@
 import { db } from '../../core/db/client';
 import { workspaces, workspaceTimeline } from './model';
-import { eq, desc, sql, like, inArray } from 'drizzle-orm';
+import { eq, desc, sql, like, inArray, count } from 'drizzle-orm';
 import { getLocalDateString } from '../../core/utils/date';
 import { faculty } from '../faculty/model';
 import { venues } from '../venue/model';
 import { semesters } from '../semester/model';
 
 export class WorkspaceRepository {
+  /**
+   * Count of all workspaces. Used by the home screen to detect the
+   * "new user, no courses yet" reachable state. Cheap (SQL COUNT, no scan).
+   * Returns 0 when there are none.
+   */
+  static async count(): Promise<number> {
+    const [row] = await db
+      .select({ value: count() })
+      .from(workspaces)
+      .all();
+    return row?.value ?? 0;
+  }
+
   static async getAllWorkspaces() {
     return await db.select({
       id: workspaces.id,
