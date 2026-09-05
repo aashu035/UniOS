@@ -75,12 +75,17 @@ export default function WorkspaceAttendance() {
     setIsMarking(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
+      // SECURITY FIX: the occurrence encodes its own date. Use it, not
+      // selectedDateStr — otherwise marking an occurrence that doesn't
+      // belong to the currently selected day throws SECURITY_VIOLATION.
+      const occurrenceDate = occurrence?.date ?? selectedDateStr;
+      const occurrenceComponentId = occurrence?.componentId;
       await AttendanceRepository.markAttendance(
         workspaceId,
-        selectedDateStr,
+        occurrenceDate,
         status,
         occurrence.occurrenceId,
-        occurrence.componentId,
+        occurrenceComponentId,
         notes
       );
       await refreshViewModel();
@@ -88,7 +93,7 @@ export default function WorkspaceAttendance() {
       // not surface to the user, the mark is already saved.
       await NotificationService.attendanceMarked({
         componentType: occurrence.componentType,
-        date: selectedDateStr,
+        date: occurrenceDate,
         status,
         workspaceId,
       }).catch(() => {});
@@ -110,6 +115,7 @@ export default function WorkspaceAttendance() {
         { text: 'Present', onPress: () => handleMark(occurrence, 'present') },
         { text: 'Absent', onPress: () => handleMark(occurrence, 'absent') },
         { text: 'On Leave (Exempt)', onPress: () => handleMark(occurrence, 'exempt', 'Duty / Medical') },
+        { text: 'Holiday (Off)', onPress: () => handleMark(occurrence, 'holiday', 'College holiday / class off') },
         { text: 'Cancelled', onPress: () => handleMark(occurrence, 'cancelled', 'Class cancelled') },
         { text: 'Cancel', style: 'cancel' },
       ]
@@ -125,11 +131,12 @@ export default function WorkspaceAttendance() {
         { text: 'Present', onPress: () => handleMark(occurrence, 'present') },
         { text: 'Absent', onPress: () => handleMark(occurrence, 'absent') },
         { text: 'On Leave (Exempt)', onPress: () => handleMark(occurrence, 'exempt', 'Duty / Medical') },
+        { text: 'Holiday (Off)', onPress: () => handleMark(occurrence, 'holiday', 'College holiday / class off') },
         { text: 'Cancelled', onPress: () => handleMark(occurrence, 'cancelled', 'Class cancelled') },
-        { text: 'Clear / Delete', style: 'destructive', onPress: async () => { 
-            await AttendanceRepository.deleteAttendance(occurrence.occurrenceId); 
-            await refreshViewModel(); 
-          } 
+        { text: 'Clear / Delete', style: 'destructive', onPress: async () => {
+            await AttendanceRepository.deleteAttendance(occurrence.occurrenceId);
+            await refreshViewModel();
+          }
         },
         { text: 'Cancel', style: 'cancel' },
       ]
