@@ -6,6 +6,7 @@ import { Search, Filter, CheckCircle, Circle, Clock } from 'lucide-react-native'
 import { colors } from '../../tokens';
 import { TaskRepository } from '../../domains/task/repository';
 import { TaskPriority, PRIORITY_ORDER } from '../../domains/task/model';
+import { NotificationService } from '../../domains/notification/service';
 import * as Haptics from 'expo-haptics';
 import { getLocalDateString } from '../../core/utils/date';
 
@@ -66,6 +67,17 @@ export default function TasksScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await TaskRepository.updateTaskStatus(id, newStatus);
+      // Producer: notify on completion (not on undo-back-to-pending).
+      if (newStatus === 'submitted') {
+        const task = allTasks.find(t => t.id === id);
+        if (task) {
+          await NotificationService.taskCompleted({
+            id: task.id,
+            title: task.title,
+            workspaceId: task.workspaceId,
+          });
+        }
+      }
     } catch (e) {
       console.error('Failed to update task status:', e);
       // Revert optimistic update on failure
@@ -157,8 +169,8 @@ export default function TasksScreen() {
                     <View style={[styles.subjectBadge, { backgroundColor: task.workspaceColor + '15' }]}>
                       <Text style={[styles.subjectBadgeText, { color: task.workspaceColor }]}>{task.workspaceName}</Text>
                     </View>
-                    <View style={styles.priorityBadge} style={{ backgroundColor: priorityColor(task.priority) }}>
-                      <Text style={priorityTextStyle(task.priority)}>{task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}</Text>
+                    <View style={[styles.priorityBadge, { backgroundColor: priorityColor(task.priority) }]}>
+                      <Text style={[styles.priorityText, priorityTextStyle(task.priority)]}>{task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}</Text>
                     </View>
                     {task.dueDate && (
                       <View style={styles.dueDateBadge}>
@@ -192,9 +204,9 @@ const priorityColor = (p: TaskPriority) => {
 
 const priorityTextStyle = (p: TaskPriority) => {
   switch (p) {
-    case 'high': return { color: colors.dark.text, fontWeight: 'bold' };
+    case 'high': return { color: colors.dark.text, fontWeight: 'bold' as const };
     case 'medium': return { color: colors.light.textMuted };
-    case 'low': return { color: colors.light.success, fontWeight: '500' };
+    case 'low': return { color: colors.light.success, fontWeight: '500' as const };
   }
 };
 
@@ -243,7 +255,6 @@ const styles = StyleSheet.create({
   dueDateBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dueDateText: { fontSize: 12, color: colors.light.textMuted, fontFamily: 'Inter', fontWeight: '500' },
 
-  // NEW: Priority badge
   priorityBadge: {
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
@@ -251,4 +262,8 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 10, fontWeight: '600', textTransform: 'uppercase',
   },
+
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.light.text, fontFamily: 'Inter', marginBottom: 8 },
+  emptySub: { fontSize: 14, color: colors.light.textMuted, fontFamily: 'Inter' },
 });

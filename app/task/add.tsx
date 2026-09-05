@@ -4,8 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Save } from 'lucide-react-native';
 import { TaskRepository } from '../../domains/task/repository';
+import { NotificationService } from '../../domains/notification/service';
 import { useWorkspaces } from '../../domains/workspace/hooks';
 import { colors, radius, spacing, typography } from '../../tokens';
+
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { getLocalDateString, parseLocalDate } from '../../core/utils/date';
 
 const PRIORITIES = ['low', 'medium', 'high'] as const;
 
@@ -15,6 +19,7 @@ export default function AddTask() {
   const { workspaces, isLoading } = useWorkspaces();
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [priority, setPriority] = useState<typeof PRIORITIES[number]>('medium');
   const parsedWorkspaceId = workspaceId ? parseInt(workspaceId as string, 10) : null;
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | null>(null);
@@ -48,13 +53,20 @@ export default function AddTask() {
     setIsSaving(true);
     
     try {
-      await TaskRepository.createTask({ 
-        workspaceId: finalWorkspaceId, 
-        title: title.trim(), 
-        dueDate: dueDate.trim() || undefined, 
-        priority, 
-        status: 'pending' 
+      const created = await TaskRepository.createTask({
+        workspaceId: finalWorkspaceId,
+        title: title.trim(),
+        dueDate: dueDate.trim() || undefined,
+        priority,
+        status: 'pending'
       });
+      // Producer: notify on task creation. Non-blocking: failure here does
+      // not surface to the user, the task is already saved.
+      await NotificationService.taskCreated({
+        id: (created as any)?.id ?? 0,
+        title: title.trim(),
+        workspaceId: finalWorkspaceId,
+      }).catch(() => {});
       router.back();
     } catch (error: any) {
       console.error('Could not create task', error);
@@ -70,8 +82,25 @@ export default function AddTask() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.label}>Task name *</Text>
         <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Finish assignment 3" placeholderTextColor={colors.light.textMuted} autoFocus />
-        <Text style={styles.label}>Due date or reminder</Text>
-        <TextInput style={styles.input} value={dueDate} onChangeText={setDueDate} placeholder="e.g. Friday, 5:00 PM" placeholderTextColor={colors.light.textMuted} />
+        <Text style={styles.label}>Due date</Text>
+        <TouchableOpacity style={[styles.input, { justifyContent: 'center' }]} onPress={() => setShowDatePicker(true)}>
+          <Text style={{ color: dueDate ? colors.light.text : colors.light.textMuted, fontSize: typography.fontSize.base }}>
+            {dueDate || 'Select a due date'}
+          </Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={dueDate ? parseLocalDate(dueDate) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (selectedDate) {
+                setDueDate(getLocalDateString(selectedDate));
+              }
+            }}
+          />
+        )}
         <Text style={styles.label}>Course</Text>
         {isRouteWorkspaceInvalid ? (
           <Text style={styles.errorText}>Error: The course for this task could not be found.</Text>

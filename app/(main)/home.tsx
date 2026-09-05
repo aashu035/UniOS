@@ -7,6 +7,8 @@ import { colors } from '../../tokens';
 import { CalendarService, EffectiveOccurrence } from '../../domains/calendar/service';
 import { AttendanceService } from '../../domains/attendance/service';
 import { TaskRepository } from '../../domains/task/repository';
+import { NotificationRepository } from '../../domains/notification/repository';
+import { NotificationService } from '../../domains/notification/service';
 import { getLocalDateString, formatTime12Hour } from '../../core/utils/date';
 import { CourseIcon } from '../../components/ui/CourseIcon';
 
@@ -46,9 +48,22 @@ export default function HomeScreen() {
         const pendingTasks = await TaskRepository.getTasksDueSoon();
         const deadlinesCount = pendingTasks.length;
         const examCount = pendingTasks.filter(t => t.type === 'exam').length;
-        // Honest unread signal: tasks already due or due today need attention.
-        const attentionCount = pendingTasks.filter(t => t.dueDate && t.dueDate <= todayStr).length;
-        setUnreadCount(attentionCount);
+
+        // Run the on-launch scan to produce notifications for overdue tasks.
+        // The scan is idempotent only at the level of "no crash" — it will
+        // produce one notification per overdue task per launch. Acceptable
+        // for the current UX; refinement (per-task lastNotified marker) is
+        // tracked in the carry-forward.
+        await NotificationService.onLaunchScan();
+
+        // Prune old notifications to keep the table bounded. Best-effort.
+        await NotificationService.cleanup(30);
+
+        // Real unread signal from the notification repository. The bell
+        // badge now reflects actual unread notifications (not a fabricated
+        // proxy from tasks).
+        const unread = await NotificationRepository.countUnread();
+        setUnreadCount(unread);
 
         // Removed fake attendance risk projection
         let criticalCount = 0;

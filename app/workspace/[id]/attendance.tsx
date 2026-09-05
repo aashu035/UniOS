@@ -12,6 +12,7 @@ import { colors, spacing, typography, radius } from '../../../tokens';
 import { useLocalSearchParams } from 'expo-router';
 import { useAttendance, useAttendanceViewModel } from '../../../domains/attendance/hooks';
 import { AttendanceRepository } from '../../../domains/attendance/repository';
+import { NotificationService } from '../../../domains/notification/service';
 import * as Haptics from 'expo-haptics';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { getLocalDateString } from '../../../core/utils/date';
@@ -75,14 +76,22 @@ export default function WorkspaceAttendance() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await AttendanceRepository.markAttendance(
-        workspaceId, 
-        selectedDateStr, 
-        status, 
-        occurrence.occurrenceId, 
-        occurrence.componentId, 
+        workspaceId,
+        selectedDateStr,
+        status,
+        occurrence.occurrenceId,
+        occurrence.componentId,
         notes
       );
       await refreshViewModel();
+      // Producer: notify on attendance mark. Non-blocking: failure here does
+      // not surface to the user, the mark is already saved.
+      await NotificationService.attendanceMarked({
+        componentType: occurrence.componentType,
+        date: selectedDateStr,
+        status,
+        workspaceId,
+      }).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       console.error(e);

@@ -12,6 +12,7 @@ import { colors, spacing, typography, radius } from '../../tokens';
 import { useRouter } from 'expo-router';
 import { useAttendanceViewModel } from '../../domains/attendance/hooks';
 import { AttendanceRepository } from '../../domains/attendance/repository';
+import { NotificationService } from '../../domains/notification/service';
 import * as Haptics from 'expo-haptics';
 import { ArrowLeft, MoreHorizontal } from 'lucide-react-native';
 import { getLocalDateString } from '../../core/utils/date';
@@ -94,14 +95,22 @@ export default function GlobalAttendanceScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await AttendanceRepository.markAttendance(
-        occurrence.workspaceId, 
-        selectedDateStr, 
-        status, 
-        occurrence.occurrenceId, 
-        occurrence.componentId, 
+        occurrence.workspaceId,
+        selectedDateStr,
+        status,
+        occurrence.occurrenceId,
+        occurrence.componentId,
         notes
       );
       await refreshViewModel();
+      // Producer: notify on attendance mark. Non-blocking: failure here does
+      // not surface to the user, the mark is already saved.
+      await NotificationService.attendanceMarked({
+        componentType: occurrence.componentType,
+        date: selectedDateStr,
+        status,
+        workspaceId: occurrence.workspaceId,
+      }).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       console.error(e);
