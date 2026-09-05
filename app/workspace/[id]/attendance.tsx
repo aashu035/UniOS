@@ -201,7 +201,7 @@ export default function WorkspaceAttendance() {
 
         {isPortalMode && !portalData && (
           <View style={styles.portalWarning}>
-            <Text style={styles.portalWarningText}>Official Portal data unavailable. Last synced: Never.</Text>
+            <Text style={styles.portalWarningText}>Official Portal data unavailable. Connect your portal to view your official record.</Text>
           </View>
         )}
 
