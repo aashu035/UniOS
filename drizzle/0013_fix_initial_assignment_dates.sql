@@ -20,6 +20,7 @@ AND date(effective_from) > (
     JOIN semesters s ON w.semester_id = s.id
     WHERE c.id = component_venue_assignments.component_id
 );
+--> statement-breakpoint
 
 -- Fix faculty assignments: Identical logic
 UPDATE component_faculty_assignments
