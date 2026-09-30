@@ -24,6 +24,11 @@ async function initializeDatabase(): Promise<RepairResult | null> {
   // Phase 1: Run Drizzle migrations with FK constraints disabled
   try {
     expoDb.execSync('PRAGMA foreign_keys = OFF;');
+    const offCheck = expoDb.getFirstSync('PRAGMA foreign_keys;') as { foreign_keys: number } | undefined;
+    if (offCheck?.foreign_keys !== 0) {
+      throw new Error('FATAL: Failed to disable foreign keys before migration.');
+    }
+    
     // @ts-ignore - The migrate function from drizzle-orm/expo-sqlite/migrator is not fully typed
     const { migrate } = require('drizzle-orm/expo-sqlite/migrator');
     await migrate(db, migrations);

@@ -10,11 +10,13 @@ import m0005 from './0005_bright_dakota_north.sql';
 import m0006 from './0006_bizarre_komodo.sql';
 import m0007 from './0007_nervous_polaris.sql';
 import m0008 from './0008_academic_refactor.sql';
-import m0009 from './0010_abandoned_spencer_smythe.sql';
-import m0010 from './0011_red_groot.sql';
-import m0011 from './0012_add_workspace_icon.sql';
+import m0009 from './0009_abandoned_spencer_smythe.sql';
+import m0010 from './0010_red_groot.sql';
+import m0011 from './0011_add_workspace_icon.sql';
 import m0012 from './0012_orange_fat_cobra.sql';
 import m0013 from './0013_fix_initial_assignment_dates.sql';
+import m0014 from './0014_fix_attendance_nulls.sql';
+import m0015 from './0015_stiff_newton_destine.sql';
 
   export default {
     journal,
@@ -32,7 +34,9 @@ m0009,
 m0010,
 m0011,
 m0012,
-m0013
+m0013,
+m0014,
+m0015
     }
   }
   

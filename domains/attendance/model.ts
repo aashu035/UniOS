@@ -6,7 +6,7 @@ import { workspaces, courseComponents } from '../workspace/model';
 export const attendance = sqliteTable('attendance', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   componentId: integer('component_id').notNull().references(() => courseComponents.id, { onDelete: 'cascade' }),
-  occurrenceId: text('occurrence_id'), // Nullable, links to CalendarService effective occurrence ID
+  occurrenceId: text('occurrence_id').notNull(), // Links to CalendarService effective occurrence ID
   identityStatus: text('identity_status', { enum: ['resolved', 'unresolved_legacy'] }).default('unresolved_legacy').notNull(),
   date: text('date').notNull(), // Specific date of the lecture
   source: text('source').default('local'), // Explicitly marking source

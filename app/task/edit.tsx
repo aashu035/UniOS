@@ -6,6 +6,9 @@ import { ArrowLeft, Save, Trash2 } from 'lucide-react-native';
 import { TaskRepository } from '../../domains/task/repository';
 import { colors, radius, spacing, typography } from '../../tokens';
 
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { getLocalDateString, parseLocalDate } from '../../core/utils/date';
+
 const PRIORITIES = ['low', 'medium', 'high'] as const;
 
 export default function EditTask() {
@@ -16,6 +19,7 @@ export default function EditTask() {
   const [isLoading, setIsLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [priority, setPriority] = useState<typeof PRIORITIES[number]>('medium');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -106,8 +110,25 @@ export default function EditTask() {
         <Text style={styles.label}>Task name *</Text>
         <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Finish assignment 3" placeholderTextColor={colors.light.textMuted} autoFocus />
         
-        <Text style={styles.label}>Due date or reminder</Text>
-        <TextInput style={styles.input} value={dueDate} onChangeText={setDueDate} placeholder="e.g. Friday, 5:00 PM" placeholderTextColor={colors.light.textMuted} />
+        <Text style={styles.label}>Due date</Text>
+        <TouchableOpacity style={[styles.input, { justifyContent: 'center' }]} onPress={() => setShowDatePicker(true)}>
+          <Text style={{ color: dueDate ? colors.light.text : colors.light.textMuted, fontSize: typography.fontSize.base }}>
+            {dueDate || 'Select a due date'}
+          </Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={dueDate ? parseLocalDate(dueDate) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (selectedDate) {
+                setDueDate(getLocalDateString(selectedDate));
+              }
+            }}
+          />
+        )}
         
         <Text style={styles.label}>Priority</Text>
         <View style={styles.chips}>

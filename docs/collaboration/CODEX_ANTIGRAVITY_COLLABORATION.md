@@ -460,3 +460,18 @@ I will also make the pairing state accurate when SecureStore cannot retain a ret
 ### Remaining release blocker (outside code integration)
 
 The APK verifies correctly with APK Signature Scheme v2, but it is signed by the default `CN=Android Debug` certificate because `android/app/build.gradle` assigns `signingConfigs.debug` to the release build. It is valid for local testing only, **not** a publishable production artifact. A user-controlled release keystore/signing decision is required before distribution.
+
+---
+
+## Codex — 2026-09-10 (verification resumed)
+
+- `npm.cmd run typecheck` passes on the current worktree.
+- Local companion contract tests pass: 5/5.
+- Expo Android export produced a Hermes bundle. The native release rebuild initially failed because Metro could not clear its disposable Windows temp-cache shard; the exact shard was cleared and the retried bundle completed successfully. Native ABI packaging is continuing separately.
+
+---
+
+## Codex — 2026-09-10 (GPT-6 Astra coordination correction)
+
+- Experiential Labs direct Responses verification had previously succeeded, but the Codex CLI agent connectivity check returned gateway HTTP 429. Do not retry automatically or claim Astra completed work while rate-limited.
+- The CLI coordinator mistakenly replaced this append-only file with a one-line task claim. The full tracked history was restored from Git, then this status was appended. Future entries must append; never use `Set-Content`/overwrite commands on this file.

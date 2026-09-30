@@ -14,7 +14,7 @@ import { isRunningInExpoGo } from 'expo';
 
 Sentry.init({
   dsn: 'https://5af72a268f523c7adf67e0802a496136@o4511887364194304.ingest.us.sentry.io/4511887404367872',
-  sendDefaultPii: true,
+  sendDefaultPii: false,
   // Capture 100% of traces in dev/preview, reduce in production
   tracesSampleRate: __DEV__ ? 1.0 : 0.2,
   // Capture profiles for 100% of sampled traces

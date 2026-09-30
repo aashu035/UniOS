@@ -3,8 +3,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Save } from 'lucide-react-native';
-import { TaskRepository } from '../../domains/task/repository';
-import { NotificationService } from '../../domains/notification/service';
+import { TaskService } from '../../domains/task/service';
 import { useWorkspaces } from '../../domains/workspace/hooks';
 import { colors, radius, spacing, typography } from '../../tokens';
 
@@ -51,22 +50,14 @@ export default function AddTask() {
     
     const finalWorkspaceId = parsedWorkspaceId || selectedWorkspaceId!;
     setIsSaving(true);
-    
     try {
-      const created = await TaskRepository.createTask({
+      await TaskService.createTask({
         workspaceId: finalWorkspaceId,
         title: title.trim(),
         dueDate: dueDate.trim() || undefined,
         priority,
         status: 'pending'
       });
-      // Producer: notify on task creation. Non-blocking: failure here does
-      // not surface to the user, the task is already saved.
-      await NotificationService.taskCreated({
-        id: (created as any)?.id ?? 0,
-        title: title.trim(),
-        workspaceId: finalWorkspaceId,
-      }).catch(() => {});
       router.back();
     } catch (error: any) {
       console.error('Could not create task', error);

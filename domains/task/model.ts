@@ -9,11 +9,14 @@ export const tasks = sqliteTable('tasks', {
   description: text('description'),
   type: text('type').default('assignment'), // assignment/quiz/lab/exam/todo
   dueDate: text('due_date'),
-  priority: text('priority').default('medium'),
-  status: text('status').default('pending'), // pending/submitted/graded/overdue
+  priority: text('priority').default('medium').notNull(), // high|medium|low
+  status: text('status').default('pending').notNull(), // pending|submitted|graded|overdue
   marksObtained: real('marks_obtained'),
   marksTotal: real('marks_total'),
   feedback: text('feedback'),
   fileUris: text('file_uris'), // JSON array of attached files
   createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
 });
+
+export type TaskPriority = 'high' | 'medium' | 'low';
+export const PRIORITY_ORDER: TaskPriority[] = ['high', 'medium', 'low'];

@@ -131,3 +131,42 @@ export function useAttendanceViewModel(scope: import('./viewmodel').AttendanceSc
 
   return { viewModel, isLoading, refreshViewModel: loadViewModel };
 }
+export function useAttendanceMutations() {
+  const markAttendance = useCallback(async (
+    workspaceId: number,
+    occurrenceDate: string,
+    status: 'present' | 'absent' | 'late' | 'excused' | 'holiday' | 'cancelled' | 'exempt',
+    occurrenceId: string,
+    componentId?: number,
+    notes?: string,
+    componentType?: string
+  ) => {
+    const { AttendanceRepository } = require('./repository');
+    const { NotificationService } = require('../notification/service');
+
+    await AttendanceRepository.markAttendance(
+      workspaceId,
+      occurrenceDate,
+      status,
+      occurrenceId,
+      componentId,
+      notes
+    );
+    
+    if (componentType) {
+      await NotificationService.attendanceMarked({
+        componentType,
+        date: occurrenceDate,
+        status,
+        workspaceId,
+      }).catch(() => {});
+    }
+  }, []);
+
+  const removeAttendance = useCallback(async (occurrenceId: string) => {
+    const { AttendanceRepository } = require('./repository');
+    await AttendanceRepository.deleteAttendance(occurrenceId);
+  }, []);
+
+  return { markAttendance, removeAttendance };
+}

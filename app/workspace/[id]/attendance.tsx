@@ -10,9 +10,7 @@ import { AttendanceDayList } from '../../../components/ui/AttendanceDayList';
 import { AttendanceItem } from '../../../components/cards/AttendanceItem';
 import { colors, spacing, typography, radius } from '../../../tokens';
 import { useLocalSearchParams } from 'expo-router';
-import { useAttendance, useAttendanceViewModel } from '../../../domains/attendance/hooks';
-import { AttendanceRepository } from '../../../domains/attendance/repository';
-import { NotificationService } from '../../../domains/notification/service';
+import { useAttendance, useAttendanceViewModel, useAttendanceMutations } from '../../../domains/attendance/hooks';
 import * as Haptics from 'expo-haptics';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { getLocalDateString } from '../../../core/utils/date';
@@ -25,6 +23,7 @@ export default function WorkspaceAttendance() {
   // Keep standard attendance hook for portal data
   const { portalData, refreshAttendance: refreshPortal } = useAttendance(workspaceId);
   const { workspaceData } = useWorkspace(workspaceId);
+  const { markAttendance, removeAttendance } = useAttendanceMutations();
   
   const today = new Date();
   const [selectedDateStr, setSelectedDateStr] = useState<string>(getLocalDateString(today));
@@ -80,23 +79,16 @@ export default function WorkspaceAttendance() {
       // belong to the currently selected day throws SECURITY_VIOLATION.
       const occurrenceDate = occurrence?.date ?? selectedDateStr;
       const occurrenceComponentId = occurrence?.componentId;
-      await AttendanceRepository.markAttendance(
+      await markAttendance(
         workspaceId,
         occurrenceDate,
         status,
         occurrence.occurrenceId,
         occurrenceComponentId,
-        notes
+        notes,
+        occurrence.componentType
       );
       await refreshViewModel();
-      // Producer: notify on attendance mark. Non-blocking: failure here does
-      // not surface to the user, the mark is already saved.
-      await NotificationService.attendanceMarked({
-        componentType: occurrence.componentType,
-        date: occurrenceDate,
-        status,
-        workspaceId,
-      }).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       console.error(e);
@@ -134,7 +126,7 @@ export default function WorkspaceAttendance() {
         { text: 'Holiday (Off)', onPress: () => handleMark(occurrence, 'holiday', 'College holiday / class off') },
         { text: 'Cancelled', onPress: () => handleMark(occurrence, 'cancelled', 'Class cancelled') },
         { text: 'Clear / Delete', style: 'destructive', onPress: async () => {
-            await AttendanceRepository.deleteAttendance(occurrence.occurrenceId);
+            await removeAttendance(occurrence.occurrenceId);
             await refreshViewModel();
           }
         },

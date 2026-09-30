@@ -1,8 +1,10 @@
 import { db } from '../../core/db/client';
 import { tasks } from './model';
-import { eq, desc, asc, and, lte } from 'drizzle-orm';
+import { eq, desc, asc, and, lte, sql } from 'drizzle-orm';
 import { getLocalDateString } from '../../core/utils/date';
 import { workspaces } from '../workspace/model';
+
+const prioritySort = sql`CASE ${tasks.priority} WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`;
 
 export class TaskRepository {
   static async getTaskById(id: number) {
@@ -13,14 +15,14 @@ export class TaskRepository {
     return await db.select()
       .from(tasks)
       .where(eq(tasks.workspaceId, workspaceId))
-      .orderBy(desc(tasks.dueDate));
+      .orderBy(prioritySort, asc(tasks.dueDate));
   }
 
   static async getPendingTasks() {
     return await db.select()
       .from(tasks)
       .where(eq(tasks.status, 'pending'))
-      .orderBy(tasks.dueDate);
+      .orderBy(prioritySort, asc(tasks.dueDate));
   }
 
   static async getTasksDueSoon() {
@@ -31,7 +33,7 @@ export class TaskRepository {
         eq(tasks.status, 'pending'),
         lte(tasks.dueDate, today)
       ))
-      .orderBy(tasks.dueDate);
+      .orderBy(prioritySort, asc(tasks.dueDate));
   }
 
   static async createTask(data: {
@@ -66,18 +68,20 @@ export class TaskRepository {
       title: tasks.title,
       dueDate: tasks.dueDate,
       status: tasks.status,
+      priority: tasks.priority,
       workspaceName: workspaces.name,
       workspaceColor: workspaces.color,
       workspaceId: workspaces.id,
     })
     .from(tasks)
     .leftJoin(workspaces, eq(tasks.workspaceId, workspaces.id))
-    .orderBy(asc(tasks.dueDate))
+    .orderBy(prioritySort, asc(tasks.dueDate))
     .all();
 
     return res.map(r => ({
       ...r,
       status: r.status || 'pending',
+      priority: (r.priority || 'medium') as import('./model').TaskPriority,
       workspaceName: r.workspaceName || 'General',
       workspaceColor: r.workspaceColor || '#8E8E93',
       workspaceId: r.workspaceId || 0,
