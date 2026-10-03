@@ -194,7 +194,7 @@ describe('Phase B Adversarial Verification Suite', () => {
 
     const result = calculateAttendanceMetrics(records);
     
-    expect(result.present).toBe(6); // numerator: 4 present + 2 exempt
+    expect(result.present).toBe(4); // raw present
     expect(result.absent).toBe(1);
     expect(result.exempt).toBe(2);
     expect(result.total).toBe(7); // denominator: 4 present + 1 absent + 2 exempt

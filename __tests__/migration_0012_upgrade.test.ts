@@ -127,7 +127,7 @@ const V11_SCHEMA = `
 
 // ─── Migration 0012 SQL (the exact corrected migration) ─────────────────────
 const MIGRATION_0012 = `
-  DROP INDEX component_date_idx;
+  DROP INDEX IF EXISTS component_date_idx;
   ALTER TABLE attendance ADD occurrence_id TEXT;
   ALTER TABLE attendance ADD identity_status TEXT DEFAULT 'unresolved_legacy' NOT NULL;
   CREATE UNIQUE INDEX occurrence_idx ON attendance(occurrence_id);
@@ -218,8 +218,8 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
       seedCourseWithComponents(sqlite);
 
       // Insert two legacy attendance records for different dates
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-19', 'absent')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'absent')`);
 
       applyMigration0012(sqlite);
 
@@ -239,7 +239,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
       seedCourseWithComponents(sqlite);
 
       // Simulate a row that somehow got an empty string
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
       applyMigration0012(sqlite);
 
       // Manually set to empty string to simulate edge case before the UPDATE runs
@@ -266,7 +266,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
       const { sqlite, db } = setupRepairableDb();
 
       // Legacy attendance on a Monday
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
       applyMigration0012(sqlite);
 
       const result = await AttendanceRepairService.repairLegacyIdentities(db);
@@ -277,7 +277,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
 
       // Verify the actual row
       const row = sqlite.prepare('SELECT * FROM attendance WHERE id = 1').get() as any;
-      expect(row.occurrence_id).toBe('rec_1_2026-08-18');
+      expect(row.occurrence_id).toBe('rec_1_2026-08-17');
       expect(row.identity_status).toBe('resolved');
 
       sqlite.close();
@@ -287,7 +287,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
       const { sqlite, db } = setupRepairableDb();
 
       // Legacy attendance on a Tuesday — no recurring schedule for Tuesday
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-19', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
       applyMigration0012(sqlite);
 
       const result = await AttendanceRepairService.repairLegacyIdentities(db);
@@ -312,7 +312,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
         { componentId: 1, dayOfWeek: 1, startTime: '14:00', endTime: '15:00' },
       ]);
 
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
       applyMigration0012(sqlite);
 
       const db = drizzle(sqlite, { schema });
@@ -340,8 +340,8 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
 
       // Drop old index to allow two records on same date (different components)
       sqlite.exec(`DROP INDEX component_date_idx`);
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (2, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (2, '2026-08-17', 'present')`);
 
       // Manually apply migration (index already dropped)
       sqlite.exec(`ALTER TABLE attendance ADD occurrence_id TEXT`);
@@ -357,9 +357,9 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
       expect(result.unresolved_multiple_matches).toBe(0);
 
       const rows = sqlite.prepare('SELECT * FROM attendance ORDER BY id').all() as any[];
-      expect(rows[0].occurrence_id).toBe('rec_1_2026-08-18');
+      expect(rows[0].occurrence_id).toBe('rec_1_2026-08-17');
       expect(rows[0].identity_status).toBe('resolved');
-      expect(rows[1].occurrence_id).toBe('rec_2_2026-08-18');
+      expect(rows[1].occurrence_id).toBe('rec_2_2026-08-17');
       expect(rows[1].identity_status).toBe('resolved');
 
       sqlite.close();
@@ -368,7 +368,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
     test('repeated repair is idempotent — no double resolution', async () => {
       const { sqlite, db } = setupRepairableDb();
 
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
       applyMigration0012(sqlite);
 
       // First repair
@@ -382,7 +382,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
 
       // Data unchanged
       const row = sqlite.prepare('SELECT * FROM attendance WHERE id = 1').get() as any;
-      expect(row.occurrence_id).toBe('rec_1_2026-08-18');
+      expect(row.occurrence_id).toBe('rec_1_2026-08-17');
       expect(row.identity_status).toBe('resolved');
 
       sqlite.close();
@@ -391,7 +391,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
     test('blank occurrence_id is cleaned up by repair', async () => {
       const { sqlite, db } = setupRepairableDb();
 
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
       // Apply migration but simulate a blank occurrence_id leak
       sqlite.exec(`ALTER TABLE attendance ADD occurrence_id TEXT`);
       sqlite.exec(`ALTER TABLE attendance ADD identity_status TEXT DEFAULT 'unresolved_legacy' NOT NULL`);
@@ -423,11 +423,11 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
 
       sqlite.exec(`DROP INDEX component_date_idx`);
       // Row 1: Unambiguous Monday — will resolve
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
       // Row 2: Tuesday — no match
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-19', 'absent')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'absent')`);
       // Row 3: Lab on Monday — no schedule for lab
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (2, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (2, '2026-08-17', 'present')`);
 
       // Apply migration manually
       sqlite.exec(`ALTER TABLE attendance ADD occurrence_id TEXT`);
@@ -450,15 +450,15 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
 
       sqlite.exec(`DROP INDEX component_date_idx`);
       // Row 1: Already resolved with the expected occurrence_id
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-18', 'present')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status) VALUES (1, '2026-08-17', 'present')`);
 
       applyMigration0012(sqlite);
 
       // Manually resolve row 1 to claim the occurrence_id
-      sqlite.exec(`UPDATE attendance SET occurrence_id = 'rec_1_2026-08-18', identity_status = 'resolved' WHERE id = 1`);
+      sqlite.exec(`UPDATE attendance SET occurrence_id = 'rec_1_2026-08-17', identity_status = 'resolved' WHERE id = 1`);
 
       // Insert a second legacy row for the same date/component
-      sqlite.exec(`INSERT INTO attendance (component_id, date, status, identity_status) VALUES (1, '2026-08-18', 'absent', 'unresolved_legacy')`);
+      sqlite.exec(`INSERT INTO attendance (component_id, date, status, identity_status) VALUES (1, '2026-08-17', 'absent', 'unresolved_legacy')`);
 
       const result = await AttendanceRepairService.repairLegacyIdentities(db);
 
