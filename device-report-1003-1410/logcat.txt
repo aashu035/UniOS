@@ -1,0 +1,8 @@
+--------- beginning of main
+10-03 14:12:53.115 W/ExpoModulesCore(15115): Props class class expo.modules.ui.textfield.InnerTextFieldProps is not introspectable. Falling back to reflection-based props parsing, which may have performance implications. To fix this, annotate the props class with @OptimizedComposeProps.
+10-03 14:12:53.293 W/ExpoModulesCore(15115): Props class class expo.modules.ui.textfield.PlaceholderProps is not introspectable. Falling back to reflection-based props parsing, which may have performance implications. To fix this, annotate the props class with @OptimizedComposeProps.
+10-03 14:12:53.364 I/ExpoModulesCore(15115): ✅ AppContext was initialized
+10-03 14:12:54.937 I/ExpoModulesCore(15115): ✅ JSI interop was installed
+10-03 14:12:54.948 I/ExpoModulesCore(15115): ✅ Constants were exported
+10-03 14:12:55.336 I/ReactNativeJS(15115): Running "main" with {"rootTag":1,"initialProps":{},"fabric":true}
+10-03 14:12:55.747 I/ExpoModulesCore(15115): ✅ JSI interop was installed

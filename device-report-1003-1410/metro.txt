@@ -1,0 +1,10 @@
+env: load .env.local
+env: export SENTRY_AUTH_TOKEN
+Starting project at C:\Users\Harsh\OneDrive\Desktop\AI_Lab\UniOS
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+An update for expo is available: 56.0.19 → ~56.0.23
+8 other packages may need updating. Run npx expo install --check for details.
+Logs for your project will appear below.
+Android Bundled 21479ms node_modules\expo-router\entry.js (4757 modules)
