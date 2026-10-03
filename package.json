@@ -68,7 +68,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "test": "jest",
+    "test": "node --max-old-space-size=4096 node_modules/jest/bin/jest.js",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",

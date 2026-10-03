@@ -20,7 +20,7 @@ import {
 import { colors, radius, spacing, typography } from '../../tokens';
 import { onPrimary } from '../../tokens/surface';
 import { CalendarService, EffectiveOccurrence } from '../../domains/calendar/service';
-import { TaskRepository } from '../../domains/task/repository';
+import { TaskService } from '../../domains/task/service';
 import { NotificationRepository } from '../../domains/notification/repository';
 import { NotificationService } from '../../domains/notification/service';
 import { WorkspaceRepository } from '../../domains/workspace/repository';
@@ -284,7 +284,7 @@ export default function HomeScreen() {
       const [workspaceCount, effectiveSchedule, pendingTasks, unread] = await Promise.all([
         WorkspaceRepository.count(),
         CalendarService.getEffectiveSchedule(todayStr, nextWeekStr),
-        TaskRepository.getTasksDueSoon(),
+        TaskService.getTasksDueSoon(),
         NotificationRepository.countUnread(),
       ]);
 

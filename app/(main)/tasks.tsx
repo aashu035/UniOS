@@ -4,9 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Search, Filter, CheckCircle, Circle, Clock } from 'lucide-react-native';
 import { colors } from '../../tokens';
-import { TaskRepository } from '../../domains/task/repository';
+import { TaskService } from '../../domains/task/service';
 import { TaskPriority, PRIORITY_ORDER } from '../../domains/task/model';
-import { NotificationService } from '../../domains/notification/service';
 import * as Haptics from 'expo-haptics';
 import { getLocalDateString } from '../../core/utils/date';
 
@@ -32,7 +31,7 @@ export default function TasksScreen() {
   const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await TaskRepository.getAllTasksWithWorkspaces();
+      const data = await TaskService.getAllTasksWithWorkspaces();
       setAllTasks(data);
     } catch (e) {
       console.error('Failed to load tasks:', e);
@@ -66,18 +65,8 @@ export default function TasksScreen() {
     setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await TaskRepository.updateTaskStatus(id, newStatus);
-      // Producer: notify on completion (not on undo-back-to-pending).
-      if (newStatus === 'submitted') {
-        const task = allTasks.find(t => t.id === id);
-        if (task) {
-          await NotificationService.taskCompleted({
-            id: task.id,
-            title: task.title,
-            workspaceId: task.workspaceId,
-          });
-        }
-      }
+      const task = allTasks.find(t => t.id === id);
+      await TaskService.updateTaskStatus(id, newStatus, task?.title, task?.workspaceId ?? undefined);
     } catch (e) {
       console.error('Failed to update task status:', e);
       // Revert optimistic update on failure
