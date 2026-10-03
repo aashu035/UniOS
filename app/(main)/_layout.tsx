@@ -22,9 +22,7 @@ export default function MainLayout() {
       <Tabs.Screen name="menu" options={{ title: 'More' }} />
 
       {/* Pre-redesign screens, reachable by URL only. */}
-      <Tabs.Screen name="home" options={{ href: null }} />
       <Tabs.Screen name="planner" options={{ href: null }} />
-      <Tabs.Screen name="tasks" options={{ href: null }} />
       <Tabs.Screen name="more" options={{ href: null }} />
       <Tabs.Screen name="fab" options={{ href: null }} />
       <Tabs.Screen name="workspaces" options={{ href: null }} />

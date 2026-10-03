@@ -34,7 +34,7 @@ export class TaskService {
     return TaskRepository.updateTask(id, params);
   }
 
-  static async updateTaskStatus(id: number, status: string, taskTitle?: string, workspaceId?: number) {
+  static async updateTaskStatus(id: number, status: Parameters<typeof TaskRepository.updateTaskStatus>[1], taskTitle?: string, workspaceId?: number) {
     const result = await TaskRepository.updateTaskStatus(id, status);
     
     // Dispath background side-effect for completion
@@ -63,7 +63,7 @@ export class TaskService {
     return TaskRepository.getAllTasksWithWorkspaces();
   }
 
-  static async getTasksDueSoon(limit: number = 5) {
-    return TaskRepository.getTasksDueSoon(limit);
+  static async getTasksDueSoon() {
+    return TaskRepository.getTasksDueSoon();
   }
 }

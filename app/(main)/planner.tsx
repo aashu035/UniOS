@@ -132,7 +132,7 @@ export default function TimetableScreen() {
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Contextual Tasks summary */}
         {tasksDueSoon > 0 && (
-          <TouchableOpacity style={styles.contextualTasksBanner} onPress={() => router.push('/(main)/tasks')}>
+          <TouchableOpacity style={styles.contextualTasksBanner} onPress={() => router.push('/(main)/work')}>
             <View style={styles.contextualIcon}>
               <Clock size={16} color={colors.light.warning} />
             </View>

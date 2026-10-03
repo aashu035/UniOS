@@ -35,7 +35,7 @@ export class NotificationService {
 
   /**
    * A task was just marked as completed/submitted by the user.
-   * Triggered from app/(main)/tasks.tsx:toggleTask.
+   * Triggered from domains/academic/actions.ts:setTaskDone and TaskService.updateTaskStatus.
    */
   static async taskCompleted(task: { id: number; title: string; workspaceId?: number }) {
     return NotificationRepository.create({
