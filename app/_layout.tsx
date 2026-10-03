@@ -11,6 +11,7 @@ import { ProfileContext } from '../core/context/ProfileContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
+import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
 import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
@@ -213,6 +214,8 @@ function RootLayout() {
     <AppErrorBoundary>
       <ProfileContext.Provider value={{ hasProfile, setHasProfile }}>
         <PaperProvider theme={theme}>
+          {/* Dark clock and icons on the light app background ("auto" follows the colour scheme). */}
+          <StatusBar style="auto" />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(main)" />
             <Stack.Screen name="onboarding" />
