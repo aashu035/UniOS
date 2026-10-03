@@ -5,11 +5,14 @@ import { Icon, courseIcon } from '../../components/uni/Icon';
 import { Card, Chip, Empty, LargeTitle, Rise, RoundButton, Screen, T, Tap } from '../../components/uni/primitives';
 import { mono, tint, useUni } from '../../components/uni/theme';
 import { useAcademic, useNowMinutes } from '../../domains/academic/hooks';
-import { addDays, clock, dayName, hoursOf, isoWeek, minutesOf, mondayOf, shortDate } from '../../domains/academic/logic';
+import { addDays, clock, dayName, hoursOf, isoWeek, layoutLanes, minutesOf, mondayOf, shortDate } from '../../domains/academic/logic';
 import { getLocalDateString } from '../../core/utils/date';
 import type { Occ } from '../../domains/academic/snapshot';
 
 const PX = 52; // points per hour on the day timeline
+const MIN_BLOCK = 36; // shortest drawn block, so a brief class stays legible
+const GUTTER = 46; // hour labels to the left of the blocks
+const LANE_GAP = 4;
 const GLANCE_HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
 
 export default function Schedule() {
@@ -22,6 +25,7 @@ export default function Schedule() {
   const { data, refresh, refreshing } = useAcademic({ from: monday, to: addDays(monday, 6) });
   const todayIdx = (new Date().getDay() + 6) % 7;
   const [picked, setPicked] = useState<number | null>(null);
+  const [timelineW, setTimelineW] = useState(0);
   const sel = picked ?? (offset === 0 ? todayIdx : 0);
   const selDate = addDays(monday, sel);
 
@@ -40,6 +44,20 @@ export default function Schedule() {
   const first = Math.min(8, ...dayOcc.map((o) => Math.floor(hoursOf(o.startTime))), ...dayOcc.filter((o) => o.original).map((o) => Math.floor(hoursOf(o.original!.startTime))));
   const last = Math.max(17, ...dayOcc.map((o) => Math.ceil(hoursOf(o.endTime))));
   const top = (h: number) => (h - first) * PX;
+
+  // Overlapping blocks (including the faded slot of a moved class) sit side by side.
+  // Lanes use the drawn extent, since short classes are drawn at least MIN_BLOCK tall.
+  const drawnEnd = (start: number, end: number) => Math.max(end, start + ((MIN_BLOCK + 4) / PX) * 60);
+  const lanes = layoutLanes([
+    ...dayOcc.filter((o) => o.original).map((o) => ({ key: 'was' + o.id, start: minutesOf(o.original!.startTime), end: drawnEnd(minutesOf(o.original!.startTime), minutesOf(o.original!.endTime)) })),
+    ...dayOcc.map((o) => ({ key: o.id, start: minutesOf(o.startTime), end: drawnEnd(minutesOf(o.startTime), minutesOf(o.endTime)) })),
+  ]);
+  const laneBox = (key: string) => {
+    const slot = lanes.get(key) ?? { lane: 0, lanes: 1 };
+    if (slot.lanes === 1 || !timelineW) return { left: GUTTER, right: 0, lanes: 1 };
+    const w = (timelineW - GUTTER - LANE_GAP * (slot.lanes - 1)) / slot.lanes;
+    return { left: GUTTER + slot.lane * (w + LANE_GAP), width: w, lanes: slot.lanes };
+  };
 
   const title = selDate === today ? `Today, ${dayName(selDate)} ${shortDate(selDate)}` : `${dayName(selDate)}, ${shortDate(selDate)}`;
 
@@ -120,7 +138,7 @@ export default function Schedule() {
             </View>
           ) : (
             <>
-              <View style={{ marginHorizontal: 20, height: (last - first) * PX + 12 }}>
+              <View style={{ marginHorizontal: 20, height: (last - first) * PX + 12 }} onLayout={(e) => setTimelineW(e.nativeEvent.layout.width)}>
                 {Array.from({ length: last - first + 1 }, (_, i) => first + i).map((h) => (
                   <View key={h} style={[styles.hourRow, { top: top(h) - 6 }]}>
                     <T style={[mono(500), { width: 36, fontSize: 10.5, color: p.muted, textAlign: 'right' }]}>{(h % 12 || 12) + (h >= 12 ? 'p' : 'a')}</T>
@@ -129,13 +147,13 @@ export default function Schedule() {
                 ))}
 
                 {dayOcc.filter((o) => o.original).map((o) => (
-                  <Block key={'was' + o.id} o={o} ghost top={top(hoursOf(o.original!.startTime))} height={(hoursOf(o.original!.endTime) - hoursOf(o.original!.startTime)) * PX - 4}
+                  <Block key={'was' + o.id} o={o} ghost box={laneBox('was' + o.id)} short={data?.courseById.get(o.workspaceId)?.short} top={top(hoursOf(o.original!.startTime))} height={(hoursOf(o.original!.endTime) - hoursOf(o.original!.startTime)) * PX - 4}
                     live={false} onPress={() => router.push(`/course/${o.workspaceId}` as any)} />
                 ))}
                 {dayOcc.map((o) => {
                   const live = selDate === today && minutesOf(o.startTime) <= nowMin && nowMin < minutesOf(o.endTime) && !o.cancelled;
                   return (
-                    <Block key={o.id} o={o} live={live} top={top(hoursOf(o.startTime))} height={(hoursOf(o.endTime) - hoursOf(o.startTime)) * PX - 4}
+                    <Block key={o.id} o={o} live={live} box={laneBox(o.id)} short={data?.courseById.get(o.workspaceId)?.short} top={top(hoursOf(o.startTime))} height={(hoursOf(o.endTime) - hoursOf(o.startTime)) * PX - 4}
                       onPress={() => router.push(`/course/${o.workspaceId}` as any)}
                       onLongPress={() => router.push(`/schedule/change?occ=${encodeURIComponent(o.id)}&date=${o.date}` as any)} />
                   );
@@ -159,7 +177,7 @@ export default function Schedule() {
   );
 }
 
-function Block({ o, live, top, height, ghost, onPress, onLongPress }: { o: Occ; live: boolean; top: number; height: number; ghost?: boolean; onPress: () => void; onLongPress?: () => void }) {
+function Block({ o, live, top, height, ghost, box, short, onPress, onLongPress }: { o: Occ; live: boolean; top: number; height: number; ghost?: boolean; short?: string; box: { left: number; right?: number; width?: number; lanes: number }; onPress: () => void; onLongPress?: () => void }) {
   const p = useUni();
   const color = o.workspaceColor;
   let bg = tint(color, 14), border = 'transparent', fg = p.text, opacity = 1, wellBg = color, wellFg = '#fff', strike = false;
@@ -181,23 +199,29 @@ function Block({ o, live, top, height, ghost, onPress, onLongPress }: { o: Occ; 
     bg = 'transparent'; border = p.off; opacity = 0.7; strike = true; wellBg = p.surface; wellFg = p.off;
     chip = ['OFF', p.off, p.surface]; meta = 'Cancelled for this day';
   }
+  // Narrow lanes use the short course label; short blocks fit one line only.
+  const name = (box.lanes > 1 && short ? short : o.workspaceName) + (o.componentType === 'lab' ? ' Lab' : o.componentType === 'tutorial' ? ' Tut' : '');
+  const compact = Math.max(MIN_BLOCK, height) < 48;
+  const metaLine = box.lanes > 1 && chip ? `${chip[0]} · ${meta}` : meta;
   return (
     <Tap onPress={onPress} onLongPress={onLongPress} delayLongPress={350} accessibilityRole="button"
       accessibilityLabel={`${o.workspaceName}, ${meta}${chip ? `, ${chip[0]}` : ''}`}
       style={[styles.block, {
-        top, height: Math.max(36, height), backgroundColor: bg, opacity, borderColor: border,
+        top, height: Math.max(MIN_BLOCK, height), left: box.left, right: box.right, width: box.width, backgroundColor: bg, opacity, borderColor: border,
         borderWidth: border === 'transparent' ? 1 : 1.5, borderStyle: border === 'transparent' ? 'solid' : 'dashed',
-      }, live && { shadowColor: p.primary, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 12 }, elevation: 6, zIndex: 2 }]}>
-      <View style={[styles.blockWell, { backgroundColor: wellBg }]}>
-        <Icon name={courseIcon(o.workspaceIcon, o.workspaceName)} size={15} color={wellFg} />
-      </View>
+      }, box.lanes > 1 && { paddingHorizontal: 8, gap: 6 }, compact && { paddingVertical: 4, alignItems: 'center' }, live && { shadowColor: p.primary, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 12 }, elevation: 6, zIndex: 2 }]}>
+      {box.lanes < 3 && !compact ? (
+        <View style={[styles.blockWell, { backgroundColor: wellBg }]}>
+          <Icon name={courseIcon(o.workspaceIcon, o.workspaceName)} size={15} color={wellFg} />
+        </View>
+      ) : null}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <T w={700} c={fg} size={14} numberOfLines={1} style={[{ lineHeight: 17 }, strike ? { textDecorationLine: 'line-through' } : null]}>
-          {o.workspaceName}{o.componentType === 'lab' ? ' Lab' : o.componentType === 'tutorial' ? ' Tutorial' : ''}
+        <T w={700} c={fg} size={compact ? 13 : 14} numberOfLines={1} style={[{ lineHeight: 17 }, strike ? { textDecorationLine: 'line-through' } : null]}>
+          {name}{compact ? <T w={500} c={fg} size={11.5} style={{ opacity: 0.78 }}>{`  ${clock(o.startTime, false)}`}</T> : null}
         </T>
-        <T w={500} c={fg} size={11.5} style={{ opacity: 0.78, marginTop: 1, lineHeight: 14 }} numberOfLines={1}>{meta}</T>
+        {!compact ? <T w={500} c={fg} size={11.5} style={{ opacity: 0.78, marginTop: 1, lineHeight: 14 }} numberOfLines={1}>{metaLine}</T> : null}
       </View>
-      {chip ? <Chip label={chip[0]} color={chip[1]} bg={chip[2]} /> : null}
+      {chip && box.lanes === 1 && !compact ? <Chip label={chip[0]} color={chip[1]} bg={chip[2]} /> : null}
     </Tap>
   );
 }
@@ -211,7 +235,7 @@ const styles = StyleSheet.create({
   bannerIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 20, marginBottom: 10 },
   hourRow: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  block: { position: 'absolute', left: 46, right: 0, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', gap: 10, overflow: 'hidden' },
+  block: { position: 'absolute', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', gap: 10, overflow: 'hidden' },
   blockWell: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   now: { position: 'absolute', left: 38, right: -6, height: 2, zIndex: 3 },
   nowDot: { position: 'absolute', left: -5, top: -4, width: 10, height: 10, borderRadius: 5 },

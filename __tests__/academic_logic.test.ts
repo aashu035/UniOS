@@ -183,3 +183,27 @@ describe('edge cases found by probing', () => {
     expect(dueGroup(NaN)).toBe('undated');
   });
 });
+
+describe('timetable lanes', () => {
+  const { layoutLanes } = require('../domains/academic/logic');
+  const L = (items: Array<[string, number, number]>) => Object.fromEntries([...layoutLanes(items.map(([key, start, end]) => ({ key, start, end }))).entries()].map(([k, v]: any) => [k, `${v.lane}/${v.lanes}`]));
+  it('keeps non-overlapping and touching blocks full width', () => {
+    expect(L([['a', 540, 600], ['b', 600, 660], ['c', 720, 780]])).toEqual({ a: '0/1', b: '0/1', c: '0/1' });
+  });
+  it('splits two overlapping classes', () => {
+    expect(L([['os', 540, 600], ['dm', 570, 630]])).toEqual({ os: '0/2', dm: '1/2' });
+  });
+  it('reuses a freed lane inside a chained group, and all share the group width', () => {
+    // a 9-11 overlaps b 10-12; c 11-13 overlaps b but not a, so c reuses lane 0.
+    expect(L([['a', 540, 660], ['b', 600, 720], ['c', 660, 780]])).toEqual({ a: '0/2', b: '1/2', c: '0/2' });
+  });
+  it('handles three at once and an identical pair', () => {
+    expect(L([['x', 600, 660], ['y', 600, 660], ['z', 610, 640]])).toEqual({ x: '0/3', y: '1/3', z: '2/3' });
+  });
+  it('starts a fresh group after a gap', () => {
+    expect(L([['a', 540, 600], ['b', 550, 600], ['c', 900, 960]])).toEqual({ a: '0/2', b: '1/2', c: '0/1' });
+  });
+  it('tolerates zero-length and inverted blocks', () => {
+    expect(L([['z', 600, 600], ['bad', 700, 650]])).toEqual({ z: '0/1', bad: '0/1' });
+  });
+});

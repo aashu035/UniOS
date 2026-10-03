@@ -254,3 +254,35 @@ export function inMinutes(m: number): string {
   const h = Math.floor(m / 60), r = m % 60;
   return r ? `${h} h ${r} min` : `${h} h`;
 }
+
+// ─── Timetable lanes ─────────────────────────────────────────────────────────
+
+export interface LaneSlot { lane: number; lanes: number }
+
+/**
+ * Side-by-side columns for overlapping blocks on the day timeline. Blocks that
+ * overlap (directly or through a chain) form a group; each takes the lowest free
+ * lane, and every block in the group shares the group's lane count so widths match.
+ * Touching blocks (one ends as the next starts) don't overlap.
+ */
+export function layoutLanes(items: Array<{ key: string; start: number; end: number }>): Map<string, LaneSlot> {
+  const sorted = items.slice().sort((a, b) => a.start - b.start || b.end - a.end || a.key.localeCompare(b.key));
+  const out = new Map<string, LaneSlot>();
+  let group: Array<{ key: string; lane: number }> = [];
+  let laneEnds: number[] = [];
+  let groupEnd = -Infinity;
+  const flush = () => {
+    for (const g of group) out.set(g.key, { lane: g.lane, lanes: laneEnds.length });
+    group = []; laneEnds = [];
+  };
+  for (const it of sorted) {
+    const end = Math.max(it.end, it.start);
+    if (it.start >= groupEnd) { flush(); groupEnd = -Infinity; }
+    let lane = laneEnds.findIndex((e) => e <= it.start);
+    if (lane === -1) { lane = laneEnds.length; laneEnds.push(end); } else laneEnds[lane] = end;
+    group.push({ key: it.key, lane });
+    groupEnd = Math.max(groupEnd, end);
+  }
+  flush();
+  return out;
+}
