@@ -51,7 +51,7 @@ export default function AITimetableSetup() {
   };
 
   const finish = () => {
-    router.replace('/(main)/home');
+    router.replace('/(main)/today');
   };
 
   return (

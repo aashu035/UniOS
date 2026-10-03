@@ -109,7 +109,7 @@ export default function EditCourse() {
                       setIsSaving(true);
                       await WorkspaceRepository.deleteWorkspace(workspaceId);
                       // Make sure to replace rather than push so we can't go back to the deleted workspace
-                      router.replace('/(main)/home');
+                      router.replace('/(main)/today');
                     } catch (error) {
                       console.error('Could not delete workspace', error);
                       Alert.alert('Error', 'Failed to delete workspace.');

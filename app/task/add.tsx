@@ -11,15 +11,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { getLocalDateString, parseLocalDate } from '../../core/utils/date';
 
 const PRIORITIES = ['low', 'medium', 'high'] as const;
+const TYPES = [['assignment', 'Assignment'], ['lab', 'Lab file'], ['exam', 'Exam'], ['quiz', 'Quiz']] as const;
+type TaskType = typeof TYPES[number][0];
 
 export default function AddTask() {
   const router = useRouter();
-  const { workspaceId } = useLocalSearchParams<{ workspaceId?: string }>();
+  const { workspaceId, type: typeParam } = useLocalSearchParams<{ workspaceId?: string; type?: string }>();
   const { workspaces, isLoading } = useWorkspaces();
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [priority, setPriority] = useState<typeof PRIORITIES[number]>('medium');
+  const [type, setType] = useState<TaskType>(TYPES.some(([k]) => k === typeParam) ? typeParam as TaskType : 'assignment');
   const parsedWorkspaceId = workspaceId ? parseInt(workspaceId as string, 10) : null;
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -55,6 +58,7 @@ export default function AddTask() {
         workspaceId: finalWorkspaceId,
         title: title.trim(),
         dueDate: dueDate.trim() || undefined,
+        type,
         priority,
         status: 'pending'
       });
@@ -116,6 +120,8 @@ export default function AddTask() {
             ))}
           </View>
         )}
+        <Text style={styles.label}>Type</Text>
+        <View style={styles.chips}>{TYPES.map(([key, label]) => <TouchableOpacity key={key} onPress={() => setType(key)} style={[styles.priorityChip, type === key && styles.priorityChipActive]}><Text style={[styles.priorityText, type === key && styles.priorityTextActive]}>{label}</Text></TouchableOpacity>)}</View>
         <Text style={styles.label}>Priority</Text>
         <View style={styles.chips}>{PRIORITIES.map(item => <TouchableOpacity key={item} onPress={() => setPriority(item)} style={[styles.priorityChip, priority === item && styles.priorityChipActive]}><Text style={[styles.priorityText, priority === item && styles.priorityTextActive]}>{item[0].toUpperCase() + item.slice(1)}</Text></TouchableOpacity>)}</View>
       </ScrollView>

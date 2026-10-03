@@ -11,6 +11,9 @@ import { ProfileContext } from '../core/context/ProfileContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
+import { useFonts } from 'expo-font';
+import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
+import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 
 Sentry.init({
   dsn: 'https://5af72a268f523c7adf67e0802a496136@o4511887364194304.ingest.us.sentry.io/4511887404367872',
@@ -146,6 +149,12 @@ function DatabaseErrorScreen({ error, onRetry }: { error: Error; onRetry: () => 
 // ─── Root Layout ─────────────────────────────────────────────────────────────
 function RootLayout() {
   const { isReady, error, retry } = useDatabaseCoordinator();
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold,
+    JetBrainsMono_500Medium, JetBrainsMono_700Bold,
+  });
+  // A font load failure falls back to the system font rather than blocking the app.
+  const fontsReady = fontsLoaded || !!fontError;
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const navRouter = useRouter();
   const segments = useSegments();
@@ -183,7 +192,7 @@ function RootLayout() {
           navRouter.replace('/onboarding');
         });
       } else if (hasProfile && onOnboarding) {
-        navRouter.replace('/(main)/home');
+        navRouter.replace('/(main)/today');
       }
     }
   }, [isReady, hasProfile, segments]);
@@ -192,7 +201,7 @@ function RootLayout() {
     return <DatabaseErrorScreen error={error} onRetry={retry} />;
   }
 
-  if (!isReady || hasProfile === null) {
+  if (!isReady || hasProfile === null || !fontsReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Loading UniOS...</Text>

@@ -29,7 +29,7 @@ export class NotificationService {
       title: 'Task overdue',
       message: `“${task.title}” was due ${task.dueDate ?? 'recently'}.`,
       type: 'warning',
-      actionUrl: task.workspaceId ? `/workspace/${task.workspaceId}` : '/(main)/tasks',
+      actionUrl: task.workspaceId ? `/workspace/${task.workspaceId}` : '/(main)/work',
     });
   }
 
@@ -42,7 +42,7 @@ export class NotificationService {
       title: 'Task completed',
       message: `Nice work — “${task.title}” is done.`,
       type: 'success',
-      actionUrl: task.workspaceId ? `/workspace/${task.workspaceId}` : '/(main)/tasks',
+      actionUrl: task.workspaceId ? `/workspace/${task.workspaceId}` : '/(main)/work',
     });
   }
 
