@@ -149,7 +149,7 @@ export default function CourseDetail() {
             <ListCard>
               {([
                 ['check', 'Attended (present + leave)', `${c.att.attended} session${c.att.attended === 1 ? '' : 's'}`, c.att.pct === null ? '' : `${c.att.pct}%`, p.success],
-                ['x', 'Absent', `${c.att.absent} session${c.att.absent === 1 ? '' : 's'}`, v.need ? `Attend ${v.need}` : '', p.danger],
+                ['x', 'Absent', `${c.att.absent} session${c.att.absent === 1 ? '' : 's'}`, !v.need ? '' : Number.isFinite(v.need) ? `Attend ${v.need}` : 'Out of reach', p.danger],
                 ['circle-slash', 'Off · not counted', `${c.att.off} session${c.att.off === 1 ? '' : 's'}`, '', p.off],
                 ...(portal ? [['arrow-left-right', `Portal shows ${portal.percent !== null ? Math.round(portal.percent) : '—'}%`, `Snapshot ${shortDate(portal.checkedDate.slice(0, 10))}`, '', p.primary] as const] : []),
               ] as Array<readonly [IconName, string, string, string, string]>).map(([icon, t, m, r, col]) => (

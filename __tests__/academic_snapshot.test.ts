@@ -123,12 +123,29 @@ describe('due date normalisation', () => {
     expect(normalizeDate(iso)).toBe('2026-10-20');
     expect(normalizeDate(String(new Date(2026, 9, 20, 9).getTime()))).toBe('2026-10-20');
     expect(normalizeDate('not a date')).toBeNull();
+    expect(normalizeDate('2026-10-05 18:30:00')).toBe('2026-10-05'); // SQL datetime, no zone
+    expect(normalizeDate('2026-10-05T18:30')).toBe('2026-10-05');
+    expect(normalizeDate('05/10/2026')).toBe('2026-10-05'); // day first
+    expect(normalizeDate('5.10.2026')).toBe('2026-10-05');
+    expect(normalizeDate('2026-13-40')).toBeNull();
+    expect(normalizeDate('1791200000')).toMatch(/^\d{4}-\d{2}-\d{2}$/); // unix seconds
     expect(normalizeDate(null)).toBeNull();
   });
   it('loads timestamp due dates without NaN', async () => {
     mockSqlite.exec(`INSERT INTO tasks (workspace_id, title, type, due_date, priority, status) VALUES (1, 'Timestamp task', 'lab', '${new Date(2026, 9, 5, 18, 30).toISOString()}', 'medium', 'pending')`);
     const s = await loadSnapshot({ today: TODAY });
     expect(s.tasks.find((t: any) => t.title === 'Timestamp task').dueDate).toBe('2026-10-05');
+  });
+});
+
+describe('unreachable target', () => {
+  it('alerts never say Infinity', async () => {
+    mockSqlite.exec(`UPDATE workspaces SET target_attendance = 100 WHERE id = 1`);
+    const s = await loadSnapshot({ today: TODAY });
+    const a = buildAlerts(s).find((x: any) => x.key === 'att-1');
+    expect(a.body).toBe("100% can't be reached anymore. Every class still counts.");
+    expect(JSON.stringify(buildAlerts(s))).not.toMatch(/Infinity|NaN|undefined/);
+    mockSqlite.exec(`UPDATE workspaces SET target_attendance = 75 WHERE id = 1`);
   });
 });
 

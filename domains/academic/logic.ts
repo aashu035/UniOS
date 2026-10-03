@@ -45,6 +45,8 @@ export function verdict(attended: number, total: number, target: number): Verdic
   if (total === 0) return { text: 'No classes marked yet', short: 'Not started', tone: 'muted', need: 0, skip: 0 };
   const need = mustAttend(attended, total, target);
   const skip = canSkip(attended, total, target);
+  if (!Number.isFinite(need)) return { text: `${target}% can't be reached anymore`, short: 'Out of reach', tone: 'danger', need: Infinity, skip: 0 };
+  if (!Number.isFinite(skip)) return { text: 'No minimum set', short: 'No minimum', tone: 'success', need: 0, skip: Infinity };
   if (need > 0) return { text: `Attend the next ${need} class${need === 1 ? '' : 'es'}`, short: `Attend the next ${need}`, tone: 'danger', need, skip: 0 };
   if (skip === 0) return { text: 'On the line. Don’t skip the next one', short: 'On the line', tone: 'warn', need, skip };
   return { text: `You can skip ${skip}`, short: `Can skip ${skip}`, tone: skip <= 1 ? 'warn' : 'success', need, skip };
@@ -96,9 +98,10 @@ export const minutesOf = (hhmm: string) => Math.round(hoursOf(hhmm) * 60);
 /** 13:30 -> "1:30 PM" (or "1:30" with `ampm: false`). */
 export function clock(hhmm: string, ampm = true): string {
   const [h, m] = hhmm.split(':').map(Number);
-  const hh = h % 12 === 0 ? 12 : h % 12;
+  const h24 = (h || 0) % 24;
+  const hh = h24 % 12 === 0 ? 12 : h24 % 12;
   const base = `${hh}:${String(m || 0).padStart(2, '0')}`;
-  return ampm ? `${base} ${h >= 12 ? 'PM' : 'AM'}` : base;
+  return ampm ? `${base} ${h24 >= 12 ? 'PM' : 'AM'}` : base;
 }
 
 export function addDays(iso: string, n: number): string {
@@ -143,6 +146,7 @@ export function isoWeek(iso: string): number {
 
 /** "Today", "Tomorrow", "5 days", "2 days late". */
 export function relDue(days: number): string {
+  if (!Number.isFinite(days)) return '—';
   if (days < 0) return `${-days} day${days === -1 ? '' : 's'} late`;
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
@@ -167,7 +171,7 @@ export type DueGroup = 'soon' | 'week' | 'next' | 'later' | 'undated';
 
 /** Bucket open tasks the way the Tasks screen groups them. Overdue counts as "soon". */
 export function dueGroup(days: number | null): DueGroup {
-  if (days === null) return 'undated';
+  if (days === null || !Number.isFinite(days)) return 'undated';
   if (days <= 1) return 'soon';
   if (days <= 7) return 'week';
   if (days <= 14) return 'next';

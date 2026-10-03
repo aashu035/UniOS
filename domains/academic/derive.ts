@@ -22,7 +22,7 @@ export function atRisk(courses: Course[]) {
   return courses
     .filter((c) => c.att.total > 0 && c.att.pct !== null && c.att.pct < c.target)
     .map((c) => ({ course: c, need: mustAttend(c.att.attended, c.att.total, c.target) }))
-    .sort((a, b) => b.need - a.need);
+    .sort((a, b) => (b.need === a.need ? 0 : b.need > a.need ? 1 : -1));
 }
 
 export function openTasks(s: Snapshot): Array<TaskRow & { days: number | null }> {
@@ -43,7 +43,7 @@ export function buildAlerts(s: Snapshot): DeckAlert[] {
     out.push({
       key: `att-${c.id}`, tone: 'danger', icon: 'triangle-alert', eyebrow: `Attendance · ${c.short}`, cta: 'See plan',
       title: `${c.att.pct}%, below your ${c.target}% target`,
-      body: `Attend the next ${need} ${c.short} class${need === 1 ? '' : 'es'} to get back above target.`,
+      body: Number.isFinite(need) ? `Attend the next ${need} ${c.short} class${need === 1 ? '' : 'es'} to get back above target.` : `${c.target}% can't be reached anymore. Every class still counts.`,
       route: '/attendance',
     });
   }

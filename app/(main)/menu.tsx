@@ -53,7 +53,7 @@ export default function Menu() {
           {risk ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <Icon name="triangle-alert" size={13} color={p.danger} />
-              <T w={700} c={p.danger} size={12} numberOfLines={1}>{risk.course.short} needs {risk.need} more</T>
+              <T w={700} c={p.danger} size={12} numberOfLines={1}>{risk.course.short} {Number.isFinite(risk.need) ? `needs ${risk.need} more` : `can't reach ${risk.course.target}%`}</T>
             </View>
           ) : <T w={700} c={o.total ? p.success : p.muted} size={12}>{o.total ? 'All courses on target' : 'Nothing marked yet'}</T>}
         </Card>

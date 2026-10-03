@@ -77,7 +77,7 @@ export default function Alerts() {
                   <Well icon="triangle-alert" color={p.danger} bg={tint(p.danger)} size={36} radius={11} iconSize={17} />
                   <View style={{ flex: 1 }}>
                     <T w={800} size={14.5}>{c.short} attendance {c.att.pct}%</T>
-                    <T c={p.muted} size={13} style={{ lineHeight: 18, marginTop: 2 }}>Below {c.target}%. Attend the next {need} class{need === 1 ? '' : 'es'} to recover.</T>
+                    <T c={p.muted} size={13} style={{ lineHeight: 18, marginTop: 2 }}>{Number.isFinite(need) ? `Below ${c.target}%. Attend the next ${need} class${need === 1 ? '' : 'es'} to recover.` : `${c.target}% can't be reached anymore. Every class still counts.`}</T>
                   </View>
                 </View>
                 {nextDays.length ? (

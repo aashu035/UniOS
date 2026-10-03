@@ -169,3 +169,17 @@ describe('course setup grid', () => {
     expect(slotSummary({ '3-9': 'theory', '1-9': 'theory' })).toBe('2 sessions · Mon, Wed');
   });
 });
+
+describe('edge cases found by probing', () => {
+  it('never shows Infinity for unreachable or missing targets', () => {
+    expect(verdict(9, 10, 100)).toMatchObject({ text: "100% can't be reached anymore", tone: 'danger' });
+    expect(verdict(5, 10, 0)).toMatchObject({ text: 'No minimum set' });
+    expect(verdict(10, 10, 100).text).not.toMatch(/Infinity|NaN/);
+  });
+  it('handles odd clock and due values', () => {
+    expect(clock('24:00')).toBe('12:00 AM');
+    expect(clock('9:5')).toBe('9:05 AM');
+    expect(relDue(NaN)).toBe('—');
+    expect(dueGroup(NaN)).toBe('undated');
+  });
+});

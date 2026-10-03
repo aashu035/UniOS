@@ -73,11 +73,24 @@ export interface Snapshot {
  * YYYY-MM-DD so date math never sees NaN; unparseable values become null.
  */
 export function normalizeDate(v: string | null | undefined): string | null {
-  if (!v) return null;
-  const t = v.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  const d = new Date(/^\d+$/.test(t) ? Number(t) : t);
-  return isNaN(d.getTime()) ? null : getLocalDateString(d);
+  if (v === null || v === undefined) return null;
+  const t = String(v).trim();
+  if (!t) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const ok = (y: number, m: number, d: number) => m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${pad(m)}-${pad(d)}` : null;
+  // Explicit patterns rather than Date parsing: Hermes (the phone's JS engine) rejects some formats Node accepts.
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+  if (m) return ok(+m[1], +m[2], +m[3]);
+  m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/.exec(t);
+  if (m) {
+    if (!m[6]) return ok(+m[1], +m[2], +m[3]); // no zone: already local wall time
+    const d = new Date(t.replace(' ', 'T'));
+    return isNaN(d.getTime()) ? ok(+m[1], +m[2], +m[3]) : getLocalDateString(d);
+  }
+  m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(t); // day first, as written in India
+  if (m) return ok(+m[3], +m[2], +m[1]);
+  if (/^\d{10,13}$/.test(t)) { const d = new Date(t.length === 10 ? +t * 1000 : +t); return isNaN(d.getTime()) ? null : getLocalDateString(d); }
+  return null;
 }
 
 export function shortLabel(name: string, shortName?: string | null): string {
@@ -117,7 +130,7 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
 
   const records: AttRow[] = allAtt
     .filter((a) => compToWs.has(a.componentId))
-    .map((a) => ({ occurrenceId: a.occurrenceId, componentId: a.componentId, date: a.date, status: a.status, workspaceId: compToWs.get(a.componentId)! }));
+    .map((a) => ({ occurrenceId: a.occurrenceId, componentId: a.componentId, date: normalizeDate(a.date) ?? a.date, status: a.status, workspaceId: compToWs.get(a.componentId)! }));
 
   const courses: Course[] = inScope.map((w) => {
     const comps = allComps.filter((c) => c.workspaceId === w.id);

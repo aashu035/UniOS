@@ -36,7 +36,7 @@ export default function AttendanceOverview() {
 
   const subjects = s.courses
     .map((c) => ({ c, v: verdict(c.att.attended, c.att.total, c.target) }))
-    .sort((a, b) => (b.v.need - a.v.need) || ((a.c.att.pct ?? 101) - (b.c.att.pct ?? 101)));
+    .sort((a, b) => (b.v.need === a.v.need ? 0 : b.v.need > a.v.need ? 1 : -1) || ((a.c.att.pct ?? 101) - (b.c.att.pct ?? 101)));
 
   // The course whose portal snapshot disagrees most with the local log.
   const gaps = s.portal
