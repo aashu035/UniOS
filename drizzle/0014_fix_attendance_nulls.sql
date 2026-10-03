@@ -62,10 +62,9 @@ SELECT
         ELSE 'legacy_orphaned_' || CAST(a.id AS TEXT)
     END AS occurrence_id,
     CASE
-        WHEN a.occurrence_id IS NULL
-         AND r.schedule_id IS NULL
-            THEN 'unresolved_legacy'
-        ELSE a.identity_status
+        WHEN a.occurrence_id IS NOT NULL THEN 'resolved'
+        WHEN r.schedule_id IS NOT NULL THEN 'resolved'
+        ELSE 'unresolved_legacy'
     END AS identity_status,
     a."date",
     a.source,

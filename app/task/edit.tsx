@@ -3,7 +3,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react-native';
-import { TaskRepository } from '../../domains/task/repository';
+import { TaskService } from '../../domains/task/service';
 import { colors, radius, spacing, typography } from '../../tokens';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -26,7 +26,7 @@ export default function EditTask() {
   useEffect(() => {
     async function loadTask() {
       try {
-        const task = await TaskRepository.getTaskById(taskId);
+        const task = await TaskService.getTaskById(taskId);
         if (task) {
           setTitle(task.title);
           setDueDate(task.dueDate || '');
@@ -53,7 +53,7 @@ export default function EditTask() {
     
     setIsSaving(true);
     try {
-      await TaskRepository.updateTask(taskId, { 
+      await TaskService.updateTask(taskId, { 
         title: title.trim(), 
         dueDate: dueDate.trim() || undefined, 
         priority 
@@ -79,7 +79,7 @@ export default function EditTask() {
           onPress: async () => {
             try {
               setIsSaving(true);
-              await TaskRepository.deleteTask(taskId);
+              await TaskService.deleteTask(taskId);
               router.back();
             } catch (error) {
               console.error('Could not delete task', error);
