@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Icon, type IconName } from '../../components/uni/Icon';
 import { Card, Chip, Empty, ListCard, Ring, Rise, RoundButton, Screen, Segmented, T, Tap } from '../../components/uni/primitives';
-import { FILE_COLORS, tint, useUni } from '../../components/uni/theme';
+import { FILE_COLORS, tint, useUni, listRow } from '../../components/uni/theme';
 import { fileKind } from '../../domains/academic/derive';
 import { useAcademic } from '../../domains/academic/hooks';
 import { clock, dayName, daysBetween, isDone, minutesOf, relDue, shortDate, taskKind, verdict } from '../../domains/academic/logic';
@@ -192,6 +192,6 @@ const styles = StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20, paddingVertical: 16 },
   stats: { flexDirection: 'row', gap: 8, paddingHorizontal: 20 },
   stat: { flex: 1, padding: 11, borderRadius: 16, borderWidth: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  row: listRow,
   linkBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 16 },
 });

@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Icon, courseIcon, type IconName } from '../components/uni/Icon';
 import { Card, Empty, GrowColumn, ListCard, Pill, Rise, RoundButton, Screen, T, Tap, Well } from '../components/uni/primitives';
-import { FILE_COLORS, mono, shadow, tint, useUni } from '../components/uni/theme';
+import { FILE_COLORS, mono, shadow, tint, useUni, listRow } from '../components/uni/theme';
 import { fileKind, type FileKind } from '../domains/academic/derive';
 import { useAcademic } from '../domains/academic/hooks';
 import { addDays, shortDate } from '../domains/academic/logic';
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   doc: { width: 40, height: 48, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   openBtn: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10 },
   groupHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 18, marginBottom: 8, marginHorizontal: 4 },
-  file: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 14 },
+  file: listRow,
   types: { marginHorizontal: 20, marginTop: 18, padding: 14, borderRadius: 20 },
   typeBar: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 },
 });

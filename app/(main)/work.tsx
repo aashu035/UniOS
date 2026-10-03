@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Icon, type IconName } from '../../components/uni/Icon';
 import { Card, Empty, LargeTitle, ListCard, Pill, Rise, RoundButton, Screen, T, Tap } from '../../components/uni/primitives';
-import { mono, shadow, tint, useUni } from '../../components/uni/theme';
+import { mono, shadow, tint, useUni, listRow } from '../../components/uni/theme';
 import { setTaskDone } from '../../domains/academic/actions';
 import { useAcademic } from '../../domains/academic/hooks';
 import { addDays, dayName, daysBetween, dueGroup, isDone, relDue, shortDate, taskKind, type DueGroup, type TaskKind } from '../../domains/academic/logic';
@@ -185,6 +185,6 @@ const styles = StyleSheet.create({
   labelRow: { flexDirection: 'row', gap: 3, marginTop: 5 },
   stripDay: { flex: 1, height: '100%', borderRadius: 7, paddingVertical: 4, alignItems: 'center', justifyContent: 'flex-start', flexDirection: 'column-reverse', gap: 3 },
   groupHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 16, marginBottom: 8, marginHorizontal: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  row: listRow,
   check: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });

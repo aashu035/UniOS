@@ -3,7 +3,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon, courseIcon, type IconName } from '../components/uni/Icon';
 import { Card, Chip, ListCard, Rise, RoundButton, Screen, T, Tap, Well } from '../components/uni/primitives';
-import { mono, tint, useUni } from '../components/uni/theme';
+import { mono, tint, useUni, listRow } from '../components/uni/theme';
 import { setTaskDone } from '../domains/academic/actions';
 import { atRisk, changes, dayWord, openTasks } from '../domains/academic/derive';
 import { useAcademic, useNowMinutes } from '../domains/academic/hooks';
@@ -184,5 +184,5 @@ const styles = StyleSheet.create({
   btn: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10 },
   moveGrid: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   slot: { flex: 1, padding: 10, borderRadius: 12 },
-  line: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 14 },
+  line: listRow,
 });

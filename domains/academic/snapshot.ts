@@ -67,6 +67,19 @@ export interface Snapshot {
   unread: number;
 }
 
+/**
+ * Due dates are stored as YYYY-MM-DD by the current task form, but older rows can
+ * hold a full timestamp (e.g. toISOString()). Reduce anything parseable to a local
+ * YYYY-MM-DD so date math never sees NaN; unparseable values become null.
+ */
+export function normalizeDate(v: string | null | undefined): string | null {
+  if (!v) return null;
+  const t = v.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const d = new Date(/^\d+$/.test(t) ? Number(t) : t);
+  return isNaN(d.getTime()) ? null : getLocalDateString(d);
+}
+
 export function shortLabel(name: string, shortName?: string | null): string {
   if (shortName && shortName.trim()) return shortName.trim();
   const words = name.split(/\s+/).filter((w) => w && !/^(and|of|the|&|to|for|in)$/i.test(w));
@@ -177,7 +190,7 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
     records: records.filter((r) => scopeIds.has(r.workspaceId)),
     tasks: allTasks
       .filter((t) => t.workspaceId === null || scopeIds.has(t.workspaceId))
-      .map((t) => ({ id: t.id, title: t.title, type: t.type, dueDate: t.dueDate, status: t.status, priority: t.priority, workspaceId: t.workspaceId })),
+      .map((t) => ({ id: t.id, title: t.title, type: t.type, dueDate: normalizeDate(t.dueDate), status: t.status, priority: t.priority, workspaceId: t.workspaceId })),
     files: allFiles.filter((f) => f.workspaceId === null || scopeIds.has(f.workspaceId)),
     portal: allPortal
       .filter((p, i, arr) => scopeIds.has(p.workspaceId) && arr.findIndex((q) => q.workspaceId === p.workspaceId) === i)

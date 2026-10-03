@@ -3,7 +3,7 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon, courseIcon, type IconName } from '../../components/uni/Icon';
 import { Card, Empty, LargeTitle, ListCard, Ring, Rise, Screen, SectionTitle, T, Tap, Well } from '../../components/uni/primitives';
-import { FILE_COLORS, tint, useUni } from '../../components/uni/theme';
+import { FILE_COLORS, tint, useUni, listRow } from '../../components/uni/theme';
 import { atRisk, fileKind, overall, type FileKind } from '../../domains/academic/derive';
 import { useAcademic } from '../../domains/academic/hooks';
 import { shortDate, verdict } from '../../domains/academic/logic';
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   tile: { flex: 1, gap: 10 },
   tileHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   typeBar: { flexDirection: 'row', height: 6, borderRadius: 3, overflow: 'hidden', gap: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  row: listRow,
   setIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   badge: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 });

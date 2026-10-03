@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, courseIcon } from '../../components/uni/Icon';
 import { Card, Chip, Empty, ListCard, Pill, RoundButton, Segmented, T, Tap, Well } from '../../components/uni/primitives';
-import { sans, tint, useUni } from '../../components/uni/theme';
+import { sans, tint, useUni, listRow } from '../../components/uni/theme';
 import { ScheduleExceptionRepository, parseRecurringOccurrence } from '../../domains/calendar/exceptions';
 import { NotificationService } from '../../domains/notification/service';
 import { addDays, clock, dayDate, minutesOf } from '../../domains/academic/logic';
@@ -159,7 +159,7 @@ export default function TemporaryChange() {
 
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  row: listRow,
   input: { height: 48, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, fontSize: 14.5 },
   cta: { height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
 });

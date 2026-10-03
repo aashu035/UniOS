@@ -112,6 +112,13 @@ export function shadow(p: UniPalette): ViewStyle {
     : { shadowColor: '#0B1B3B', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 };
 }
 
+/**
+ * Shared spacing. Screens inset content by `screenX`; cards pad by `card`;
+ * rows inside list cards use `listRow`. Change spacing here, not per screen.
+ */
+export const space = { screenX: 20, card: 14, rowX: 14, rowY: 12, gap: 12 } as const;
+export const listRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: space.gap, paddingVertical: space.rowY, paddingHorizontal: space.rowX };
+
 /** Top padding under the status bar, and bottom padding that clears the tab bar. */
 export const SCREEN_TOP = 8;
 export const TAB_CLEARANCE = 124;

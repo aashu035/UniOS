@@ -15,7 +15,7 @@ mockSqlite.pragma('foreign_keys = ON');
 
 jest.mock('../core/db/client', () => ({ db: mockDb, expoDb: {} }));
 
-const { loadSnapshot, shortLabel } = require('../domains/academic/snapshot');
+const { loadSnapshot, shortLabel, normalizeDate } = require('../domains/academic/snapshot');
 const { buildAlerts, markQueue, suggestion } = require('../domains/academic/derive');
 
 // Thursday 1 Oct 2026 (week 40), as in the design.
@@ -113,6 +113,22 @@ describe('temporary changes', () => {
     expect(back.map((o: any) => [o.startTime, o.isException])).toEqual([['09:00', false]]);
 
     await expect(ScheduleExceptionRepository.move(1, day, '12:00', '11:00')).rejects.toThrow('Pick a start time before the end time.');
+  });
+});
+
+describe('due date normalisation', () => {
+  it('reduces stored dates to local YYYY-MM-DD', () => {
+    expect(normalizeDate('2026-10-20')).toBe('2026-10-20');
+    const iso = new Date(2026, 9, 20, 23, 59).toISOString();
+    expect(normalizeDate(iso)).toBe('2026-10-20');
+    expect(normalizeDate(String(new Date(2026, 9, 20, 9).getTime()))).toBe('2026-10-20');
+    expect(normalizeDate('not a date')).toBeNull();
+    expect(normalizeDate(null)).toBeNull();
+  });
+  it('loads timestamp due dates without NaN', async () => {
+    mockSqlite.exec(`INSERT INTO tasks (workspace_id, title, type, due_date, priority, status) VALUES (1, 'Timestamp task', 'lab', '${new Date(2026, 9, 5, 18, 30).toISOString()}', 'medium', 'pending')`);
+    const s = await loadSnapshot({ today: TODAY });
+    expect(s.tasks.find((t: any) => t.title === 'Timestamp task').dueDate).toBe('2026-10-05');
   });
 });
 

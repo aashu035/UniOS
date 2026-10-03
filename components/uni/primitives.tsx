@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { PressableProps, StyleProp, TextProps, TextStyle, ViewStyle } from 'react-native';
 import Animated, { FadeInDown, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming, Easing } from 'react-native-reanimated';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from './Icon';
-import { sans, shadow, TAB_CLEARANCE, useUni, type UniPalette } from './theme';
+import { sans, shadow, space, TAB_CLEARANCE, useUni, type UniPalette } from './theme';
 
 const EASE = Easing.bezier(0.2, 0.9, 0.25, 1);
 
@@ -28,15 +28,22 @@ export function Card({ style, children, onPress, flat }: { style?: StyleProp<Vie
   const p = useUni();
   const base = [styles.card, { backgroundColor: p.elev, borderColor: p.hair }, !flat && shadow(p), style];
   if (!onPress) return <View style={base}>{children}</View>;
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [base, pressed && { opacity: 0.85 }]}>
-      {children}
-    </Pressable>
-  );
+  return <Tap onPress={onPress} style={base} pressedStyle={{ opacity: 0.85 }}>{children}</Tap>;
 }
 
-export function Tap({ style, ...rest }: PressableProps & { style?: StyleProp<ViewStyle> }) {
-  return <Pressable {...rest} style={({ pressed }) => [style, pressed && { opacity: 0.7, transform: [{ scale: 0.97 }] }]} />;
+/**
+ * Pressable with press feedback. The style is always a plain value: NativeWind's
+ * JSX transform drops function-form `style={({ pressed }) => ...}` on native,
+ * which strips padding, background and row layout from the element.
+ */
+export function Tap({ style, pressedStyle, onPressIn, onPressOut, ...rest }: PressableProps & { style?: StyleProp<ViewStyle>; pressedStyle?: ViewStyle }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <Pressable {...rest}
+      onPressIn={(e) => { setPressed(true); onPressIn?.(e); }}
+      onPressOut={(e) => { setPressed(false); onPressOut?.(e); }}
+      style={[style, pressed && (pressedStyle ?? { opacity: 0.7, transform: [{ scale: 0.97 }] })]} />
+  );
 }
 
 export function RoundButton({ icon, onPress, size = 42, label, badge }: { icon: IconName; onPress?: () => void; size?: number; label: string; badge?: number }) {
@@ -69,7 +76,7 @@ export function Screen({ children, tabs = true, refreshControl, scrollRef }: { c
   const insets = useSafeAreaInsets();
   return (
     <ScrollView ref={scrollRef} style={{ flex: 1, backgroundColor: p.bg }} refreshControl={refreshControl as any}
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: tabs ? TAB_CLEARANCE : insets.bottom + 40 }}
+      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: (tabs ? TAB_CLEARANCE : 40) + insets.bottom }}
       showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>
@@ -250,8 +257,8 @@ export function Empty({ icon, title, body, action, onAction }: { icon: IconName;
 export function usePalette(): UniPalette { return useUni(); }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 24, borderWidth: 1, padding: 14 },
+  card: { borderRadius: 24, borderWidth: 1, padding: space.card },
   badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  sectionRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.screenX, paddingTop: 8, paddingBottom: 16 },
+  sectionRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: space.screenX, marginTop: 24, marginBottom: 12 },
 });

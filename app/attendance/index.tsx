@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon, courseIcon } from '../../components/uni/Icon';
 import { Card, Empty, GrowBar, Legend, ListCard, Ring, Rise, RoundButton, Screen, SectionTitle, T, Tap, Well } from '../../components/uni/primitives';
-import { tint, useUni } from '../../components/uni/theme';
+import { tint, useUni, listRow } from '../../components/uni/theme';
 import { atRisk, overall } from '../../domains/academic/derive';
 import { useAcademic } from '../../domains/academic/hooks';
 import { heatmap, shortDate, verdict, type HeatLevel } from '../../domains/academic/logic';
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999 },
   stats: { flexDirection: 'row', gap: 8, marginTop: 18, paddingHorizontal: 20 },
   stat: { flex: 1, padding: 12, borderRadius: 18, borderWidth: 1 },
-  subject: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 14 },
+  subject: listRow,
   portal: { marginHorizontal: 20, marginTop: 16, padding: 16, gap: 12 },
   portalBtn: { alignItems: 'center', paddingVertical: 10, borderRadius: 12 },
   heatCard: { marginHorizontal: 20, marginTop: 16, padding: 16 },
