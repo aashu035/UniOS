@@ -75,11 +75,15 @@ export function Screen({ children, tabs = true, refreshControl, scrollRef }: { c
   const p = useUni();
   const insets = useSafeAreaInsets();
   return (
-    <ScrollView ref={scrollRef} style={{ flex: 1, backgroundColor: p.bg }} refreshControl={refreshControl as any}
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: (tabs ? TAB_CLEARANCE : 40) + insets.bottom }}
-      showsVerticalScrollIndicator={false}>
-      {children}
-    </ScrollView>
+    <View style={{ flex: 1, backgroundColor: p.bg }}>
+      <ScrollView ref={scrollRef} style={{ flex: 1 }} refreshControl={refreshControl as any}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: (tabs ? TAB_CLEARANCE : 40) + insets.bottom }}
+        showsVerticalScrollIndicator={false}>
+        {children}
+      </ScrollView>
+      {/* Edge-to-edge Android draws the status bar over the app; keep scrolled content from showing through it. */}
+      <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: p.glass }} />
+    </View>
   );
 }
 

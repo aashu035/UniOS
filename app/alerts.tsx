@@ -82,7 +82,7 @@ export default function Alerts() {
                 </View>
                 {nextDays.length ? (
                   <View style={{ flexDirection: 'row', gap: 6, paddingLeft: 48 }}>
-                    {nextDays.map((d) => <Chip key={d} label={d === s.today ? 'Today' : dayName(d)} color={p.primary} bg={p.primarySoft} />)}
+                    {nextDays.map((d) => <Chip key={d} label={d === s.today ? 'Today' : `${dayName(d)} ${Number(d.slice(8))}`} color={p.primary} bg={p.primarySoft} />)}
                   </View>
                 ) : null}
               </Card>
@@ -164,7 +164,7 @@ export default function Alerts() {
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: n.isRead ? 'transparent' : p.primary }} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <T w={n.isRead ? 600 : 800} size={13.5} numberOfLines={1}>{n.title}</T>
-                    <T c={p.muted} size={12} numberOfLines={2} style={{ marginTop: 1 }}>{n.message}</T>
+                    <T c={p.muted} size={12} numberOfLines={2} style={{ marginTop: 1 }}>{n.message.replace(/\d{4}-\d{2}-\d{2}/g, (d) => dayDate(d))}</T>
                   </View>
                   <T c={p.muted} size={11.5}>{n.createdAt ? shortDate(n.createdAt.slice(0, 10)) : ''}</T>
                 </Tap>
