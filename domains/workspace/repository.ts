@@ -417,7 +417,7 @@ export class WorkspaceRepository {
 
   // --- EDIT LIFECYCLE OPERATIONS ---
 
-  static async updateCourseIdentity(id: number, data: { name?: string; code?: string; credits?: number; color?: string; targetAttendance?: number; icon?: string }) {
+  static async updateCourseIdentity(id: number, data: { name?: string; code?: string; credits?: number; color?: string; targetAttendance?: number; icon?: string; notes?: string | null }) {
     return db.transaction(async (tx) => {
       const updates: any = {};
       if (data.name !== undefined) updates.name = data.name.trim();
@@ -426,6 +426,7 @@ export class WorkspaceRepository {
       if (data.color !== undefined) updates.color = data.color;
       if (data.targetAttendance !== undefined) updates.targetAttendance = data.targetAttendance;
       if (data.icon !== undefined) updates.icon = data.icon;
+      if (data.notes !== undefined) updates.notes = data.notes?.trim() || null;
 
       if (Object.keys(updates).length > 0) {
         return await tx.update(workspaces).set(updates).where(eq(workspaces.id, id)).returning().get();

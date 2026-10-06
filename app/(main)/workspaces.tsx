@@ -37,7 +37,7 @@ export default function Workspaces() {
         rightAction={
           <View style={styles.headerActions}>
             <IconButton icon={<Search size={24} color={colors.light.text} />} onPress={() => router.push('/search')} />
-            <IconButton icon={<Plus size={24} color={colors.light.text} />} onPress={() => router.push('/course/add')} accessibilityLabel="Add course" />
+            <IconButton icon={<Plus size={24} color={colors.light.text} />} onPress={() => router.push('/course/setup')} accessibilityLabel="Add course" />
           </View>
         }
       />
@@ -48,7 +48,7 @@ export default function Workspaces() {
             title="No courses yet"
             description="Add your first course to organize tasks, attendance, and resources."
             actionLabel="Add course"
-            onAction={() => router.push('/course/add')}
+            onAction={() => router.push('/course/setup')}
           />
         ) : activeWorkspaces.map((ws) => (
           <SubjectCard

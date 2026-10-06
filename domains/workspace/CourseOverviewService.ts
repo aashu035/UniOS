@@ -17,6 +17,7 @@ export type CourseOverview = {
     color: string;
     iconId: string | null;
     targetAttendance: number;
+    notes: string | null;
   };
 
   components: Array<{
@@ -126,6 +127,7 @@ export class CourseOverviewService {
         color: workspace.color || '#6C5CE7',
         iconId: workspace.icon,
         targetAttendance: workspace.targetAttendance ?? 75,
+        notes: workspace.notes ?? null,
       },
       components: enrichedComponents,
       attendance: {

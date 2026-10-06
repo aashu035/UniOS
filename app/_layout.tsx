@@ -233,7 +233,7 @@ function RootLayout() {
             <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
             <Stack.Screen name="search" options={{ presentation: 'modal' }} />
             <Stack.Screen name="course/add" options={{ presentation: 'formSheet', gestureEnabled: false }} />
-            <Stack.Screen name="course/edit" options={{ presentation: 'formSheet', gestureEnabled: false }} />
+            <Stack.Screen name="course/edit" />
             <Stack.Screen name="planner/add" options={{ presentation: 'formSheet' }} />
           </Stack>
         </PaperProvider>

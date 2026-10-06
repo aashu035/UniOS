@@ -19,7 +19,7 @@ export default function Semester() {
         <Text style={styles.title}>My Courses</Text>
         <IconButton 
           icon={<Plus size={24} color={colors.light.primary} />} 
-          onPress={() => router.push('/course/add')} 
+          onPress={() => router.push('/course/setup')} 
         />
       </View>
       <ScrollView contentContainerStyle={styles.container}>
