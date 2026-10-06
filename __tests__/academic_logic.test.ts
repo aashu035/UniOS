@@ -4,9 +4,13 @@ import {
 } from '../domains/academic/logic';
 
 describe('attendance counts', () => {
-  it('counts exempt as attended and off as not counted', () => {
+  it('counts leave in the total but not as attended, and off not at all (ordinance 9.2, Samarth)', () => {
     const c = countAttendance([{ status: 'present' }, { status: 'exempt' }, { status: 'absent' }, { status: 'cancelled' }, { status: 'holiday' }]);
-    expect(c).toEqual({ attended: 2, absent: 1, off: 2, total: 3, pct: 67 });
+    expect(c).toEqual({ attended: 1, absent: 1, leave: 1, off: 2, total: 3, pct: 33, pctWithLeave: 67 });
+  });
+  it('matches the portal: SC lab 6 present, 2 absent, 0 leave of 8 = 75%', () => {
+    const c = countAttendance([...Array(6).fill({ status: 'present' }), ...Array(2).fill({ status: 'absent' })]);
+    expect(c).toMatchObject({ attended: 6, total: 8, pct: 75 });
   });
   it('has no percentage before anything is marked', () => {
     expect(countAttendance([{ status: 'cancelled' }]).pct).toBeNull();
@@ -149,7 +153,7 @@ describe('files and overall attendance', () => {
   });
   it('sums attendance and picks the common target', () => {
     const c = (attended: number, absent: number, target: number) => ({ att: { attended, absent, off: 1, total: attended + absent }, target });
-    expect(overall([c(24, 9, 75), c(29, 4, 75), c(10, 0, 80)])).toEqual({ attended: 63, absent: 13, off: 3, total: 76, pct: 83, target: 75 });
+    expect(overall([c(24, 9, 75), c(29, 4, 75), c(10, 0, 80)])).toEqual({ attended: 63, absent: 13, leave: 0, off: 3, total: 76, pct: 83, target: 75 });
   });
 });
 
@@ -205,5 +209,31 @@ describe('timetable lanes', () => {
   });
   it('tolerates zero-length and inverted blocks', () => {
     expect(L([['z', 600, 600], ['bad', 700, 650]])).toEqual({ z: '0/1', bad: '0/1' });
+  });
+});
+
+describe('leave and condonation (ordinance 9.4, 9.5)', () => {
+  const { leaveNote, creditsFromHours, countAttendance: count } = require('../domains/academic/logic');
+  const att = (p: number, a: number, l: number) => count([...Array(p).fill({ status: 'present' }), ...Array(a).fill({ status: 'absent' }), ...Array(l).fill({ status: 'exempt' })]);
+  it('never calls a course safe because of unapproved leave', () => {
+    const n = leaveNote(att(14, 2, 4), 75); // 70% official, 90% if approved
+    expect(n.tone).toBe('warn');
+    expect(n.text).toBe('90% only if your 4 leaves are approved. Submit documents to the chairperson within 7 days of returning.');
+  });
+  it('explains how much condonation can cover', () => {
+    expect(leaveNote(att(68, 32, 0), 75)).toEqual({ text: '7% short. The chairperson can condone up to 10% with medical or duty documents.', tone: 'warn' });
+    expect(leaveNote(att(62, 38, 0), 75).tone).toBe('danger'); // 13% short: Dean territory
+    expect(leaveNote(att(55, 45, 0), 75).text).toMatch(/more than condonation can cover/);
+  });
+  it('says nothing when there is nothing to say, and notes leave above target', () => {
+    expect(leaveNote(att(0, 0, 0), 75)).toBeNull();
+    expect(leaveNote(att(8, 1, 0), 75)).toBeNull();
+    expect(leaveNote(att(8, 1, 1), 75)).toEqual({ text: "1 leave not counted. You're above 75% without them.", tone: 'muted' });
+  });
+  it('derives credits from the teaching scheme (clause 7.11)', () => {
+    expect(creditsFromHours({ theory: 3, tutorial: 0, lab: 2 })).toBe(4); // 3-0-2, e.g. Soft Computing
+    expect(creditsFromHours({ theory: 3, tutorial: 1, lab: 0 })).toBe(4);
+    expect(creditsFromHours({ theory: 2, tutorial: 0, lab: 4 })).toBe(4);
+    expect(creditsFromHours({ theory: 0, tutorial: 0, lab: 0 })).toBe(1);
   });
 });

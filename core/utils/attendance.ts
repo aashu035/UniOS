@@ -15,13 +15,14 @@ export function calculateAttendanceMetrics(records: any[]) {
     else if (record.status === 'holiday' || record.status === 'cancelled') cancelledOrHoliday++;
   });
 
-  // According to the original business rules:
+  // DCRUST B.Tech Ordinance 2024-25, clause 9, and the Samarth portal:
   // Present: conducted +1, attended +1
   // Absent: conducted +1, attended +0
-  // Exempt/Leave: conducted +1, attended +1 (counts as attended)
-  // Cancelled: conducted +0, attended +0 (excluded)
+  // Exempt/Leave: conducted +1, attended +0. Leave is condoned later on documents
+  //   (chairperson up to 10%, clause 9.4); it is not attendance.
+  // Cancelled/Holiday: conducted +0, attended +0 (excluded)
   const effectiveTotal = present + absent + exempt;
-  const effectivePresent = present + exempt;
+  const effectivePresent = present;
 
   const percentage = effectiveTotal > 0 ? (effectivePresent / effectiveTotal) * 100 : null;
 

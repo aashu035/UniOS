@@ -8,6 +8,8 @@ import { atRisk, overall } from '../../domains/academic/derive';
 import { useAcademic } from '../../domains/academic/hooks';
 import { heatmap, shortDate, verdict, type HeatLevel } from '../../domains/academic/logic';
 
+const PART_SHORT: Record<string, string> = { theory: 'Theory', lab: 'Lab', tutorial: 'Tut' };
+
 export default function AttendanceOverview() {
   const p = useUni();
   const router = useRouter();
@@ -74,7 +76,7 @@ export default function AttendanceOverview() {
             </View>
           </Rise>
           <Rise i={2} style={styles.stats}>
-            {([['Present', o.attended, p.success], ['Absent', o.absent, p.danger], ['Off · not counted', o.off, p.off]] as const).map(([l, v, c]) => (
+            {([['Present', o.attended, p.success], ['Absent', o.absent, p.danger], ['Leave', o.leave, p.primary], ['Off', o.off, p.off]] as const).map(([l, v, c]) => (
               <View key={l} style={[styles.stat, { backgroundColor: p.elev, borderColor: p.hair }]}>
                 <T w={700} c={c} size={11.5} numberOfLines={2}>{l}</T>
                 <T w={800} size={22} style={{ marginTop: 2 }}>{v}</T>
@@ -98,6 +100,14 @@ export default function AttendanceOverview() {
                       <View style={{ position: 'absolute', left: `${c.target}%`, top: -3, width: 2, height: 12, borderRadius: 1, backgroundColor: p.text, opacity: 0.55 }} />
                     </View>
                     <T w={700} c={tone(v.tone)} size={12}>{v.text}</T>
+                    {c.parts.length > 1 || c.att.leave ? (
+                      <T w={600} c={p.muted} size={11.5} numberOfLines={1}>
+                        {[
+                          ...(c.parts.length > 1 ? c.parts.map((x) => `${PART_SHORT[x.type] ?? x.type} ${x.att.pct === null ? '—' : `${x.att.pct}%`}`) : []),
+                          c.att.leave ? `${c.att.leave} leave not counted` : null,
+                        ].filter(Boolean).join(' · ')}
+                      </T>
+                    ) : null}
                   </View>
                 </Tap>
               ))}

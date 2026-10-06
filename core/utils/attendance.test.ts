@@ -13,7 +13,7 @@ import { calculateAttendanceMetrics } from './attendance';
  */
 describe('attendance utils — canonical metric engine', () => {
   describe('calculateAttendanceMetrics — business rules', () => {
-    it('counts exempt (Duty/Medical) as attended for percentage', () => {
+    it('counts exempt (Duty/Medical) in the total but not as attended (ordinance 9.2)', () => {
       // 3 present + 1 exempt + 2 absent = 6 conducted, 4 attended
       // Note: `present` is the RAW count of 'present' records; exempt is its own field.
       // The denominator (total) includes both, and the percentage is (present+exempt)/total.
@@ -29,7 +29,7 @@ describe('attendance utils — canonical metric engine', () => {
       expect(result.absent).toBe(2);
       expect(result.exempt).toBe(1);
       expect(result.total).toBe(6);
-      expect(result.percentage).toBe(67); // (3+1)/6 = 0.666... → 67
+      expect(result.percentage).toBe(50); // 3/6: leave is not attendance
     });
 
     it('exports present and exempt as separate fields (consumer adds them for "effective attended")', () => {
@@ -41,9 +41,8 @@ describe('attendance utils — canonical metric engine', () => {
         { status: 'exempt' },
         { status: 'absent' },
       ]);
-      const effectiveAttended = result.present + result.exempt;
-      expect(effectiveAttended).toBe(2);
-      expect(result.percentage).toBe(67); // (1+1)/3 = 0.666... → 67
+      expect(result.present + result.exempt).toBe(2); // what it would be if the leave is approved
+      expect(result.percentage).toBe(33); // 1/3: leave counts until condoned
     });
 
     it('excludes holiday and cancelled from the denominator', () => {
@@ -99,7 +98,6 @@ describe('attendance utils — canonical metric engine', () => {
       const result = calculateAttendanceMetrics([
         { status: 'present' },
         { status: 'present' },
-        { status: 'exempt' },
       ]);
       expect(result.percentage).toBe(100);
       expect(result.hasData).toBe(true);

@@ -2,26 +2,60 @@
  * Pure derivations behind the redesigned screens. No database or React here, so
  * everything is unit-tested in `__tests__/academic_logic.test.ts`.
  *
- * Attendance semantics match `core/utils/attendance.ts`: present and exempt count
- * as attended, absent counts against you, cancelled/holiday ("Off") is not counted.
+ * Attendance semantics follow the DCRUST B.Tech Ordinance 2024-25, clause 9 and the
+ * Samarth portal: Present % = present / (present + absent + leave). Leave (duty or
+ * medical) is NOT attendance; it can only be condoned later with documents
+ * (chairperson up to 10%, Dean a further 5%). "Off" (cancelled/holiday) is not counted.
  */
 
 export type AttStatus = 'present' | 'absent' | 'exempt' | 'cancelled' | 'holiday';
 export type Tone = 'danger' | 'warn' | 'success' | 'muted';
 
-export interface AttCounts { attended: number; absent: number; off: number; total: number; pct: number | null }
+/** `attended` is present only; `total` = present + absent + leave (classes held). */
+export interface AttCounts { attended: number; absent: number; leave: number; off: number; total: number; pct: number | null; pctWithLeave: number | null }
 
 export function countAttendance(records: Array<{ status: string }>): AttCounts {
-  let present = 0, absent = 0, exempt = 0, off = 0;
+  let present = 0, absent = 0, leave = 0, off = 0;
   for (const r of records) {
     if (r.status === 'present') present++;
     else if (r.status === 'absent') absent++;
-    else if (r.status === 'exempt') exempt++;
+    else if (r.status === 'exempt') leave++;
     else if (r.status === 'cancelled' || r.status === 'holiday') off++;
   }
-  const attended = present + exempt;
-  const total = attended + absent;
-  return { attended, absent, off, total, pct: total > 0 ? Math.round((attended / total) * 100) : null };
+  const total = present + absent + leave;
+  return {
+    attended: present, absent, leave, off, total,
+    pct: total > 0 ? Math.round((present / total) * 100) : null,
+    pctWithLeave: total > 0 ? Math.round(((present + leave) / total) * 100) : null,
+  };
+}
+
+/** Condonation the ordinance allows on documents: chairperson 10% (clause 9.4), Dean a further 5% (9.5). */
+export const CONDONE_CHAIR = 10;
+export const CONDONE_DEAN = 5;
+
+export interface LeaveNote { text: string; tone: Tone }
+
+/**
+ * What leave and condonation mean for a course, or null when there's nothing to say.
+ * Never presents leave as safe: it only counts once the department approves it.
+ */
+export function leaveNote(a: { attended: number; leave: number; total: number; pct: number | null; pctWithLeave: number | null }, target: number): LeaveNote | null {
+  if (a.pct === null) return null;
+  const leaves = `${a.leave} leave${a.leave === 1 ? '' : 's'}`;
+  if (a.pct >= target) return a.leave ? { text: `${leaves} not counted. You're above ${target}% without them.`, tone: 'muted' } : null;
+  const shortBy = target - a.pct;
+  if (a.leave && (a.pctWithLeave ?? 0) >= target) {
+    return { text: `${a.pctWithLeave}% only if your ${leaves} ${a.leave === 1 ? 'is' : 'are'} approved. Submit documents to the chairperson within 7 days of returning.`, tone: 'warn' };
+  }
+  if (shortBy <= CONDONE_CHAIR) return { text: `${shortBy}% short. The chairperson can condone up to ${CONDONE_CHAIR}% with medical or duty documents.`, tone: 'warn' };
+  if (shortBy <= CONDONE_CHAIR + CONDONE_DEAN) return { text: `${shortBy}% short. Beyond the chairperson's ${CONDONE_CHAIR}%; only the Dean can allow ${CONDONE_DEAN}% more in serious cases.`, tone: 'danger' };
+  return { text: `${shortBy}% short, more than condonation can cover. Detention risk in this subject.`, tone: 'danger' };
+}
+
+/** Credits from the weekly teaching scheme: 1 per hour of lecture or tutorial, 1 per 2 hours of practical (clause 7.11). */
+export function creditsFromHours(h: { theory: number; tutorial: number; lab: number }): number {
+  return Math.max(1, Math.round(h.theory + h.tutorial + h.lab / 2));
 }
 
 /** Classes you can still miss and stay at or above `target`% (0 when already below). */

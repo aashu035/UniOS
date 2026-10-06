@@ -50,8 +50,10 @@ describe('academic snapshot', () => {
     expect(s.courses.map((c: any) => c.name)).toEqual(['Operating Systems', 'Computer Networks']);
     const os = s.courseById.get(1);
     expect(os.short).toBe('OS');
-    expect(os.att).toEqual({ attended: 24, absent: 9, off: 1, total: 33, pct: 73 });
+    expect(os.att).toEqual({ attended: 24, absent: 9, leave: 0, off: 1, total: 33, pct: 73, pctWithLeave: 73 });
     expect(s.tasks.map((t: any) => t.title)).not.toContain('Old course task');
+    expect(os.parts).toEqual([{ type: 'theory', componentIds: [1], att: os.att }]);
+    expect(s.semester).toMatchObject({ id: 1, startDate: '2026-07-01' });
   });
 
   it('keeps cancelled classes and the original slot of moved ones', async () => {
@@ -95,8 +97,8 @@ describe('academic snapshot', () => {
     const os = s.occurrences.find((o: any) => o.date === TODAY && o.workspaceId === 1);
     const att = async () => (await loadSnapshot({ today: TODAY })).courseById.get(1).att;
 
-    await setOccurrenceStatus(os, 'exempt'); // leave counts as attended, same as present
-    expect(await att()).toMatchObject({ attended: 25, total: 34, pct: 74 });
+    await setOccurrenceStatus(os, 'exempt'); // leave is held but not attended until approved
+    expect(await att()).toMatchObject({ attended: 24, leave: 1, total: 34, pct: 71, pctWithLeave: 74 });
 
     await setOccurrenceStatus(os, 'cancelled'); // marked in advance, class didn't happen
     expect(await att()).toMatchObject({ attended: 24, total: 33, off: 2, pct: 73 });

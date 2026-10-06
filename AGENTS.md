@@ -41,9 +41,13 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 
 ## Rules that bite
 
-- **Attendance semantics.**
-  - `present` and `exempt` (leave) count as attended. `absent` counts against.
+- **Attendance semantics** follow the DCRUST B.Tech Ordinance 2024-25, clause 9, and match the Samarth portal.
+  - The rule is 75% of all classes held in a subject: lectures, tutorials and practicals combined (9.2). The per-part breakdown is informational.
+  - % = present ÷ (present + absent + leave).
+  - `exempt` (leave) is **not** attended. It counts as held, and it can only be condoned later on documents: the chairperson up to 10% (9.4), the Dean a further 5% (9.5). Never present leave as safe; see `leaveNote` in `logic.ts`.
   - `cancelled` and `holiday` mean "Off": not counted at all.
+  - A 2-hour lab is **one** class (as on the portal).
+  - Credits = L + T + P÷2 (7.11), via `creditsFromHours`.
   - Use `setOccurrenceStatus` / `markOccurrence` in `domains/academic/actions.ts`. Passing `null` removes a mark.
 - **Occurrence ids.** Regular classes use `rec_<recurringScheduleId>_<YYYY-MM-DD>`; extra classes use `ex_<id>`. `AttendanceRepository.markAttendance` rejects an id that isn't in `CalendarService.getEffectiveSchedule` for that date.
 - **The drizzle driver is synchronous.** `.all()` returns an array, so never chain `.then` on it.

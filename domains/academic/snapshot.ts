@@ -26,7 +26,11 @@ export interface Course {
   componentIds: number[];
   componentTypes: string[];
   att: AttCounts;
+  /** Counts per part (theory / lab / tutorial). The 75% rule applies to `att`, the combined count. */
+  parts: CoursePart[];
 }
+
+export interface CoursePart { type: string; componentIds: number[]; att: AttCounts }
 
 export interface Occ extends EffectiveOccurrence {
   status: AttStatus | null;
@@ -56,7 +60,7 @@ export interface Snapshot {
   today: string;
   from: string;
   to: string;
-  semester: { id: number; name: string | null; number: number } | null;
+  semester: { id: number; name: string | null; number: number; startDate: string | null } | null;
   courses: Course[];
   courseById: Map<number, Course>;
   occurrences: Occ[];
@@ -149,6 +153,10 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
       componentIds: comps.map((c) => c.id),
       componentTypes: comps.map((c) => c.type),
       att: countAttendance(records.filter((r) => r.workspaceId === w.id)),
+      parts: [...new Set(comps.map((c) => c.type))].map((type) => {
+        const ids = comps.filter((c) => c.type === type).map((c) => c.id);
+        return { type, componentIds: ids, att: countAttendance(records.filter((r) => ids.includes(r.componentId))) };
+      }),
     };
   });
   const courseById = new Map(courses.map((c) => [c.id, c]));
@@ -196,7 +204,7 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
   const scopeIds = new Set(courses.map((c) => c.id));
   return {
     today, from, to,
-    semester: active ? { id: active.id, name: active.name, number: active.number } : null,
+    semester: active ? { id: active.id, name: active.name, number: active.number, startDate: normalizeDate(active.startDate) } : null,
     courses,
     courseById,
     occurrences,

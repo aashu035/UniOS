@@ -9,7 +9,7 @@ export type Mark = 'present' | 'absent' | 'off';
 /** "Off" is stored as `cancelled`: the class wasn't held and isn't counted. */
 export const markToStatus = (m: Mark) => (m === 'off' ? 'cancelled' : m) as 'present' | 'absent' | 'cancelled';
 export const statusToMark = (s: string | null | undefined): Mark | null =>
-  s === 'present' || s === 'exempt' ? 'present' : s === 'absent' ? 'absent' : s === 'cancelled' || s === 'holiday' ? 'off' : null;
+  s === 'present' ? 'present' : s === 'absent' || s === 'exempt' ? 'absent' : s === 'cancelled' || s === 'holiday' ? 'off' : null;
 
 /** Mark one class, or clear its mark with `null`. */
 export async function markOccurrence(o: Occ, mark: Mark | null): Promise<void> {

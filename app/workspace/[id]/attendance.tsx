@@ -160,14 +160,14 @@ export default function WorkspaceAttendance() {
       recoveryText = "Mark attendance to start tracking";
     } else if (finalPercentage !== null) {
       if (finalPercentage >= targetAttendance) {
-        const attendedEffective = displayAttended + displayExempt;
+        const attendedEffective = displayAttended; // leave is not attendance (ordinance 9.2)
         const denomEffective = viewModel.summary.denominator;
         const margin = Math.floor((attendedEffective * 100 - targetAttendance * denomEffective) / targetAttendance);
         recoveryText = margin > 0 ? `You can miss ${margin} class${margin !== 1 ? 'es' : ''} and stay above ${targetAttendance}%` : `You are exactly at target (${targetAttendance}%)`;
       } else {
         const t = targetAttendance / 100;
         const denomEffective = viewModel.summary.denominator;
-        const attendedEffective = displayAttended + displayExempt;
+        const attendedEffective = displayAttended; // leave is not attendance (ordinance 9.2)
         const required = Math.ceil((t * denomEffective - attendedEffective) / (1 - t));
         recoveryText = `Attend the next ${required} class${required !== 1 ? 'es' : ''} to reach ${targetAttendance}%`;
       }

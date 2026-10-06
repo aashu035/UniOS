@@ -106,10 +106,11 @@ export function fileKind(f: { type: string | null; uri: string | null }): FileKi
 export function overall(courses: Course[]) {
   const attended = courses.reduce((a, c) => a + c.att.attended, 0);
   const absent = courses.reduce((a, c) => a + c.att.absent, 0);
+  const leave = courses.reduce((a, c) => a + (c.att.leave ?? 0), 0);
   const off = courses.reduce((a, c) => a + c.att.off, 0);
-  const total = attended + absent;
+  const total = attended + absent + leave;
   const counts = new Map<number, number>();
   for (const c of courses) counts.set(c.target, (counts.get(c.target) ?? 0) + 1);
   const target = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 75;
-  return { attended, absent, off, total, pct: total > 0 ? Math.round((attended / total) * 100) : null, target };
+  return { attended, absent, leave, off, total, pct: total > 0 ? Math.round((attended / total) * 100) : null, target };
 }

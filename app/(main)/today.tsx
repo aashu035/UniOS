@@ -219,9 +219,11 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
 
   const isNow = target === live.now;
   const att = course?.att ?? { attended: 0, total: 0 };
+  // Undo this class's own mark (leave counts like absent) to show the effect of changing it.
   const base = current
-    ? { attended: att.attended - (current === 'present' ? 1 : 0), total: att.total - (current === 'off' ? 0 : 1) }
+    ? { attended: att.attended - (target.status === 'present' ? 1 : 0), total: att.total - (current === 'off' ? 0 : 1) }
     : att;
+  const onLeave = target.status === 'exempt';
   const msg = markMessage(course?.short ?? target.workspaceName, base, course?.target ?? 75, current);
   const kind = target.componentType === 'lab' ? 'Lab' : target.componentType === 'tutorial' ? 'Tutorial' : 'Theory';
 
@@ -230,7 +232,7 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
     setBusy(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
-      await markOccurrence(target, current === m ? null : m);
+      await markOccurrence(target, current === m && !onLeave ? null : m);
       onChanged();
     } catch (e: any) {
       Alert.alert('Could not mark attendance', e?.message ?? 'Please try again.');
@@ -246,7 +248,7 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
           <View style={[styles.liveDot, !isNow && { backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'transparent' }]} />
           <T w={700} c="#fff" size={12} style={{ letterSpacing: 0.4 }}>{isNow ? 'NOW' : 'ENDED'} · {clock(target.startTime, false)}–{clock(target.endTime, false)}</T>
         </View>
-        <T style={[mono(700), { fontSize: 13, color: 'rgba(255,255,255,0.9)' }]}>{isNow ? `${live.minutesLeft} min left` : current ? 'Marked' : 'Not marked'}</T>
+        <T style={[mono(700), { fontSize: 13, color: 'rgba(255,255,255,0.9)' }]}>{isNow ? `${live.minutesLeft} min left` : onLeave ? 'On leave' : current ? 'Marked' : 'Not marked'}</T>
       </View>
       <View>
         <Tap onPress={() => router.push(`/course/${target.workspaceId}` as any)}>
@@ -259,7 +261,7 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
       {isNow ? <GrowBar pct={live.progress * 100} color="#fff" track="rgba(255,255,255,0.22)" height={6} /> : null}
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {marks.map(([k, l, icon, col]) => {
-          const on = current === k;
+          const on = current === k && !onLeave;
           return (
             <Tap key={k} onPress={() => mark(k)} disabled={busy} accessibilityRole="button" accessibilityState={{ selected: on }}
               style={[styles.markBtn, { backgroundColor: on ? '#FFFFFF' : 'rgba(255,255,255,0.16)' }]}>

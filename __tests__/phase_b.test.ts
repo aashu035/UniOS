@@ -181,9 +181,9 @@ describe('Phase B Adversarial Verification Suite', () => {
 
   // 8. Explicitly resolve the Total vs Exempt attendance semantics contradiction
   it('8. Explicitly resolve the Total vs Exempt attendance semantics contradiction', () => {
-    // Formula:
+    // Formula (DCRUST ordinance 2024-25 clause 9, matches the Samarth portal):
     // denominator = present + absent + exempt
-    // numerator = present + exempt
+    // numerator = present (leave is condoned later on documents, not attendance)
     // percentage = numerator / denominator * 100
     
     const records = [
@@ -198,7 +198,7 @@ describe('Phase B Adversarial Verification Suite', () => {
     expect(result.absent).toBe(1);
     expect(result.exempt).toBe(2);
     expect(result.total).toBe(7); // denominator: 4 present + 1 absent + 2 exempt
-    expect(result.percentage).toBe(Math.round((6 / 7) * 100)); // 86%
+    expect(result.percentage).toBe(Math.round((4 / 7) * 100)); // 57%
   });
 
 });

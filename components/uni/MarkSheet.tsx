@@ -12,7 +12,7 @@ type Option = { status: AttStatus; icon: IconName; label: string; hint: string; 
 const OPTIONS: Option[] = [
   { status: 'present', icon: 'check', label: 'Present', hint: 'Counts as attended', tone: 'success' },
   { status: 'absent', icon: 'x', label: 'Absent', hint: 'Counts against your percentage', tone: 'danger' },
-  { status: 'exempt', icon: 'plane', label: 'On leave', hint: 'Duty or medical leave. Counts as attended', tone: 'primary' },
+  { status: 'exempt', icon: 'plane', label: 'On leave', hint: 'Duty or medical. Counts as absent until the department approves it', tone: 'primary' },
   { status: 'cancelled', icon: 'ban', label: "Class didn't happen", hint: 'Cancelled, holiday or no teacher. Not counted', tone: 'off' },
 ];
 

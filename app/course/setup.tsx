@@ -10,6 +10,7 @@ import { db } from '../../core/db/client';
 import { workspaces } from '../../domains/workspace/model';
 import { WorkspaceRepository } from '../../domains/workspace/repository';
 import { DURATION, paint, prune, sessionsFor, slotSummary, type Part, type Slots } from '../../domains/academic/setup';
+import { creditsFromHours, minutesOf } from '../../domains/academic/logic';
 
 const QUESTIONS = ['What’s the course called?', 'What does it include?', 'When does it meet? Tap the slots.', 'What attendance do you want to stay above?'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -29,7 +30,7 @@ export default function CourseSetup() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [faculty, setFaculty] = useState('');
-  const [credits, setCredits] = useState(3);
+  const [creditsPick, setCredits] = useState<number | null>(null); // null = follow the timetable
   const [extra, setExtra] = useState<'lab' | 'tutorial' | null>(null);
   const [brush, setBrush] = useState<Part>('theory');
   const [slots, setSlots] = useState<Slots>({});
@@ -38,7 +39,12 @@ export default function CourseSetup() {
 
   const parts: Part[] = ['theory', ...(extra ? [extra] : [])];
   const partSummary = parts.map((x) => PART[x].label).join(' + ');
-  const answers = [[name.trim(), code.trim(), `${credits} credit${credits === 1 ? '' : 's'}`].filter(Boolean).join(' · '), partSummary, slotSummary(slots), `${target}%`];
+  const answers = [[name.trim(), code.trim()].filter(Boolean).join(' · '), partSummary, slotSummary(slots), `${target}%`];
+  // Weekly hours per part from the painted grid; credits = L + T + P/2 (ordinance clause 7.11).
+  const hours = (type: Part) => sessionsFor(slots, type).reduce((m, x) => m + (minutesOf(x.endTime) - minutesOf(x.startTime)) / 60, 0);
+  const weekly = { theory: hours('theory'), tutorial: hours('tutorial'), lab: hours('lab') };
+  const suggested = creditsFromHours(weekly);
+  const credits = creditsPick ?? suggested;
   const canContinue = step !== 1 || name.trim().length > 0;
 
   const create = async () => {
@@ -106,15 +112,6 @@ export default function CourseSetup() {
                 style={[styles.small, sans(600), { backgroundColor: p.elev, borderColor: p.hair, color: p.text }]} accessibilityLabel="Course code" />
               <TextInput value={faculty} onChangeText={setFaculty} placeholder="Faculty (optional)" placeholderTextColor={p.muted}
                 style={[styles.small, sans(600), { backgroundColor: p.elev, borderColor: p.hair, color: p.text }]} accessibilityLabel="Faculty name" />
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <T w={700} c={p.muted} size={13} style={{ marginRight: 4 }}>Credits</T>
-              {CREDIT_OPTIONS.map((n) => (
-                <Tap key={n} onPress={() => setCredits(n)} accessibilityRole="button" accessibilityLabel={`${n} credits`} accessibilityState={{ selected: credits === n }}
-                  style={[styles.credit, { backgroundColor: credits === n ? p.primary : p.elev, borderColor: credits === n ? p.primary : p.hair }]}>
-                  <T w={800} c={credits === n ? '#fff' : p.text} size={14}>{n}</T>
-                </Tap>
-              ))}
             </View>
             <Tap onPress={() => router.push('/course/ai-setup')} style={styles.hint}>
               <Icon name="scan-line" size={15} color={p.muted} />
@@ -186,6 +183,22 @@ export default function CourseSetup() {
                   <T w={800} c={target === v ? '#fff' : p.text} size={20}>{v}%</T>
                 </Tap>
               ))}
+            </View>
+            <View style={{ gap: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <T w={700} c={p.muted} size={13} style={{ marginRight: 4 }}>Credits</T>
+                {CREDIT_OPTIONS.map((n) => (
+                  <Tap key={n} onPress={() => setCredits(n)} accessibilityRole="button" accessibilityLabel={`${n} credits`} accessibilityState={{ selected: credits === n }}
+                    style={[styles.credit, { backgroundColor: credits === n ? p.primary : p.elev, borderColor: credits === n ? p.primary : p.hair }]}>
+                    <T w={800} c={credits === n ? '#fff' : p.text} size={14}>{n}</T>
+                  </Tap>
+                ))}
+              </View>
+              <T c={p.muted} size={12}>
+                {weekly.theory + weekly.tutorial + weekly.lab > 0
+                  ? `From your timetable: ${[weekly.theory && `${weekly.theory}h lecture`, weekly.tutorial && `${weekly.tutorial}h tutorial`, weekly.lab && `${weekly.lab}h lab`].filter(Boolean).join(' + ')} a week = ${suggested} credits (lab hours count half).${creditsPick !== null && creditsPick !== suggested ? ' You changed it.' : ''}`
+                  : 'Check your scheme of studies if unsure.'}
+              </T>
             </View>
             <Card flat style={{ gap: 8 }}>
               {[['Course', name.trim()], ['Code', code.trim() || '—'], ['Credits', String(credits)], ['Parts', partSummary], ['Weekly', slotSummary(slots)], ['Faculty', faculty.trim() || '—']].map(([k, val]) => (
