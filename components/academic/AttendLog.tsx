@@ -5,7 +5,7 @@ import { LEAVE_COLOR, MarkSheet } from '../uni/MarkSheet';
 import { Card, T, Tap } from '../uni/primitives';
 import { tint, useUni } from '../uni/theme';
 import { setOccurrenceStatus } from '../../domains/academic/actions';
-import { addDays, clock, countAttendance, dayName, leaveNote, minutesOf, mondayOf, shortDate, verdict, type AttCounts, type AttStatus } from '../../domains/academic/logic';
+import { addDays, clock, countAttendance, pctOf, projectChange, dayName, leaveNote, minutesOf, mondayOf, shortDate, verdict, type AttCounts, type AttStatus } from '../../domains/academic/logic';
 import type { Course, Occ, Snapshot } from '../../domains/academic/snapshot';
 
 /** One class in the log: scheduled (maybe unmarked) or a stored mark. */
@@ -58,7 +58,6 @@ export function AttendLog({ data, course: c, history, nowMin, onChanged, toast }
   const v = verdict(c.att.attended, c.att.total, c.target);
   const vc = v.tone === 'danger' ? p.danger : v.tone === 'warn' ? p.warn : v.tone === 'success' ? p.success : p.muted;
   const W = (n: number) => `${att.total ? (n / att.total) * 100 : 0}%` as const;
-  const pctOf = (a: number, t: number) => (t ? Math.round((a / t) * 100) : null);
   const unmarkedCount = inPart.filter((x) => !x.status && ended(x)).length;
   const offCount = inPart.filter((x) => off(x.status)).length;
   const note = part === 'all' ? leaveNote(c.att, c.target) : null;
@@ -70,12 +69,7 @@ export function AttendLog({ data, course: c, history, nowMin, onChanged, toast }
   const todayLabel = today ? (today.endTime && minutesOf(today.endTime) <= nowMin ? 'JUST ENDED · NOT MARKED' : 'NOW · NOT MARKED') : '';
 
   // What the course would be at if this class had `status` (combined count, as the sheet shows).
-  const project = (x: Session) => (status: AttStatus) => {
-    let a = c.att.attended, t = c.att.total;
-    if (x.status === 'present') { a--; t--; } else if (x.status === 'absent' || x.status === 'exempt') t--;
-    if (status === 'present') { a++; t++; } else if (status === 'absent' || status === 'exempt') t++;
-    return pctOf(a, t);
-  };
+  const project = (x: Session) => (status: AttStatus) => projectChange(c.att, x.status, status);
 
   const LABEL = (s: AttStatus | null) => (s === 'present' ? 'Present' : s === 'exempt' ? 'On leave' : s === 'absent' ? 'Absent' : off(s) ? 'Off' : 'Not marked');
   const save = async (x: Session, status: AttStatus | null, n: string | null) => {

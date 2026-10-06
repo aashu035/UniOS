@@ -484,7 +484,7 @@ describe('Migration 0012: Attendance Identity Upgrade', () => {
       expect(metrics.present).toBe(2);
       expect(metrics.absent).toBe(1);
       expect(metrics.total).toBe(3);
-      expect(metrics.percentage).toBe(67); // 2/3 * 100 rounded
+      expect(metrics.percentage).toBe(66); // 2/3 * 100 rounded down
     });
   });
 });

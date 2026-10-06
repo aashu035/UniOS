@@ -1,5 +1,5 @@
 import type { IconName } from '../../components/uni/Icon';
-import { addDays, clock, daysBetween, isDone, liveState, minutesOf, mustAttend, relDue } from './logic';
+import { addDays, clock, daysBetween, isDone, liveState, minutesOf, mustAttend, relDue, pctOf } from './logic';
 import type { Course, Occ, Snapshot, TaskRow } from './snapshot';
 
 export type AlertTone = 'danger' | 'warn' | 'primary' | 'success';
@@ -112,5 +112,5 @@ export function overall(courses: Course[]) {
   const counts = new Map<number, number>();
   for (const c of courses) counts.set(c.target, (counts.get(c.target) ?? 0) + 1);
   const target = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 75;
-  return { attended, absent, leave, off, total, pct: total > 0 ? Math.round((attended / total) * 100) : null, target };
+  return { attended, absent, leave, off, total, pct: pctOf(attended, total), target };
 }

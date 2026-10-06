@@ -65,11 +65,31 @@ export function parseLegend(text: string): CourseInfo[] {
 /** The group family from the student's own group: "CSE-2" → "CSE". */
 export const groupPrefix = (group: string) => (/^([A-Z]+)-?\d+$/i.exec(group.trim())?.[1] ?? '').toUpperCase();
 
-const tokenize = (text: string) => text.replace(/[\n,;]+/g, ' ').split(/\s+/).map((t) => t.trim()).filter(Boolean);
+const tokenize = (text: string) => text.replace(/[\n,;]+/g, ' ').split(/\s+/).map((t) => t.trim().toUpperCase()).filter(Boolean);
+
+/**
+ * Repair what OCR and hurried typing do to a cell: "CSE- 2" → "CSE-2",
+ * "CSE 2" → "CSE-2", "JCB 213" → "JCB-213". Separators like "&" and "/" go.
+ */
+function repair(toks: string[], ctx: { courses: Set<string>; groupPrefix: string }): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    const n = toks[i + 1];
+    if (/^(&|AND|\/|\+|-)$/.test(t)) continue;
+    if (n && /-$/.test(t) && /^\d{1,4}[A-Z]?$/.test(n)) { out.push(t + n); i++; continue; }
+    if (n && /^[A-Z]{2,5}$/.test(t) && /^\d{1,4}[A-Z]?$/.test(n)) {
+      const isGroupWord = t === ctx.groupPrefix;
+      if (isGroupWord || (/\d{2,}/.test(n) && !ctx.courses.has(t))) { out.push(`${t}-${n}`); i++; continue; }
+    }
+    out.push(t);
+  }
+  return out;
+}
 
 export function parseCell(text: string, ctx: { courses: Set<string>; groupPrefix: string }): ParsedCell {
   const cell: ParsedCell = { course: null, type: null, groups: [], venue: null, faculty: [], unknown: [] };
-  const toks = tokenize(text);
+  const toks = repair(tokenize(text), ctx);
   const isGroup = (t: string) => !!ctx.groupPrefix && new RegExp(`^${ctx.groupPrefix}-?\\d+$`, 'i').test(t);
   for (let i = 0; i < toks.length; i++) {
     const t = toks[i];
@@ -90,7 +110,12 @@ export function parseCell(text: string, ctx: { courses: Set<string>; groupPrefix
       i++;
       continue;
     }
-    if (isGroup(t)) { cell.groups.push(up.replace(/^([A-Z]+)-?(\d+)$/, '$1-$2')); continue; }
+    if (isGroup(t)) {
+      cell.groups.push(up.replace(/^([A-Z]+)-?(\d+)$/, '$1-$2'));
+      // "CSE-1, 2": bare numbers right after a group are more groups of the same family.
+      while (toks[i + 1] && /^\d$/.test(toks[i + 1])) cell.groups.push(`${ctx.groupPrefix}-${toks[++i]}`);
+      continue;
+    }
     if (VENUE.test(t) && /\d{2,}/.test(t)) { if (!cell.venue) cell.venue = up.replace(/^([A-Z]+)(\d)/, '$1-$2'); else cell.unknown.push(t); continue; }
     if (/^[A-Z]{1,4}-?\d{1,2}$/i.test(t) || /^[A-Z]{2,3}$/.test(t)) {
       if (!cell.course && ctx.courses.has(up)) { cell.unknown.push(t); continue; } // a bare course code with no L/T/Lab
@@ -118,14 +143,16 @@ export function resolveTimetable(
     const p = parseCell(c.text, ctx);
     if (!p.course || !p.type) continue; // empty, slot codes only, or a free line of a split slot
     if (p.groups.length && !p.groups.includes(mine)) continue; // another group's class
-    const from = opts.periods[c.fromPeriod - 1];
-    const to = opts.periods[c.toPeriod - 1];
+    const from = periodAt(opts.periods, c.fromPeriod);
+    const to = periodAt(opts.periods, c.toPeriod);
     if (!from || !to) continue;
+    const beyond = c.toPeriod > opts.periods.length || c.fromPeriod < 1;
     const info = legend.get(p.course);
     const doubt = [
       ctx.courses.size && !info ? `"${p.course}" is not in the legend` : null,
       p.unknown.length ? `Couldn't place: ${p.unknown.join(' ')}` : null,
       !p.groups.length && p.type === 'lab' ? 'Lab with no group named: assumed for everyone' : null,
+      beyond ? `Goes past the last period on the timetable (${opts.periods.length}); check the end time` : null,
     ].filter(Boolean).join('. ');
     out.push({
       day: c.day, start: from.start, end: to.end, course: p.course, type: p.type, venue: p.venue, faculty: p.faculty,
@@ -145,6 +172,15 @@ export function resolveTimetable(
     merged.push(c);
   }
   return merged;
+}
+
+/** Period n's times; past the end, continue hour by hour so a late class is kept (and flagged), not lost. */
+function periodAt(periods: Period[], n: number): Period | null {
+  if (n >= 1 && n <= periods.length) return periods[n - 1];
+  const last = periods[periods.length - 1];
+  if (!last || n < 1) return null;
+  const shift = (t: string) => { const m = minutes(t) + (n - periods.length) * 60; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+  return { start: shift(last.start), end: shift(last.end) };
 }
 
 const minutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };

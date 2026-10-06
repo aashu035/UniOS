@@ -42,8 +42,21 @@ export class AttendanceRepository {
     const { CalendarService } = require('../calendar/service');
     // Security: Validate the occurrence actually exists for this component and date
     const eligible = await CalendarService.getEffectiveSchedule(date, date);
-    const validOccurrence = eligible.find((e: any) => e.id === occurrenceKey && e.componentId === componentId);
-    
+    let validOccurrence = eligible.find((e: any) => e.id === occurrenceKey && e.componentId === componentId);
+
+    // A regular class cancelled for that day is dropped from the schedule but is still a
+    // real slot; it can carry a mark (usually Off), e.g. when undoing "Remove mark".
+    if (!validOccurrence) {
+      const m = /^rec_(\d+)_(\d{4}-\d{2}-\d{2})$/.exec(occurrenceKey);
+      if (m && m[2] === date) {
+        const { recurringSchedules, scheduleExceptions } = require('../calendar/model');
+        const rec = await db.select().from(recurringSchedules).where(eq(recurringSchedules.id, Number(m[1]))).get();
+        const cancelled = rec && rec.componentId === componentId && await db.select().from(scheduleExceptions)
+          .where(and(eq(scheduleExceptions.recurringScheduleId, rec.id), eq(scheduleExceptions.specificDate, date), eq(scheduleExceptions.action, 'cancel'))).get();
+        if (cancelled) validOccurrence = { componentId, date };
+      }
+    }
+
     if (!validOccurrence) {
       throw new Error(`SECURITY_VIOLATION: Occurrence ${occurrenceKey} is not valid for component ${componentId} on ${date}`);
     }

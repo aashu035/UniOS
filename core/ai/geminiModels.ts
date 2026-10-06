@@ -15,7 +15,7 @@ let remembered: string | null = null;
 export const rememberedModel = () => remembered;
 export const resetRememberedModel = () => { remembered = null; };
 
-const text = (e: unknown) => (e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e ?? '')) || '';
+const text = (e: unknown): string => (e instanceof Error ? e.message : typeof e === 'string' ? e : e && typeof e === 'object' && typeof (e as any).message === 'string' ? (e as any).message : '') || '';
 const status = (e: unknown): number | undefined => (e && typeof e === 'object' && 'status' in e ? Number((e as any).status) : undefined);
 
 /** The model name is unknown, retired or closed to this key: try the next one. */

@@ -16,8 +16,12 @@ const DAY: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesda
 const DURATION: Record<Part, number> = { theory: 60, tutorial: 60, lab: 120 };
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** "01:00 PM" / "1:00pm" / "13:00" → "13:00"; null when unreadable. The app stores 24-hour times. */
-export function to24h(t: string): string | null {
+/**
+ * "01:00 PM" / "1:00pm" / "13:00" → "13:00"; null when unreadable. The app stores
+ * 24-hour times. With `collegeDay`, a bare 1:00–7:59 means afternoon, as on
+ * printed Indian timetables ("1:00-1:55" is after lunch, never 1 AM).
+ */
+export function to24h(t: string, collegeDay = false): string | null {
   const m = /^\s*(\d{1,2})[:.](\d{2})\s*([AaPp])?\.?[Mm]?\.?\s*$/.exec(t ?? '');
   if (!m) return null;
   let h = Number(m[1]);
@@ -26,6 +30,7 @@ export function to24h(t: string): string | null {
   if (min > 59 || h > 23 || (ap && (h < 1 || h > 12))) return null;
   if (ap === 'p' && h !== 12) h += 12;
   if (ap === 'a' && h === 12) h = 0;
+  if (!ap && collegeDay && h >= 1 && h <= 7) h += 12;
   return `${pad(h)}:${pad(min)}`;
 }
 
@@ -65,8 +70,8 @@ export function planImport(sessions: ScannedSession[]): { courses: PlannedCourse
       const slots: PlannedCourse['components'][number]['sessions'] = [];
       for (const s of list) {
         const day = DAY[s.day?.toLowerCase()];
-        const start = to24h(s.startTime);
-        const end = to24h(s.endTime);
+        const start = to24h(s.startTime, true);
+        const end = to24h(s.endTime, true);
         if (day === undefined || !start || !end || start >= end) { warnings.push(`${code}: skipped an unreadable slot (${s.day} ${s.startTime}–${s.endTime}).`); continue; }
         const key = `${day}-${start}`;
         if (seen.has(key)) continue;

@@ -50,7 +50,7 @@ describe('academic snapshot', () => {
     expect(s.courses.map((c: any) => c.name)).toEqual(['Operating Systems', 'Computer Networks']);
     const os = s.courseById.get(1);
     expect(os.short).toBe('OS');
-    expect(os.att).toEqual({ attended: 24, absent: 9, leave: 0, off: 1, total: 33, pct: 73, pctWithLeave: 73 });
+    expect(os.att).toEqual({ attended: 24, absent: 9, leave: 0, off: 1, total: 33, pct: 72, pctWithLeave: 72 }); // 72.7% rounds down
     expect(s.tasks.map((t: any) => t.title)).not.toContain('Old course task');
     expect(os.parts).toEqual([{ type: 'theory', componentIds: [1], att: os.att }]);
     expect(s.semester).toMatchObject({ id: 1, startDate: '2026-07-01' });
@@ -70,7 +70,7 @@ describe('academic snapshot', () => {
     const s = await loadSnapshot({ today: TODAY });
     const alerts = buildAlerts(s);
     expect(alerts.map((a: any) => a.key)).toEqual(['att-1', expect.stringMatching(/^task-/), expect.stringMatching(/^chg-/), expect.stringMatching(/^chg-/)]);
-    expect(alerts[0].title).toBe('73%, below your 75% target');
+    expect(alerts[0].title).toBe('72%, below your 75% target');
     expect(alerts[0].body).toBe('Attend the next 3 OS classes to get back above target.');
     expect(alerts[1].eyebrow).toBe('Due tomorrow');
     expect(alerts[2].title).toBe('Computer Networks moved to 4:00 PM today');
@@ -86,7 +86,7 @@ describe('academic snapshot', () => {
     const os = s.occurrences.find((o: any) => o.date === TODAY && o.workspaceId === 1);
     await AttendanceRepository.markAttendance(1, TODAY, 'present', os.id, os.componentId);
     const after = await loadSnapshot({ today: TODAY });
-    expect(after.courseById.get(1).att.pct).toBe(74);
+    expect(after.courseById.get(1).att.pct).toBe(73); // 25/34 = 73.5
     expect(markQueue(after).map((o: any) => o.workspaceName)).toEqual(['Computer Networks']);
     expect(suggestion(after, 9 * 60 + 41)).toBeNull();
   });
@@ -98,10 +98,10 @@ describe('academic snapshot', () => {
     const att = async () => (await loadSnapshot({ today: TODAY })).courseById.get(1).att;
 
     await setOccurrenceStatus(os, 'exempt'); // leave is held but not attended until approved
-    expect(await att()).toMatchObject({ attended: 24, leave: 1, total: 34, pct: 71, pctWithLeave: 74 });
+    expect(await att()).toMatchObject({ attended: 24, leave: 1, total: 34, pct: 70, pctWithLeave: 73 });
 
     await setOccurrenceStatus(os, 'cancelled'); // marked in advance, class didn't happen
-    expect(await att()).toMatchObject({ attended: 24, total: 33, off: 2, pct: 73 });
+    expect(await att()).toMatchObject({ attended: 24, total: 33, off: 2, pct: 72 });
 
     await setOccurrenceStatus(os, null); // remove the mark entirely
     const after = await loadSnapshot({ today: TODAY });
@@ -206,4 +206,55 @@ describe('short labels', () => {
     ['Operating Systems', null, 'OS'], ['DBMS', null, 'DBMS'], ['Discrete Mathematics', null, 'DM'],
     ['Design and Analysis of Algorithms', null, 'DAA'], ['Mathematics', null, 'Math'], ['Anything', 'ANY', 'ANY'],
   ])('%s', (name, short, out) => { expect(shortLabel(name, short)).toBe(out); });
+});
+
+describe('attack: cancels, undo and double taps against the real schema', () => {
+  const { setOccurrenceStatus } = require('../domains/academic/actions');
+  const { ScheduleExceptionRepository } = require('../domains/calendar/exceptions');
+  const day = '2026-10-22'; // Thursday, OS 9-10 (recurring schedule 1)
+  const occ = { id: `rec_1_${day}`, workspaceId: 1, date: day, componentId: 1, componentType: 'theory' };
+  const row = () => mockSqlite.prepare(`SELECT status, notes FROM attendance WHERE occurrence_id = ?`).get(occ.id) as any;
+
+  afterEach(async () => {
+    await ScheduleExceptionRepository.restore(1, day);
+    mockSqlite.prepare(`DELETE FROM attendance WHERE occurrence_id = ?`).run(occ.id);
+  });
+
+  it('cancelling twice keeps the original mark recoverable', async () => {
+    await setOccurrenceStatus(occ, 'absent');
+    await ScheduleExceptionRepository.cancel(1, day);
+    await ScheduleExceptionRepository.cancel(1, day);
+    expect(row()).toEqual({ status: 'cancelled', notes: 'was:absent' });
+    await ScheduleExceptionRepository.restore(1, day);
+    expect(row()).toEqual({ status: 'absent', notes: null });
+  });
+
+  it("a mark the student changed after cancelling is not overwritten by restore", async () => {
+    await setOccurrenceStatus(occ, 'absent');
+    await ScheduleExceptionRepository.cancel(1, day);
+    await setOccurrenceStatus(occ, 'present'); // class happened after all, marked by hand
+    await ScheduleExceptionRepository.restore(1, day);
+    expect(row().status).toBe('present');
+  });
+
+  it('undo after removing the Off mark of a cancelled class puts it back', async () => {
+    await setOccurrenceStatus(occ, 'absent');
+    await ScheduleExceptionRepository.cancel(1, day);
+    await setOccurrenceStatus(occ, null); // Remove mark
+    expect(row()).toBeUndefined();
+    await setOccurrenceStatus(occ, 'cancelled', null); // Undo
+    expect(row().status).toBe('cancelled');
+  });
+
+  it('two saves at the same moment leave exactly one mark', async () => {
+    await Promise.all([setOccurrenceStatus(occ, 'present'), setOccurrenceStatus(occ, 'absent')]);
+    const n = (mockSqlite.prepare(`SELECT COUNT(*) AS n FROM attendance WHERE occurrence_id = ?`).get(occ.id) as any).n;
+    expect(n).toBe(1);
+  });
+
+  it('a class moved to another time keeps its mark and stays markable', async () => {
+    await ScheduleExceptionRepository.move(1, day, '14:00', '15:00');
+    await setOccurrenceStatus(occ, 'present');
+    expect(row().status).toBe('present');
+  });
 });

@@ -1,3 +1,6 @@
+// Run every test in India time (UTC+5:30), where the app's users are; date bugs hide in UTC.
+process.env.TZ = process.env.TZ || 'Asia/Kolkata';
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',

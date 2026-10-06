@@ -59,7 +59,7 @@ describe('attendance utils — canonical metric engine', () => {
       expect(result.absent).toBe(1);
       expect(result.cancelledOrHoliday).toBe(2);
       expect(result.total).toBe(3); // excludes holiday/cancelled
-      expect(result.percentage).toBe(67); // 2/3 rounded
+      expect(result.percentage).toBe(66); // 2/3 rounded down: never toward safe
     });
 
     it('returns null percentage and hasData=false for empty records', () => {

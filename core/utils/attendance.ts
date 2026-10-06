@@ -32,7 +32,8 @@ export function calculateAttendanceMetrics(records: any[]) {
     exempt,
     cancelledOrHoliday,
     total: effectiveTotal,
-    percentage: percentage !== null ? Math.round(percentage) : null,
+    // Rounded down, never toward safe: 74.5% is below the 75% line and shows as 74.
+    percentage: percentage !== null ? Math.floor(percentage + 1e-9) : null,
     hasData: effectiveTotal > 0,
   };
 }

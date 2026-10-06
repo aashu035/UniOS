@@ -6,7 +6,7 @@ import {
 describe('attendance counts', () => {
   it('counts leave in the total but not as attended, and off not at all (ordinance 9.2, Samarth)', () => {
     const c = countAttendance([{ status: 'present' }, { status: 'exempt' }, { status: 'absent' }, { status: 'cancelled' }, { status: 'holiday' }]);
-    expect(c).toEqual({ attended: 1, absent: 1, leave: 1, off: 2, total: 3, pct: 33, pctWithLeave: 67 });
+    expect(c).toEqual({ attended: 1, absent: 1, leave: 1, off: 2, total: 3, pct: 33, pctWithLeave: 66 }); // 2/3 rounds down
   });
   it('matches the portal: SC lab 6 present, 2 absent, 0 leave of 8 = 75%', () => {
     const c = countAttendance([...Array(6).fill({ status: 'present' }), ...Array(2).fill({ status: 'absent' })]);
@@ -58,9 +58,9 @@ describe('marking projections', () => {
     expect(projectMark(os, 'off')).toEqual(os);
   });
   it('explains the consequence like the design copy', () => {
-    expect(markMessage('OS', os, 75, 'present')).toBe('Marked present. OS is now 74%. Attend 2 more to clear 75%.');
-    expect(markMessage('OS', os, 75, 'absent')).toBe('Marked absent. OS drops to 71%. You now need the next 6.');
-    expect(markMessage('OS', os, 75, 'off')).toBe('Marked off. The class isn’t counted, so OS stays at 73%.');
+    expect(markMessage('OS', os, 75, 'present')).toBe('Marked present. OS is now 73%. Attend 2 more to clear 75%.');
+    expect(markMessage('OS', os, 75, 'absent')).toBe('Marked absent. OS drops to 70%. You now need the next 6.');
+    expect(markMessage('OS', os, 75, 'off')).toBe('Marked off. The class isn’t counted, so OS stays at 72%.');
   });
   it('writes the deck note for a course under target', () => {
     expect(deckNote('OS', os, 75)).toBe("Even with Present you're under 75%. Attend 2 more after this.");
@@ -153,7 +153,7 @@ describe('files and overall attendance', () => {
   });
   it('sums attendance and picks the common target', () => {
     const c = (attended: number, absent: number, target: number) => ({ att: { attended, absent, off: 1, total: attended + absent }, target });
-    expect(overall([c(24, 9, 75), c(29, 4, 75), c(10, 0, 80)])).toEqual({ attended: 63, absent: 13, leave: 0, off: 3, total: 76, pct: 83, target: 75 });
+    expect(overall([c(24, 9, 75), c(29, 4, 75), c(10, 0, 80)])).toEqual({ attended: 63, absent: 13, leave: 0, off: 3, total: 76, pct: 82, target: 75 }); // 63/76 = 82.9, rounded down
   });
 });
 

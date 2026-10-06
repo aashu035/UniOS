@@ -81,7 +81,9 @@ export function normalizeDate(v: string | null | undefined): string | null {
   const t = String(v).trim();
   if (!t) return null;
   const pad = (n: number) => String(n).padStart(2, '0');
-  const ok = (y: number, m: number, d: number) => m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${pad(m)}-${pad(d)}` : null;
+  // Real calendar dates only: 30 Feb, 31 Apr and 29 Feb in a non-leap year are rejected.
+  const daysIn = (y: number, m: number) => [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+  const ok = (y: number, m: number, d: number) => m >= 1 && m <= 12 && d >= 1 && d <= daysIn(y, m) ? `${y}-${pad(m)}-${pad(d)}` : null;
   // Explicit patterns rather than Date parsing: Hermes (the phone's JS engine) rejects some formats Node accepts.
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
   if (m) return ok(+m[1], +m[2], +m[3]);

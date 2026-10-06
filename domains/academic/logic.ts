@@ -25,9 +25,20 @@ export function countAttendance(records: Array<{ status: string }>): AttCounts {
   const total = present + absent + leave;
   return {
     attended: present, absent, leave, off, total,
-    pct: total > 0 ? Math.round((present / total) * 100) : null,
-    pctWithLeave: total > 0 ? Math.round(((present + leave) / total) * 100) : null,
+    pct: pctOf(present, total),
+    pctWithLeave: pctOf(present + leave, total),
   };
+}
+
+/**
+ * The course percentage if one class's mark changed from `from` to `to`
+ * (either may be null = unmarked). Used for "You'd be at" in the mark sheet.
+ */
+export function projectChange(c: { attended: number; total: number }, from: AttStatus | null, to: AttStatus | null): number | null {
+  let a = c.attended, t = c.total;
+  if (from === 'present') { a--; t--; } else if (from === 'absent' || from === 'exempt') t--;
+  if (to === 'present') { a++; t++; } else if (to === 'absent' || to === 'exempt') t++;
+  return pctOf(a, t);
 }
 
 /** Condonation the ordinance allows on documents: chairperson 10% (clause 9.4), Dean a further 5% (9.5). */
@@ -86,7 +97,11 @@ export function verdict(attended: number, total: number, target: number): Verdic
   return { text: `You can skip ${skip}`, short: `Can skip ${skip}`, tone: skip <= 1 ? 'warn' : 'success', need, skip };
 }
 
-export const pctOf = (a: number, t: number) => (t > 0 ? Math.round((a / t) * 100) : null);
+/**
+ * Whole-number percentage, always rounded DOWN: 74.5% shows as 74%, never 75%.
+ * Detention is decided at the 75% line, so the app must never round toward safe.
+ */
+export const pctOf = (a: number, t: number) => (t > 0 ? Math.floor((a * 100) / t + 1e-9) : null);
 
 /** Where a course lands after marking the next class. */
 export function projectMark(c: { attended: number; total: number }, mark: 'present' | 'absent' | 'off') {
