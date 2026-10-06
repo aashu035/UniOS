@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import * as FileSystem from 'expo-file-system/legacy';
 import { AIProviderKeysStore } from '../settings/aiProviders';
+import { friendlyGeminiError, withGeminiModel } from './geminiModels';
 
 export interface ParsedClassSession {
   day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
@@ -31,8 +32,8 @@ export class TimetableParser {
 Your task is to extract timetable data from the provided image and output a structured list of class sessions.
 
 STRICT PARSING RULES:
-1. Grid Traversal Strategy: Scan the timetable horizontally (row-wise), processing one day at a time (e.g., from Monday to Friday).
-2. Time Slots: Map each cell in a day's row to its corresponding column header time block (e.g., 8:00 AM - 8:55 AM).
+1. Orientation: First decide the layout. Timetables differ by college: days may be rows with time periods as columns, OR time periods may be rows with days as columns. Read the header row and first column to tell which, then walk one day at a time.
+2. Time Slots: Map each cell to its time period header (e.g., 8:00 AM - 8:55 AM). Use the period's real start and end time from the header, not a rounded hour. A cell spanning several periods (merged cells, e.g. a 2-hour lab) runs from the first period's start to the last period's end.
 3. Empty Slots: Blank cells indicate free time and MUST be skipped. No classes are scheduled if the cell is empty.
 4. Cell Data Extraction:
    - Subject & Type: Suffixes indicate the class type. "-L" means Lecture/Theory (1 hr). "-T" means Tutorial (1 hr). "Lab" means Laboratory (2 hrs). The prefix before this is the subject code (e.g., ES, CN, PP).
@@ -48,8 +49,13 @@ Ensure the output is robust and perfectly formatted according to the schema.
 Time formats MUST be exactly "hh:mm AM/PM" (e.g., "08:00 AM", "05:00 PM").`;
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+      const listModels = async () => {
+        const out: Array<{ name?: string; supportedActions?: string[] }> = [];
+        for await (const m of await ai.models.list({ config: { pageSize: 100 } })) out.push(m);
+        return out;
+      };
+      const { result: response, model } = await withGeminiModel((model) => ai.models.generateContent({
+        model,
         contents: [
           prompt,
           {
@@ -104,7 +110,8 @@ Time formats MUST be exactly "hh:mm AM/PM" (e.g., "08:00 AM", "05:00 PM").`;
             }
           }
         }
-      });
+      }), listModels);
+      console.info(`[timetable] parsed with ${model}`);
 
       if (!response.text) {
         throw new Error('AI returned an empty response.');
@@ -114,7 +121,7 @@ Time formats MUST be exactly "hh:mm AM/PM" (e.g., "08:00 AM", "05:00 PM").`;
       return parsedClasses;
     } catch (error) {
       console.error('Error parsing timetable with Gemini:', error);
-      throw error;
+      throw new Error(friendlyGeminiError(error));
     }
   }
 }

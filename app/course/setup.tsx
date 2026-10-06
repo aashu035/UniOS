@@ -14,7 +14,10 @@ import { creditsFromHours, minutesOf } from '../../domains/academic/logic';
 
 const QUESTIONS = ['What’s the course called?', 'What does it include?', 'When does it meet? Tap the slots.', 'What attendance do you want to stay above?'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
+/** Start hours shown in the grid: 8 AM to 6 PM, so classes can run until 7 PM. */
+const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const LAST_HOUR = 18; // the last hour a class may occupy (18:00–19:00)
+const h12 = (h: number) => h % 12 || 12;
 const CREDIT_OPTIONS = [1, 2, 3, 4, 5, 6];
 const PART: Record<Part, { label: string; detail: string; icon: IconName; tag: string }> = {
   theory: { label: 'Theory', detail: 'Lectures, 1 hour', icon: 'book-open', tag: 'T' },
@@ -46,6 +49,22 @@ export default function CourseSetup() {
   const suggested = creditsFromHours(weekly);
   const credits = creditsPick ?? suggested;
   const canContinue = step !== 1 || name.trim().length > 0;
+
+  const [daysAsRows, setDaysAsRows] = useState(true); // most printed timetables list days down the side
+  const cell = (di: number, h: number, small: boolean) => {
+    const key = `${di + 1}-${h}`;
+    const cover = Object.entries(slots).find(([k, part]) => { const [d, st] = k.split('-').map(Number); return d === di + 1 && h >= st && h < st + DURATION[part] / 60; });
+    const part = cover?.[1];
+    const isStart = cover?.[0] === key;
+    const bg = part ? (part === 'theory' ? p.primary : part === 'lab' ? '#10B981' : '#F59E0B') : p.surface;
+    return (
+      <Tap key={key} onPress={() => setSlots((s) => paint(s, key, parts.includes(brush) ? brush : 'theory', LAST_HOUR))}
+        accessibilityLabel={`${DAYS[di]} ${h12(h)} ${h < 12 ? 'AM' : 'PM'}${part ? `, ${PART[part].label}` : ''}`}
+        style={[styles.cell, small && { height: 34, borderRadius: 6 }, { backgroundColor: bg }]}>
+        {part && isStart ? <T w={800} c="#fff" size={small ? 9 : 10}>{PART[part].tag}</T> : null}
+      </Tap>
+    );
+  };
 
   const create = async () => {
     setSaving(true);
@@ -145,32 +164,41 @@ export default function CourseSetup() {
         {step === 3 && (
           <>
             {parts.length > 1 ? <Segmented<Part> items={parts.map((x) => [x, `Paint ${PART[x].label}`])} value={brush} onChange={setBrush} /> : null}
-            <Card flat style={{ padding: 12, borderRadius: 20 }}>
-              <View style={styles.gridRow}>
-                <View style={{ width: 30 }} />
-                {DAYS.map((d) => <T key={d} w={700} c={p.muted} size={11} style={{ flex: 1, textAlign: 'center' }}>{d}</T>)}
-              </View>
-              {HOURS.map((h) => (
-                <View key={h} style={[styles.gridRow, { marginTop: 4 }]}>
-                  <T style={[mono(500), { width: 30, fontSize: 10, color: p.muted }]}>{(h % 12 || 12) + (h < 12 ? 'a' : 'p')}</T>
-                  {DAYS.map((_, di) => {
-                    const key = `${di + 1}-${h}`;
-                    const cover = Object.entries(slots).find(([k, part]) => { const [d, s] = k.split('-').map(Number); return d === di + 1 && h >= s && h < s + DURATION[part] / 60; });
-                    const part = cover?.[1];
-                    const isStart = cover?.[0] === key;
-                    const bg = part ? (part === 'theory' ? p.primary : part === 'lab' ? '#10B981' : '#F59E0B') : p.surface;
-                    return (
-                      <Tap key={key} onPress={() => setSlots((s) => paint(s, key, parts.includes(brush) ? brush : 'theory', HOURS[HOURS.length - 1]))}
-                        accessibilityLabel={`${DAYS[di]} ${h}:00${part ? `, ${PART[part].label}` : ''}`}
-                        style={[styles.cell, { backgroundColor: bg }]}>
-                        {part && isStart ? <T w={800} c="#fff" size={10}>{PART[part].tag}</T> : null}
-                      </Tap>
-                    );
-                  })}
-                </View>
-              ))}
+            <Segmented<'cols' | 'rows'>
+              items={[['rows', 'Days down the side'], ['cols', 'Days across the top']]}
+              value={daysAsRows ? 'rows' : 'cols'}
+              onChange={(v) => setDaysAsRows(v === 'rows')}
+            />
+            <Card flat style={{ padding: 10, borderRadius: 20 }}>
+              {daysAsRows ? (
+                <>
+                  <View style={styles.gridRow}>
+                    <View style={{ width: 30 }} />
+                    {HOURS.map((h) => <T key={h} style={[mono(500), { flex: 1, textAlign: 'center', fontSize: 9.5, color: p.muted }]}>{h12(h)}{h === HOURS[0] ? (h < 12 ? 'a' : 'p') : h === 12 ? 'p' : ''}</T>)}
+                  </View>
+                  {DAYS.map((d, di) => (
+                    <View key={d} style={[styles.gridRow, { marginTop: 4 }]}>
+                      <T w={700} c={p.muted} size={10.5} style={{ width: 30 }}>{d}</T>
+                      {HOURS.map((h) => cell(di, h, true))}
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <View style={styles.gridRow}>
+                    <View style={{ width: 44 }} />
+                    {DAYS.map((d) => <T key={d} w={700} c={p.muted} size={11} style={{ flex: 1, textAlign: 'center' }}>{d}</T>)}
+                  </View>
+                  {HOURS.map((h) => (
+                    <View key={h} style={[styles.gridRow, { marginTop: 4 }]}>
+                      <T style={[mono(500), { width: 44, fontSize: 9.5, color: p.muted }]}>{`${h12(h)}–${h12(h + 1)}${h + 1 < 12 ? 'a' : 'p'}`}</T>
+                      {DAYS.map((_, di) => cell(di, h, false))}
+                    </View>
+                  ))}
+                </>
+              )}
             </Card>
-            <T c={p.muted} size={12.5}>Tap a filled slot's first cell to clear it. Labs take two hours.</T>
+            <T c={p.muted} size={12.5} style={{ lineHeight: 18 }}>Tap the hour a class starts. Labs fill two hours. Tap a slot's first cell again to clear it. Pick the layout that matches your printed timetable.</T>
           </>
         )}
 

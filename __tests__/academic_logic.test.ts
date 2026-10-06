@@ -172,6 +172,11 @@ describe('course setup grid', () => {
     expect(prune(s, ['theory'])).toEqual({ '1-9': 'theory' });
     expect(slotSummary({ '3-9': 'theory', '1-9': 'theory' })).toBe('2 sessions · Mon, Wed');
   });
+  it('allows a 2-hour lab from 4 PM or 5 PM when the grid runs to 7 PM', () => {
+    expect(paint({}, '3-16', 'lab', 18)).toEqual({ '3-16': 'lab' });
+    expect(sessionsFor(paint({}, '3-17', 'lab', 18), 'lab')).toEqual([{ dayOfWeek: 3, startTime: '17:00', endTime: '19:00' }]);
+    expect(paint({}, '3-18', 'lab', 18)).toEqual({}); // would run past 7 PM
+  });
 });
 
 describe('edge cases found by probing', () => {
