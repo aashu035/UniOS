@@ -37,6 +37,7 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
   - `actions.ts` holds writes.
 - `domains/<name>/repository.ts`: data access per domain (attendance, workspace, task, calendar, …).
 - `core/diagnostics/`: in-app log buffer and bug-report builder.
+- `domains/timetable/grammar.ts`: reads printed timetable cell text (`ES-L`, `SC Lab, CSE-2, RS Lab, AS`) into one student's classes. Tested against the DCRUST Section A timetable in `__tests__/timetable_grammar.test.ts`.
 - `app/workspace/[id]/attendance.tsx`: the older full attendance log. Keep it; the course page links to it.
 
 ## Rules that bite
