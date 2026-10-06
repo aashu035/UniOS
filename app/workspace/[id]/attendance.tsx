@@ -15,6 +15,11 @@ import * as Haptics from 'expo-haptics';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { getLocalDateString } from '../../../core/utils/date';
 import { useWorkspace } from '../../../domains/workspace/hooks';
+import { MarkSheet } from '../../../components/uni/MarkSheet';
+import type { AttStatus } from '../../../domains/academic/logic';
+
+const MARKED: AttStatus[] = ['present', 'absent', 'exempt', 'cancelled', 'holiday'];
+const NOTES: Partial<Record<AttStatus, string>> = { exempt: 'Duty / Medical', cancelled: 'Class did not happen' };
 
 export default function WorkspaceAttendance() {
   const { id } = useLocalSearchParams();
@@ -99,41 +104,31 @@ export default function WorkspaceAttendance() {
     }
   };
 
-  const promptMarkAttendance = (occurrence: any) => {
-    Alert.alert(
-      `Mark Attendance`,
-      `How would you like to mark ${occurrence.componentType} class?`,
-      [
-        { text: 'Present', onPress: () => handleMark(occurrence, 'present') },
-        { text: 'Absent', onPress: () => handleMark(occurrence, 'absent') },
-        { text: 'On Leave (Exempt)', onPress: () => handleMark(occurrence, 'exempt', 'Duty / Medical') },
-        { text: 'Holiday (Off)', onPress: () => handleMark(occurrence, 'holiday', 'College holiday / class off') },
-        { text: 'Cancelled', onPress: () => handleMark(occurrence, 'cancelled', 'Class cancelled') },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
-  };
-
-  const handleChangeRecord = (occurrence: any) => {
+  // One sheet for marking, changing and removing. Alert.alert can't do this on
+  // Android: it shows at most three buttons, so Off and Delete never appeared.
+  const [sheetFor, setSheetFor] = useState<any | null>(null);
+  const openSheet = (occurrence: any) => {
     if (viewMode === 'portal') return;
-    Alert.alert(
-      `Change Record`,
-      `Currently marked as: ${occurrence.status.toUpperCase()}\nWhat should it be?`,
-      [
-        { text: 'Present', onPress: () => handleMark(occurrence, 'present') },
-        { text: 'Absent', onPress: () => handleMark(occurrence, 'absent') },
-        { text: 'On Leave (Exempt)', onPress: () => handleMark(occurrence, 'exempt', 'Duty / Medical') },
-        { text: 'Holiday (Off)', onPress: () => handleMark(occurrence, 'holiday', 'College holiday / class off') },
-        { text: 'Cancelled', onPress: () => handleMark(occurrence, 'cancelled', 'Class cancelled') },
-        { text: 'Clear / Delete', style: 'destructive', onPress: async () => {
-            await removeAttendance(occurrence.occurrenceId);
-            await refreshViewModel();
-          }
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    setSheetFor(occurrence);
   };
+  const handleSheetPick = async (status: AttStatus | null) => {
+    const occurrence = sheetFor;
+    setSheetFor(null);
+    if (!occurrence) return;
+    if (status === null) {
+      try {
+        await removeAttendance(occurrence.occurrenceId);
+        await refreshViewModel();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e) {
+        console.error(e);
+        Alert.alert('Error', 'Could not remove this mark.');
+      }
+      return;
+    }
+    await handleMark(occurrence, status, NOTES[status]);
+  };
+  const sheetCurrent: AttStatus | null = sheetFor && MARKED.includes(sheetFor.status) ? sheetFor.status : null;
 
   // Metrics resolution
   let displayTotal = 0;
@@ -264,13 +259,7 @@ export default function WorkspaceAttendance() {
             <AttendanceDayList
               date={selectedDateStr}
               occurrences={viewModel.selectedDay.occurrences}
-              onMarkAttendance={(occ) => {
-                if (occ.status === 'unmarked' || occ.status === 'upcoming') {
-                  promptMarkAttendance(occ);
-                } else {
-                  handleChangeRecord(occ);
-                }
-              }}
+              onMarkAttendance={openSheet}
               isLoading={isMarking}
             />
             
@@ -289,7 +278,8 @@ export default function WorkspaceAttendance() {
                       status={occ.status as any}
                       type={occ.componentType}
                       notes={occ.notes}
-                      onLongPress={() => handleChangeRecord(occ)}
+                      onPress={() => openSheet(occ)}
+                      onLongPress={() => openSheet(occ)}
                     />
                   ))}
                 </View>
@@ -302,6 +292,14 @@ export default function WorkspaceAttendance() {
           </>
         )}
       </PageContainer>
+      <MarkSheet
+        visible={!!sheetFor}
+        title={sheetFor ? `${sheetFor.componentType ? sheetFor.componentType[0].toUpperCase() + sheetFor.componentType.slice(1) : 'Class'}${workspaceData?.workspace?.name ? ` · ${workspaceData.workspace.name}` : ''}` : ''}
+        subtitle={sheetFor?.date ? new Date(`${sheetFor.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : undefined}
+        current={sheetCurrent}
+        onPick={handleSheetPick}
+        onClose={() => setSheetFor(null)}
+      />
     </ScrollView>
   );
 }

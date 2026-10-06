@@ -88,6 +88,27 @@ describe('academic snapshot', () => {
     expect(markQueue(after).map((o: any) => o.workspaceName)).toEqual(['Computer Networks']);
     expect(suggestion(after, 9 * 60 + 41)).toBeNull();
   });
+
+  it('changes a mark to leave or off, then removes it', async () => {
+    const { setOccurrenceStatus } = require('../domains/academic/actions');
+    const s = await loadSnapshot({ today: TODAY });
+    const os = s.occurrences.find((o: any) => o.date === TODAY && o.workspaceId === 1);
+    const att = async () => (await loadSnapshot({ today: TODAY })).courseById.get(1).att;
+
+    await setOccurrenceStatus(os, 'exempt'); // leave counts as attended, same as present
+    expect(await att()).toMatchObject({ attended: 25, total: 34, pct: 74 });
+
+    await setOccurrenceStatus(os, 'cancelled'); // marked in advance, class didn't happen
+    expect(await att()).toMatchObject({ attended: 24, total: 33, off: 2, pct: 73 });
+
+    await setOccurrenceStatus(os, null); // remove the mark entirely
+    const after = await loadSnapshot({ today: TODAY });
+    expect(after.courseById.get(1).att).toMatchObject({ attended: 24, total: 33, off: 1 });
+    expect(after.occurrences.find((o: any) => o.id === os.id).status).toBeNull();
+    expect(markQueue(after).map((o: any) => o.workspaceName)).toContain('Operating Systems');
+
+    await setOccurrenceStatus(os, 'present'); // restore for later tests
+  });
 });
 
 describe('temporary changes', () => {

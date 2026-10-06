@@ -5,7 +5,7 @@ import {
   Ellipsis, FilePenLine, FilePlus, FileText, FlaskConical, GraduationCap, HardDriveDownload, House, Image as ImageIcon,
   Info, LayoutGrid, Link, ListPlus, MapPin, Moon, Network, NotebookPen, PartyPopper, Plus, RefreshCw, RotateCcw,
   ScanLine, Search, Settings2, Sigma, SlidersHorizontal, Sparkles, StickyNote, TestTubeDiagonal, TriangleAlert,
-  Upload, User, Users, X, BookMarked, Calendar, Trash2,
+  Upload, User, Users, X, BookMarked, Calendar, Trash2, Plane, Ban,
 } from 'lucide-react-native';
 
 const ICONS = {
@@ -20,7 +20,7 @@ const ICONS = {
   'notebook-pen': NotebookPen, 'party-popper': PartyPopper, plus: Plus, 'refresh-cw': RefreshCw, 'rotate-ccw': RotateCcw,
   'scan-line': ScanLine, search: Search, 'settings-2': Settings2, sigma: Sigma, 'sliders-horizontal': SlidersHorizontal,
   sparkles: Sparkles, 'sticky-note': StickyNote, 'test-tube-diagonal': TestTubeDiagonal, 'trash-2': Trash2,
-  'triangle-alert': TriangleAlert, upload: Upload, user: User, users: Users, x: X,
+  'triangle-alert': TriangleAlert, upload: Upload, plane: Plane, ban: Ban, user: User, users: Users, x: X,
 } as const;
 
 export type IconName = keyof typeof ICONS;

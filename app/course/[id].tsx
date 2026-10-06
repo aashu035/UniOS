@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Icon, type IconName } from '../../components/uni/Icon';
+import { MarkSheet } from '../../components/uni/MarkSheet';
 import { Card, Chip, Empty, ListCard, Ring, Rise, RoundButton, Screen, Segmented, T, Tap } from '../../components/uni/primitives';
 import { FILE_COLORS, tint, useUni, listRow } from '../../components/uni/theme';
+import { setOccurrenceStatus } from '../../domains/academic/actions';
 import { fileKind } from '../../domains/academic/derive';
 import { useAcademic } from '../../domains/academic/hooks';
-import { clock, dayName, daysBetween, isDone, minutesOf, relDue, shortDate, taskKind, verdict } from '../../domains/academic/logic';
+import { clock, dayName, daysBetween, isDone, minutesOf, relDue, shortDate, taskKind, verdict, type AttStatus } from '../../domains/academic/logic';
 import { CourseOverviewService, type CourseOverview } from '../../domains/workspace/CourseOverviewService';
 
 type Tab = 'overview' | 'files' | 'tasks' | 'att';
+/** One class in the Attend tab: scheduled (maybe unmarked) or an older stored mark. */
+type Session = { id: string; workspaceId: number; date: string; componentId?: number | null; componentType?: string | null; startTime?: string; status: AttStatus | null; cancelled?: boolean };
+const SESSIONS_SHOWN = 20;
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TYPE_LABEL: Record<string, string> = { theory: 'Theory', lab: 'Lab', tutorial: 'Tutorial' };
 
@@ -18,9 +23,22 @@ export default function CourseDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const courseId = Number(id);
-  const { data } = useAcademic();
+  const { data, reload } = useAcademic();
   const [detail, setDetail] = useState<CourseOverview | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
+  const [marking, setMarking] = useState<Session | null>(null);
+
+  const pick = async (status: AttStatus | null) => {
+    const s = marking;
+    setMarking(null);
+    if (!s) return;
+    try {
+      await setOccurrenceStatus(s, status);
+    } catch (e) {
+      Alert.alert('Could not save', e instanceof Error ? e.message : String(e));
+    }
+    reload();
+  };
 
   useEffect(() => { CourseOverviewService.getCourseDetail(courseId).then(setDetail).catch(() => setDetail(null)); }, [courseId, data]);
 
@@ -49,7 +67,18 @@ export default function CourseDetail() {
   const tasks = data.tasks.filter((t) => t.workspaceId === c.id)
     .map((t) => ({ ...t, days: t.dueDate ? daysBetween(data.today, t.dueDate) : null }))
     .sort((a, b) => Number(isDone(a.status)) - Number(isDone(b.status)) || (a.days ?? 9999) - (b.days ?? 9999));
-  const records = data.records.filter((r) => r.workspaceId === c.id).sort((a, b) => b.date.localeCompare(a.date));
+  // Classes up to the end of today (so a class can be marked before it starts), plus older marks outside the window.
+  const sessionMap = new Map<string, Session>();
+  for (const r of data.records) {
+    if (r.workspaceId === c.id) sessionMap.set(r.occurrenceId, { id: r.occurrenceId, workspaceId: c.id, date: r.date, componentId: r.componentId, status: r.status as AttStatus });
+  }
+  for (const o of data.occurrences) {
+    if (o.workspaceId !== c.id || o.date > data.today) continue;
+    if (o.cancelled && !o.status) continue; // cancelled by a timetable change and never marked: nothing to do
+    sessionMap.set(o.id, { id: o.id, workspaceId: c.id, date: o.date, componentId: o.componentId, componentType: o.componentType, startTime: o.startTime, status: o.status ?? sessionMap.get(o.id)?.status ?? null, cancelled: o.cancelled });
+  }
+  const sessions = [...sessionMap.values()].sort((a, b) => b.date.localeCompare(a.date) || (b.startTime ?? '').localeCompare(a.startTime ?? ''));
+  const unmarked = sessions.filter((x) => !x.status).length;
   const portal = data.portal.find((x) => x.workspaceId === c.id);
   const kinds = c.componentTypes.map((t) => TYPE_LABEL[t] ?? t).join(' + ');
 
@@ -163,19 +192,32 @@ export default function CourseDetail() {
                 </View>
               ))}
             </ListCard>
-            {records.length ? (
-              <ListCard>
-                {records.slice(0, 12).map((r) => {
-                  const st = r.status === 'present' || r.status === 'exempt' ? ['Present', p.success] : r.status === 'absent' ? ['Absent', p.danger] : ['Off', p.off];
-                  return (
-                    <View key={r.occurrenceId} style={styles.row}>
-                      <T w={700} size={13.5} style={{ flex: 1 }}>{dayName(r.date)}, {shortDate(r.date)}</T>
-                      <Chip label={st[0]} color={st[1]} bg={tint(st[1])} />
-                    </View>
-                  );
-                })}
-              </ListCard>
-            ) : null}
+            {sessions.length ? (
+              <>
+                <T w={600} c={p.muted} size={12} style={{ paddingHorizontal: 4 }}>
+                  Tap a class to mark it, change it or remove the mark.{unmarked ? ` ${unmarked} not marked yet.` : ''}
+                </T>
+                <ListCard>
+                  {sessions.slice(0, SESSIONS_SHOWN).map((x) => {
+                    const st: [string, string] = !x.status ? ['Not marked', p.muted]
+                      : x.status === 'present' ? ['Present', p.success]
+                      : x.status === 'exempt' ? ['Leave', p.primary]
+                      : x.status === 'absent' ? ['Absent', p.danger] : ['Off', p.off];
+                    const meta = [x.startTime ? clock(x.startTime) : null, x.componentType ? (TYPE_LABEL[x.componentType] ?? x.componentType) : null].filter(Boolean).join(' · ');
+                    return (
+                      <Tap key={x.id} accessibilityRole="button" accessibilityLabel={`${dayName(x.date)} ${shortDate(x.date)}, ${st[0]}. Change`} onPress={() => setMarking(x)} style={styles.row}>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <T w={700} size={13.5} numberOfLines={1}>{x.date === data.today ? 'Today' : dayName(x.date)}, {shortDate(x.date)}</T>
+                          {meta ? <T c={p.muted} size={11.5} numberOfLines={1}>{meta}</T> : null}
+                        </View>
+                        <Chip label={st[0]} color={st[1]} bg={tint(st[1])} />
+                        <Icon name="chevron-right" size={16} color={p.muted} />
+                      </Tap>
+                    );
+                  })}
+                </ListCard>
+              </>
+            ) : <T c={p.muted} size={13} style={{ paddingHorizontal: 4 }}>No classes yet this semester. Once a class has happened you can mark it here.</T>}
             <Tap onPress={() => router.push(`/workspace/${c.id}/attendance` as any)} style={[styles.linkBtn, { backgroundColor: p.surface }]}>
               <T w={700} size={13}>Open the full attendance log</T>
               <Icon name="chevron-right" size={16} color={p.muted} />
@@ -183,6 +225,14 @@ export default function CourseDetail() {
           </>
         )}
       </View>
+      <MarkSheet
+        visible={!!marking}
+        title={marking ? `${c.name}` : ''}
+        subtitle={marking ? `${marking.date === data.today ? 'Today' : dayName(marking.date)}, ${shortDate(marking.date)}${marking.startTime ? ` · ${clock(marking.startTime)}` : ''}` : undefined}
+        current={marking?.status}
+        onPick={pick}
+        onClose={() => setMarking(null)}
+      />
     </Screen>
   );
 }

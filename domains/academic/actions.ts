@@ -1,6 +1,7 @@
 import { AttendanceRepository } from '../attendance/repository';
 import { NotificationService } from '../notification/service';
 import { TaskRepository } from '../task/repository';
+import type { AttStatus } from './logic';
 import type { Occ } from './snapshot';
 
 export type Mark = 'present' | 'absent' | 'off';
@@ -20,6 +21,20 @@ export async function markOccurrence(o: Occ, mark: Mark | null): Promise<void> {
   const status = markToStatus(mark);
   await AttendanceRepository.markAttendance(o.workspaceId, o.date, status, o.id, o.componentId);
   NotificationService.attendanceMarked({ componentType: o.componentType, date: o.date, status, workspaceId: o.workspaceId }).catch(() => {});
+}
+
+/** Set any stored status on one class (leave included), or clear it with `null`. */
+export async function setOccurrenceStatus(
+  o: { id: string; workspaceId: number; date: string; componentId?: number | null; componentType?: string | null },
+  status: AttStatus | null,
+): Promise<void> {
+  if (status === null) {
+    await AttendanceRepository.deleteAttendance(o.id);
+    return;
+  }
+  if (!o.componentId) throw new Error('This class has no course component to mark.');
+  await AttendanceRepository.markAttendance(o.workspaceId, o.date, status, o.id, o.componentId);
+  NotificationService.attendanceMarked({ componentType: o.componentType ?? 'theory', date: o.date, status, workspaceId: o.workspaceId }).catch(() => {});
 }
 
 export async function setTaskDone(t: { id: number; title: string; workspaceId: number | null }, done: boolean): Promise<void> {

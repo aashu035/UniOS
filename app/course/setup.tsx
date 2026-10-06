@@ -14,6 +14,7 @@ import { DURATION, paint, prune, sessionsFor, slotSummary, type Part, type Slots
 const QUESTIONS = ['What’s the course called?', 'What does it include?', 'When does it meet? Tap the slots.', 'What attendance do you want to stay above?'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
+const CREDIT_OPTIONS = [1, 2, 3, 4, 5, 6];
 const PART: Record<Part, { label: string; detail: string; icon: IconName; tag: string }> = {
   theory: { label: 'Theory', detail: 'Lectures, 1 hour', icon: 'book-open', tag: 'T' },
   lab: { label: 'Lab', detail: 'Practicals and lab files, 2 hours', icon: 'flask-conical', tag: 'L' },
@@ -28,6 +29,7 @@ export default function CourseSetup() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [faculty, setFaculty] = useState('');
+  const [credits, setCredits] = useState(3);
   const [extra, setExtra] = useState<'lab' | 'tutorial' | null>(null);
   const [brush, setBrush] = useState<Part>('theory');
   const [slots, setSlots] = useState<Slots>({});
@@ -36,7 +38,7 @@ export default function CourseSetup() {
 
   const parts: Part[] = ['theory', ...(extra ? [extra] : [])];
   const partSummary = parts.map((x) => PART[x].label).join(' + ');
-  const answers = [[name.trim(), code.trim()].filter(Boolean).join(' · '), partSummary, slotSummary(slots), `${target}%`];
+  const answers = [[name.trim(), code.trim(), `${credits} credit${credits === 1 ? '' : 's'}`].filter(Boolean).join(' · '), partSummary, slotSummary(slots), `${target}%`];
   const canContinue = step !== 1 || name.trim().length > 0;
 
   const create = async () => {
@@ -45,7 +47,7 @@ export default function CourseSetup() {
       const used = new Set((await db.select({ color: workspaces.color }).from(workspaces).all()).map((w) => w.color));
       const color = colors.subjects.map((s) => s.base).find((c) => !used.has(c)) ?? colors.subjects[0].base;
       const ws = await WorkspaceRepository.buildCompleteWorkspace({
-        name: name.trim(), code: code.trim() || undefined, color,
+        name: name.trim(), code: code.trim() || undefined, credits, color,
         components: parts.map((type) => ({ type, durationMinutes: DURATION[type], facultyName: faculty.trim() || undefined, sessions: sessionsFor(slots, type) })),
       });
       if (target !== 75) await WorkspaceRepository.updateCourseIdentity(ws.id, { targetAttendance: target });
@@ -104,6 +106,15 @@ export default function CourseSetup() {
                 style={[styles.small, sans(600), { backgroundColor: p.elev, borderColor: p.hair, color: p.text }]} accessibilityLabel="Course code" />
               <TextInput value={faculty} onChangeText={setFaculty} placeholder="Faculty (optional)" placeholderTextColor={p.muted}
                 style={[styles.small, sans(600), { backgroundColor: p.elev, borderColor: p.hair, color: p.text }]} accessibilityLabel="Faculty name" />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <T w={700} c={p.muted} size={13} style={{ marginRight: 4 }}>Credits</T>
+              {CREDIT_OPTIONS.map((n) => (
+                <Tap key={n} onPress={() => setCredits(n)} accessibilityRole="button" accessibilityLabel={`${n} credits`} accessibilityState={{ selected: credits === n }}
+                  style={[styles.credit, { backgroundColor: credits === n ? p.primary : p.elev, borderColor: credits === n ? p.primary : p.hair }]}>
+                  <T w={800} c={credits === n ? '#fff' : p.text} size={14}>{n}</T>
+                </Tap>
+              ))}
             </View>
             <Tap onPress={() => router.push('/course/ai-setup')} style={styles.hint}>
               <Icon name="scan-line" size={15} color={p.muted} />
@@ -177,7 +188,7 @@ export default function CourseSetup() {
               ))}
             </View>
             <Card flat style={{ gap: 8 }}>
-              {[['Course', name.trim()], ['Code', code.trim() || '—'], ['Parts', partSummary], ['Weekly', slotSummary(slots)], ['Faculty', faculty.trim() || '—']].map(([k, val]) => (
+              {[['Course', name.trim()], ['Code', code.trim() || '—'], ['Credits', String(credits)], ['Parts', partSummary], ['Weekly', slotSummary(slots)], ['Faculty', faculty.trim() || '—']].map(([k, val]) => (
                 <View key={k} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
                   <T c={p.muted} size={13.5}>{k}</T>
                   <T w={700} size={13.5} style={{ flexShrink: 1, textAlign: 'right' }}>{val}</T>
@@ -203,6 +214,7 @@ const styles = StyleSheet.create({
   answer: { alignSelf: 'flex-end', paddingVertical: 9, paddingHorizontal: 14, borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 16, borderBottomRightRadius: 4 },
   avatar: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   input: { height: 56, borderRadius: 16, borderWidth: 1.5, paddingHorizontal: 16, shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } },
+  credit: { flex: 1, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   small: { flex: 1, minWidth: 0, height: 44, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, fontSize: 13.5 },
   hint: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
   part: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1.5 },
