@@ -137,6 +137,35 @@ describe('temporary changes', () => {
 
     await expect(ScheduleExceptionRepository.move(1, day, '12:00', '11:00')).rejects.toThrow('Pick a start time before the end time.');
   });
+
+  it('cancelling a marked class makes the mark Off, and restoring brings it back', async () => {
+    const { setOccurrenceStatus } = require('../domains/academic/actions');
+    const day = '2026-10-15'; // a Thursday, OS 9-10
+    const att = async () => (await loadSnapshot({ today: TODAY })).courseById.get(1).att;
+    const before = await att();
+    const [os] = (await loadSnapshot({ today: TODAY, from: day, to: day })).occurrences.filter((o: any) => o.workspaceId === 1);
+    await setOccurrenceStatus(os, 'absent');
+    expect((await att()).absent).toBe(before.absent + 1);
+
+    await ScheduleExceptionRepository.cancel(1, day);
+    expect(await att()).toMatchObject({ absent: before.absent, off: before.off + 1, total: before.total });
+
+    await ScheduleExceptionRepository.restore(1, day);
+    expect(await att()).toMatchObject({ absent: before.absent + 1, off: before.off });
+    await setOccurrenceStatus(os, null);
+  });
+
+  it('an existing mark can be changed even when its slot is no longer on the timetable', async () => {
+    const { setOccurrenceStatus } = require('../domains/academic/actions');
+    const stale = { id: 'legacy_0', workspaceId: 1, date: '2026-08-01', componentId: 1 }; // seeded present, not a timetable slot
+    await setOccurrenceStatus(stale, 'absent');
+    const row = mockSqlite.prepare(`SELECT status FROM attendance WHERE occurrence_id = 'legacy_0'`).get() as any;
+    expect(row.status).toBe('absent');
+    await setOccurrenceStatus(stale, 'present');
+    // A brand-new mark for a non-existent class still gets a readable error.
+    await expect(setOccurrenceStatus({ id: 'rec_999_2026-10-01', workspaceId: 1, date: '2026-10-01', componentId: 1 }, 'present'))
+      .rejects.toThrow("isn't on your timetable for that day anymore");
+  });
 });
 
 describe('due date normalisation', () => {

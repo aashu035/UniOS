@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../core/db/client';
 import { scheduleExceptions, recurringSchedules } from './model';
+import { attendance } from '../attendance/model';
 import { WorkspaceRepository } from '../workspace/repository';
 
 /** `rec_<recurringScheduleId>_<YYYY-MM-DD>` is the id CalendarService gives a regular class. */
@@ -20,17 +21,35 @@ export class ScheduleExceptionRepository {
     return rec;
   }
 
-  static async restore(recurringScheduleId: number, date: string) {
-    await db.delete(scheduleExceptions).where(and(
+  private static clear(recurringScheduleId: number, date: string) {
+    return db.delete(scheduleExceptions).where(and(
       eq(scheduleExceptions.recurringScheduleId, recurringScheduleId),
       eq(scheduleExceptions.specificDate, date),
     ));
   }
 
+  /** Undo a change. A mark that cancelling turned into "Off" gets its old status back. */
+  static async restore(recurringScheduleId: number, date: string) {
+    await this.clear(recurringScheduleId, date);
+    const occ = `rec_${recurringScheduleId}_${date}`;
+    const mark = await db.select().from(attendance).where(eq(attendance.occurrenceId, occ)).get();
+    const prev = /^was:(present|absent|exempt)$/.exec(mark?.notes ?? '')?.[1] as 'present' | 'absent' | 'exempt' | undefined;
+    if (mark && prev) await db.update(attendance).set({ status: prev, notes: null }).where(eq(attendance.occurrenceId, occ));
+  }
+
+  /**
+   * Cancel one day of a class. If it was already marked present/absent/leave, the
+   * mark becomes "Off" (not counted) and remembers what it was, for restore().
+   */
   static async cancel(recurringScheduleId: number, date: string) {
     const rec = await this.slot(recurringScheduleId);
-    await this.restore(recurringScheduleId, date);
+    await this.clear(recurringScheduleId, date);
     await db.insert(scheduleExceptions).values({ componentId: rec.componentId, recurringScheduleId, specificDate: date, action: 'cancel' });
+    const occ = `rec_${recurringScheduleId}_${date}`;
+    const mark = await db.select().from(attendance).where(eq(attendance.occurrenceId, occ)).get();
+    if (mark && (mark.status === 'present' || mark.status === 'absent' || mark.status === 'exempt')) {
+      await db.update(attendance).set({ status: 'cancelled', notes: `was:${mark.status}` }).where(eq(attendance.occurrenceId, occ));
+    }
   }
 
   static async move(recurringScheduleId: number, date: string, startTime: string, endTime: string, venueName?: string) {
@@ -39,7 +58,7 @@ export class ScheduleExceptionRepository {
     }
     const rec = await this.slot(recurringScheduleId);
     const venueOverrideId = venueName?.trim() ? await WorkspaceRepository.resolveVenue(db, venueName.trim()) : null;
-    await this.restore(recurringScheduleId, date);
+    await this.restore(recurringScheduleId, date); // brings back a mark a previous cancel had set to Off
     await db.insert(scheduleExceptions).values({
       componentId: rec.componentId, recurringScheduleId, specificDate: date, action: 'move', startTime, endTime, venueOverrideId: venueOverrideId ?? null,
     });

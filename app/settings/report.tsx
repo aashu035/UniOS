@@ -52,7 +52,7 @@ export default function ReportProblem() {
 
       <View style={{ paddingHorizontal: 20, gap: 12, marginTop: 8 }}>
         <T c={p.muted} size={13} style={{ lineHeight: 19 }}>
-          Say what you tapped and what happened instead. App version, phone model, data counts and recent errors are attached. Your course names, notes and files are not.
+          Say what you tapped and what happened instead. App version, phone model, data counts and recent error messages are attached. Your notes and files are not; an error message can occasionally mention a course name. Tap below to see exactly what's sent.
         </T>
         <TextInput
           value={note} onChangeText={setNote} multiline textAlignVertical="top"

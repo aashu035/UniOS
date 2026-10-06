@@ -224,7 +224,9 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
     ? { attended: att.attended - (target.status === 'present' ? 1 : 0), total: att.total - (current === 'off' ? 0 : 1) }
     : att;
   const onLeave = target.status === 'exempt';
-  const msg = markMessage(course?.short ?? target.workspaceName, base, course?.target ?? 75, current);
+  const msg = onLeave
+    ? 'On leave. It counts as absent until the department approves it. Tap Present if you attended.'
+    : markMessage(course?.short ?? target.workspaceName, base, course?.target ?? 75, current);
   const kind = target.componentType === 'lab' ? 'Lab' : target.componentType === 'tutorial' ? 'Tutorial' : 'Theory';
 
   const mark = async (m: Mark) => {

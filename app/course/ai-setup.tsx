@@ -39,9 +39,15 @@ export default function AITimetableSetup() {
     if (!imageUri) return;
     setIsProcessing(true);
     try {
-      const sessions = await AITimetableService.importTimetable(imageUri, batchCode);
-      setParsedData(sessions);
-      Alert.alert('Success', 'Timetable imported successfully! You can find the events in your Calendar and Subjects list.');
+      const r = await AITimetableService.importTimetable(imageUri, batchCode);
+      setParsedData(r.sessions);
+      const lines = [
+        r.created.length ? `Added ${r.created.length} course${r.created.length === 1 ? '' : 's'}: ${r.created.join(', ')}.` : 'No new courses were added.',
+        r.skipped.length ? `Already in the app, left unchanged: ${r.skipped.join(', ')}.` : '',
+        ...r.warnings,
+        'Rename the courses and check their slots from each course page.',
+      ].filter(Boolean);
+      Alert.alert(r.created.length ? 'Timetable imported' : 'Nothing new to add', lines.join('\n\n'));
     } catch (error: any) {
       console.error('AI Timetable error:', error);
       Alert.alert('Error', error?.message || 'Could not parse the timetable image. Please try again.');

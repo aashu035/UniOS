@@ -32,8 +32,17 @@ export async function setOccurrenceStatus(
     await AttendanceRepository.deleteAttendance(o.id);
     return;
   }
-  if (!o.componentId) throw new Error('This class has no course component to mark.');
-  await AttendanceRepository.markAttendance(o.workspaceId, o.date, status, o.id, o.componentId);
+  // An existing mark is updated in place, so old classes stay editable after their slot changes.
+  const updated = await AttendanceRepository.updateExistingStatus(o.id, status, null);
+  if (!updated) {
+    if (!o.componentId) throw new Error('This class has no course component to mark.');
+    try {
+      await AttendanceRepository.markAttendance(o.workspaceId, o.date, status, o.id, o.componentId);
+    } catch (e: any) {
+      if (/SECURITY_VIOLATION/.test(e?.message ?? '')) throw new Error("This class isn't on your timetable for that day anymore, so it can't be marked. Check the course's weekly slots.");
+      throw e;
+    }
+  }
   NotificationService.attendanceMarked({ componentType: o.componentType ?? 'theory', date: o.date, status, workspaceId: o.workspaceId }).catch(() => {});
 }
 

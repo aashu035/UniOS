@@ -1,73 +1,39 @@
 import { ParsedClassSession, TimetableParser } from '../../core/ai/timetableParser';
 import { WorkspaceRepository } from './repository';
-import { CalendarRepository, NewCalendarEvent } from '../calendar/repository';
+import { planImport } from './importPlan';
+import { colors } from '../../tokens';
+
+export interface ImportResult { sessions: ParsedClassSession[]; created: string[]; skipped: string[]; warnings: string[] }
 
 export class AITimetableService {
   /**
-   * Parse the image and commit the schedule to the database in one go.
+   * Scan the image and create one course per subject with all of its weekly
+   * slots. Subjects that already exist (same course code) are left untouched,
+   * and one failing course never stops the others.
    */
-  static async importTimetable(imageUri: string, userBatch: string): Promise<ParsedClassSession[]> {
-    // 1. Parse using AI
+  static async importTimetable(imageUri: string, userBatch: string): Promise<ImportResult> {
     const sessions = await TimetableParser.parseTimetableImage(imageUri, userBatch);
-    
-    // 2. Map Day of Week
-    const daysMap: Record<string, number> = {
-      'Sunday': 0,
-      'Monday': 1,
-      'Tuesday': 2,
-      'Wednesday': 3,
-      'Thursday': 4,
-      'Friday': 5,
-      'Saturday': 6
-    };
+    const { courses, warnings } = planImport(sessions);
 
-    // 3. Fetch existing workspaces to avoid duplicates
-    const existingWorkspaces = await WorkspaceRepository.getAllWorkspaces();
-    const workspaceIdMap = new Map<string, number>();
-    
-    for (const ws of existingWorkspaces) {
-      if (ws.code) {
-        workspaceIdMap.set(ws.code.toUpperCase(), ws.id);
+    const existing = await WorkspaceRepository.getAllWorkspaces();
+    const codes = new Set(existing.map((w) => w.code?.toUpperCase()).filter(Boolean));
+    const used = new Set(existing.map((w) => w.color));
+    const palette = colors.subjects.map((s) => s.base);
+
+    const created: string[] = [];
+    const skipped: string[] = [];
+    for (const c of courses) {
+      if (codes.has(c.code)) { skipped.push(c.code); continue; }
+      const color = palette.find((x) => !used.has(x)) ?? palette[created.length % palette.length];
+      used.add(color);
+      try {
+        await WorkspaceRepository.buildCompleteWorkspace({ name: c.code, code: c.code, credits: c.credits, color, components: c.components });
+        created.push(c.code);
+      } catch (e: any) {
+        if (e?.message === 'NO_ACTIVE_SEMESTER') throw new Error('Create or activate a semester first, then scan again.');
+        warnings.push(`${c.code}: could not be added (${e?.message ?? e}).`);
       }
     }
-
-    const eventsToCreate: NewCalendarEvent[] = [];
-
-    // 4. Process each parsed session
-    for (const session of sessions) {
-      const code = session.subjectCode.toUpperCase();
-      let workspaceId = workspaceIdMap.get(code);
-
-      if (!workspaceId) {
-        // Create new workspace if not found
-        let credits = 3;
-        if (session.type === 'lab') credits = 1;
-        if (session.type === 'tutorial') credits = 1;
-
-        const newWs = await WorkspaceRepository.buildCompleteWorkspace({
-          name: code,
-          code: code,
-          credits: credits,
-          color: '#3B82F6',
-          components: [
-            {
-              type: (session.type === 'theory' || session.type === 'tutorial' || session.type === 'lab') ? session.type : 'theory',
-              durationMinutes: session.type === 'lab' ? 120 : 60,
-              venueName: session.venue,
-              facultyName: session.faculty,
-              sessions: [{
-                dayOfWeek: daysMap[session.day] ?? 1,
-                startTime: session.startTime,
-                endTime: session.endTime,
-              }]
-            }
-          ]
-        });
-
-        workspaceIdMap.set(code, newWs.id);
-      }
-    }
-
-    return sessions;
+    return { sessions, created, skipped, warnings };
   }
 }

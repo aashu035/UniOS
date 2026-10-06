@@ -125,7 +125,7 @@ export default function TemporaryChange() {
             {action === 'cancel' ? (
               <Card flat style={{ flexDirection: 'row', gap: 10, backgroundColor: p.surface }}>
                 <Icon name="info" size={16} color={p.muted} />
-                <T c={p.muted} size={13} style={{ flex: 1, lineHeight: 18 }}>A cancelled class disappears from that day and doesn't count toward attendance.</T>
+                <T c={p.muted} size={13} style={{ flex: 1, lineHeight: 18 }}>A cancelled class disappears from that day and doesn't count toward attendance. If you already marked it, the mark turns to Off; restoring the class brings it back.</T>
               </Card>
             ) : (
               <>

@@ -65,6 +65,19 @@ export class AttendanceRepository {
     return result[0];
   }
 
+  /**
+   * Change the status of a mark that already exists. No schedule check: the class
+   * was valid when first marked, and its slot may since have moved, been cancelled
+   * or been edited. Returns false when there is no mark to change.
+   */
+  static async updateExistingStatus(occurrenceId: string, status: 'present' | 'absent' | 'cancelled' | 'holiday' | 'exempt', notes?: string | null): Promise<boolean> {
+    const rows = await db.update(attendance)
+      .set({ status, ...(notes !== undefined ? { notes } : {}) })
+      .where(eq(attendance.occurrenceId, occurrenceId))
+      .returning();
+    return rows.length > 0;
+  }
+
   static async deleteAttendance(occurrenceId: string) {
     const result = await db.delete(attendance)
       .where(eq(attendance.occurrenceId, occurrenceId))
