@@ -15,10 +15,16 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
 import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
+import { appVariant, installDiagnostics, sendReport } from '../core/diagnostics';
+
+installDiagnostics();
 
 Sentry.init({
   dsn: 'https://5af72a268f523c7adf67e0802a496136@o4511887364194304.ingest.us.sentry.io/4511887404367872',
   sendDefaultPii: false,
+  // Split events by build so dev-client noise never mixes with the APK you use daily.
+  environment: appVariant(),
+  initialScope: { tags: { variant: appVariant() } },
   // Capture 100% of traces in dev/preview, reduce in production
   tracesSampleRate: __DEV__ ? 1.0 : 0.2,
   // Capture profiles for 100% of sampled traces
@@ -94,8 +100,18 @@ class AppErrorBoundary extends React.Component<
           <Button mode="contained" onPress={() => this.setState({ hasError: false, error: null })} style={{ marginBottom: 8 }}>
             Try Again
           </Button>
-          <Button mode="outlined" onPress={reloadApp}>
+          <Button mode="outlined" onPress={reloadApp} style={{ marginBottom: 8 }}>
             Reload App
+          </Button>
+          <Button
+            mode="text"
+            onPress={() => {
+              sendReport(`App crashed: ${this.state.error?.message ?? 'unknown error'}`, undefined, 'crash screen')
+                .then(() => Alert.alert('Report sent', 'Thanks. The error and app details were sent so it can be fixed.'))
+                .catch(() => Alert.alert('Could not send', 'Check your internet connection and try again.'));
+            }}
+          >
+            Send crash report
           </Button>
         </View>
       );
@@ -162,11 +178,6 @@ function RootLayout() {
 
   useEffect(() => {
     if (isReady) {
-      // TEST A: Runtime Delivery (Controlled)
-      if (process.env.EXPO_PUBLIC_DIAGNOSTIC_SENTRY === 'true') {
-        Sentry.captureMessage("UniOS Sentry integration test — Phase C");
-      }
-
       expoDb.getAllAsync(`SELECT id FROM students LIMIT 1`)
         .then((result) => {
           setHasProfile(result.length > 0);

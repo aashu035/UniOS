@@ -34,6 +34,7 @@ export default function Menu() {
     { icon: 'hard-drive-download', t: 'Backup & export', m: 'Stored on this device', to: '/settings/data' },
     { icon: 'user', t: 'Profile', m: profile?.name ?? 'Your details', to: '/(main)/profile' },
     { icon: 'settings-2', t: 'Settings', m: 'AI tutor, pairing and data', to: '/settings' },
+    { icon: 'triangle-alert', t: 'Report a problem', m: 'Send a bug report with app details', to: '/settings/report' },
   ];
 
   return (
