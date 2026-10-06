@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 3.8.2",
-    "appVersionSource": "local"
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -23,7 +23,8 @@
       "env": {
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_DIAGNOSTIC_SENTRY": "true"
-      }
+      },
+      "autoIncrement": true
     },
     "production": {
       "android": {
@@ -31,7 +32,8 @@
       },
       "env": {
         "APP_VARIANT": "production"
-      }
+      },
+      "autoIncrement": true
     }
   }
 }

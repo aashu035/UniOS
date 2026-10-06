@@ -54,7 +54,7 @@ export interface FileRow { id: number; title: string; type: string | null; uri: 
 
 export interface Portal { workspaceId: number; total: number | null; present: number | null; percent: number | null; checkedDate: string }
 
-export interface AttRow { occurrenceId: string; componentId: number; date: string; status: string; workspaceId: number }
+export interface AttRow { occurrenceId: string; componentId: number; date: string; status: string; workspaceId: number; note: string | null }
 
 export interface Snapshot {
   today: string;
@@ -134,7 +134,7 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
 
   const records: AttRow[] = allAtt
     .filter((a) => compToWs.has(a.componentId))
-    .map((a) => ({ occurrenceId: a.occurrenceId, componentId: a.componentId, date: normalizeDate(a.date) ?? a.date, status: a.status, workspaceId: compToWs.get(a.componentId)! }));
+    .map((a) => ({ occurrenceId: a.occurrenceId, componentId: a.componentId, date: normalizeDate(a.date) ?? a.date, status: a.status, workspaceId: compToWs.get(a.componentId)!, note: a.notes ?? null }));
 
   const courses: Course[] = inScope.map((w) => {
     const comps = allComps.filter((c) => c.workspaceId === w.id);

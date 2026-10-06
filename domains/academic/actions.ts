@@ -27,17 +27,18 @@ export async function markOccurrence(o: Occ, mark: Mark | null): Promise<void> {
 export async function setOccurrenceStatus(
   o: { id: string; workspaceId: number; date: string; componentId?: number | null; componentType?: string | null },
   status: AttStatus | null,
+  note: string | null = null,
 ): Promise<void> {
   if (status === null) {
     await AttendanceRepository.deleteAttendance(o.id);
     return;
   }
   // An existing mark is updated in place, so old classes stay editable after their slot changes.
-  const updated = await AttendanceRepository.updateExistingStatus(o.id, status, null);
+  const updated = await AttendanceRepository.updateExistingStatus(o.id, status, note);
   if (!updated) {
     if (!o.componentId) throw new Error('This class has no course component to mark.');
     try {
-      await AttendanceRepository.markAttendance(o.workspaceId, o.date, status, o.id, o.componentId);
+      await AttendanceRepository.markAttendance(o.workspaceId, o.date, status, o.id, o.componentId, note ?? undefined);
     } catch (e: any) {
       if (/SECURITY_VIOLATION/.test(e?.message ?? '')) throw new Error("This class isn't on your timetable for that day anymore, so it can't be marked. Check the course's weekly slots.");
       throw e;

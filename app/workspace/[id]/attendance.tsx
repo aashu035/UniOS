@@ -111,7 +111,7 @@ export default function WorkspaceAttendance() {
     if (viewMode === 'portal') return;
     setSheetFor(occurrence);
   };
-  const handleSheetPick = async (status: AttStatus | null) => {
+  const handleSheetPick = async (status: AttStatus | null, note: string | null) => {
     const occurrence = sheetFor;
     setSheetFor(null);
     if (!occurrence) return;
@@ -126,7 +126,7 @@ export default function WorkspaceAttendance() {
       }
       return;
     }
-    await handleMark(occurrence, status, NOTES[status]);
+    await handleMark(occurrence, status, note ?? NOTES[status]);
   };
   const sheetCurrent: AttStatus | null = sheetFor && MARKED.includes(sheetFor.status) ? sheetFor.status : null;
 
@@ -297,7 +297,8 @@ export default function WorkspaceAttendance() {
         title={sheetFor ? `${sheetFor.componentType ? sheetFor.componentType[0].toUpperCase() + sheetFor.componentType.slice(1) : 'Class'}${workspaceData?.workspace?.name ? ` · ${workspaceData.workspace.name}` : ''}` : ''}
         subtitle={sheetFor?.date ? new Date(`${sheetFor.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : undefined}
         current={sheetCurrent}
-        onPick={handleSheetPick}
+        onSave={handleSheetPick}
+        currentNote={sheetFor?.notes ?? null}
         onClose={() => setSheetFor(null)}
       />
     </ScrollView>
