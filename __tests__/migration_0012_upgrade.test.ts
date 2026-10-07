@@ -105,10 +105,18 @@ const V11_SCHEMA = `
     end_time TEXT,
     venue_override_id INTEGER,
     faculty_override_id INTEGER,
+    target_date TEXT,
+    reason TEXT,
+    created_at TEXT,
     FOREIGN KEY (component_id) REFERENCES course_components(id) ON DELETE CASCADE,
     FOREIGN KEY (recurring_schedule_id) REFERENCES recurring_schedules(id) ON DELETE CASCADE,
     FOREIGN KEY (venue_override_id) REFERENCES venues(id),
     FOREIGN KEY (faculty_override_id) REFERENCES faculty(id)
+  );
+
+  CREATE TABLE day_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, kind TEXT NOT NULL, follows_weekday INTEGER,
+    borrowed_date TEXT, borrowed_mode TEXT, linked_rule_id INTEGER, reason TEXT, note TEXT, source TEXT DEFAULT 'you', created_at TEXT
   );
 
   -- V11 attendance schema: old component/date uniqueness, no occurrence_id

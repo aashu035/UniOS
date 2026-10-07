@@ -67,6 +67,7 @@ export async function importBackup(jsonString: string): Promise<void> {
   // 4. Determine Deletion and Insertion Order
   // Child -> Parent deletion order to respect foreign keys
   const deletionOrder: BackupTableKey[] = [
+    'day_rules',
     'tutor_messages',
     'tutor_conversations',
     'material_index_permissions',

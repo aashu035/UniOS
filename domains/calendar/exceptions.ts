@@ -41,10 +41,10 @@ export class ScheduleExceptionRepository {
    * Cancel one day of a class. If it was already marked present/absent/leave, the
    * mark becomes "Off" (not counted) and remembers what it was, for restore().
    */
-  static async cancel(recurringScheduleId: number, date: string) {
+  static async cancel(recurringScheduleId: number, date: string, reason?: string) {
     const rec = await this.slot(recurringScheduleId);
     await this.clear(recurringScheduleId, date);
-    await db.insert(scheduleExceptions).values({ componentId: rec.componentId, recurringScheduleId, specificDate: date, action: 'cancel' });
+    await db.insert(scheduleExceptions).values({ componentId: rec.componentId, recurringScheduleId, specificDate: date, action: 'cancel', reason: reason?.trim() || null, createdAt: new Date().toISOString() });
     const occ = `rec_${recurringScheduleId}_${date}`;
     const mark = await db.select().from(attendance).where(eq(attendance.occurrenceId, occ)).get();
     if (mark && (mark.status === 'present' || mark.status === 'absent' || mark.status === 'exempt')) {
@@ -52,15 +52,38 @@ export class ScheduleExceptionRepository {
     }
   }
 
-  static async move(recurringScheduleId: number, date: string, startTime: string, endTime: string, venueName?: string) {
+  /**
+   * Move one day of a class to another time, and optionally another date
+   * (`targetDate`). The class keeps its id, so a mark moves with it.
+   */
+  static async move(recurringScheduleId: number, date: string, startTime: string, endTime: string, venueName?: string, opts: { targetDate?: string; reason?: string } = {}) {
     if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime) || startTime >= endTime) {
       throw new Error('Pick a start time before the end time.');
     }
+    if (opts.targetDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(opts.targetDate)) throw new Error('Pick the new date.');
     const rec = await this.slot(recurringScheduleId);
     const venueOverrideId = venueName?.trim() ? await WorkspaceRepository.resolveVenue(db, venueName.trim()) : null;
     await this.restore(recurringScheduleId, date); // brings back a mark a previous cancel had set to Off
     await db.insert(scheduleExceptions).values({
       componentId: rec.componentId, recurringScheduleId, specificDate: date, action: 'move', startTime, endTime, venueOverrideId: venueOverrideId ?? null,
+      targetDate: opts.targetDate && opts.targetDate !== date ? opts.targetDate : null, reason: opts.reason?.trim() || null, createdAt: new Date().toISOString(),
     });
+  }
+
+  /** A one-off extra class (make-up, syllabus catch-up, backlog). */
+  static async extra(componentId: number, date: string, startTime: string, endTime: string, opts: { venueName?: string; reason?: string } = {}) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Pick a date.');
+    if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime) || startTime >= endTime) throw new Error('Pick a start time before the end time.');
+    const venueOverrideId = opts.venueName?.trim() ? await WorkspaceRepository.resolveVenue(db, opts.venueName.trim()) : null;
+    return db.insert(scheduleExceptions).values({
+      componentId, specificDate: date, action: 'extra', startTime, endTime, venueOverrideId: venueOverrideId ?? null,
+      reason: opts.reason?.trim() || null, createdAt: new Date().toISOString(),
+    }).returning().get();
+  }
+
+  /** Remove an extra class; its mark goes with it (there is no regular class to fall back to). */
+  static async removeExtra(id: number) {
+    await db.delete(attendance).where(eq(attendance.occurrenceId, `ex_${id}`));
+    await db.delete(scheduleExceptions).where(and(eq(scheduleExceptions.id, id), eq(scheduleExceptions.action, 'extra')));
   }
 }

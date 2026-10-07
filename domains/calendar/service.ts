@@ -1,9 +1,9 @@
 import { db } from '../../core/db/client';
-import { recurringSchedules, scheduleExceptions, calendarEvents } from './model';
+import { recurringSchedules, scheduleExceptions, calendarEvents, dayRules } from './model';
 import { courseComponents, workspaces, componentVenueAssignments } from '../workspace/model';
 import { venues } from '../venue/model';
 import { faculty } from '../faculty/model';
-import { eq, and, gte, lte, asc, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, asc, desc, or } from 'drizzle-orm';
 import { parseLocalDate, getLocalDateString } from '../../core/utils/date';
 
 export interface EffectiveOccurrence {
@@ -21,6 +21,14 @@ export interface EffectiveOccurrence {
   facultyName?: string;
   isException: boolean;
   exceptionAction?: string;
+  /** The date runs another weekday's timetable (0=Sun … 6=Sat). */
+  followsWeekday?: number;
+  /** Why it is here or changed: "Event · Techfest", "Syllabus catch-up". */
+  changeReason?: string;
+  /** move to another date: where it came from. */
+  movedFromDate?: string;
+  /** This date lent its timetable to another day and it is not yet known whether classes run. */
+  unsure?: boolean;
 }
 
 export interface AcademicWeatherFacts {
@@ -102,11 +110,20 @@ export class CalendarService {
       return active ? active.name : undefined;
     };
 
+    // Whole-day rules: a day off, or a day that follows another weekday's timetable.
+    const rules = await db.select().from(dayRules).where(and(gte(dayRules.date, startDateStr), lte(dayRules.date, endDateStr))).all();
+    const ruleByDate = new Map(rules.map((r) => [r.date, r]));
+    // Dates that lent their timetable with "not sure yet".
+    const unsureDates = new Set((await db.select().from(dayRules).where(eq(dayRules.borrowedMode, 'unsure')).all()).map((r) => r.borrowedDate).filter(Boolean) as string[]);
+
     // 2. Expand recurring schedules into dates
     let current = new Date(start);
     while (current <= end) {
-      const currentDayOfWeek = current.getDay(); // 0=Sun, 1=Mon
       const currentDateStr = getLocalDateString(current);
+      const rule = ruleByDate.get(currentDateStr);
+      // A day off runs nothing; a follow day runs the other weekday's slots.
+      const currentDayOfWeek = rule?.kind === 'off' ? -1 : rule?.kind === 'follow' && rule.followsWeekday != null ? rule.followsWeekday : current.getDay();
+      const followNote = rule?.kind === 'follow' ? [rule.reason, rule.note].filter(Boolean).join(' · ') || undefined : undefined;
 
       for (const rec of allRecurring) {
         if (rec.dayOfWeek === currentDayOfWeek) {
@@ -135,6 +152,8 @@ export class CalendarService {
             venueName: venueName,
             facultyName: facultyName,
             isException: false,
+            ...(rule?.kind === 'follow' ? { followsWeekday: currentDayOfWeek, changeReason: followNote } : {}),
+            ...(unsureDates.has(currentDateStr) ? { unsure: true } : {}),
             // We temporarily store the recurring schedule id to match exceptions accurately
             _recurringScheduleId: rec.id 
           } as any);
@@ -146,11 +165,13 @@ export class CalendarService {
     // 3. Fetch exceptions for the date range
     const exceptions = await db.select()
       .from(scheduleExceptions)
-      .where(and(
-        gte(scheduleExceptions.specificDate, startDateStr),
-        lte(scheduleExceptions.specificDate, endDateStr)
+      .where(or(
+        and(gte(scheduleExceptions.specificDate, startDateStr), lte(scheduleExceptions.specificDate, endDateStr)),
+        and(gte(scheduleExceptions.targetDate, startDateStr), lte(scheduleExceptions.targetDate, endDateStr)),
       ))
       .all();
+    const recById = new Map(allRecurring.map((r) => [r.id, r]));
+    const isOff = (d: string) => ruleByDate.get(d)?.kind === 'off';
 
     // 4. Apply Exceptions
     for (const ex of exceptions) {
@@ -162,6 +183,27 @@ export class CalendarService {
         );
         if (index !== -1) occurrences.splice(index, 1);
       } 
+      else if (ex.action === 'move' && ex.targetDate && ex.targetDate !== ex.specificDate) {
+        // Moved to another date: leaves its own day and appears on the new one, keeping
+        // its id (rec_<slot>_<original date>) so a mark stays with the class.
+        const index = occurrences.findIndex((o: any) => o._recurringScheduleId === ex.recurringScheduleId && o.date === ex.specificDate && !o.isException);
+        if (index !== -1) occurrences.splice(index, 1);
+        const rec = ex.recurringScheduleId ? recById.get(ex.recurringScheduleId) : undefined;
+        const comp = compMap.get(ex.componentId);
+        const ws = comp && workspaceMap.get(comp.workspaceId);
+        const inRange = ex.targetDate >= startDateStr && ex.targetDate <= endDateStr;
+        if (!rec || !comp || !ws || !inRange || isOff(ex.targetDate)) continue;
+        occurrences.push({
+          id: `rec_${rec.id}_${ex.specificDate}`,
+          workspaceId: ws.id, workspaceName: ws.name, workspaceColor: ws.color || '#3B82F6', workspaceIcon: ws.icon || 'book',
+          componentId: comp.id, componentType: comp.type,
+          date: ex.targetDate,
+          startTime: ex.startTime || rec.startTime, endTime: ex.endTime || rec.endTime,
+          venueName: (ex.venueOverrideId ? venueMap.get(ex.venueOverrideId) : getActiveVenue(comp.id, ex.targetDate)) || undefined,
+          facultyName: (ex.facultyOverrideId ? facultyMap.get(ex.facultyOverrideId) : getActiveFaculty(comp.id, ex.targetDate, comp.facultyId)) || undefined,
+          isException: true, exceptionAction: 'move', movedFromDate: ex.specificDate, changeReason: ex.reason || undefined,
+        });
+      }
       else if (ex.action === 'move' || ex.action === 'replace') {
         const index = occurrences.findIndex((o: any) => 
           o._recurringScheduleId === ex.recurringScheduleId && 
@@ -183,6 +225,7 @@ export class CalendarService {
         }
       }
       else if (ex.action === 'extra') {
+        if (ex.specificDate < startDateStr || ex.specificDate > endDateStr || isOff(ex.specificDate)) continue;
         const comp = compMap.get(ex.componentId);
         if (!comp) continue;
         const ws = workspaceMap.get(comp.workspaceId);
@@ -206,6 +249,7 @@ export class CalendarService {
           facultyName: facultyName || undefined,
           isException: true,
           exceptionAction: ex.action,
+          changeReason: ex.reason || undefined,
         });
       }
     }

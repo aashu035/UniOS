@@ -271,3 +271,100 @@ describe('items without a course', () => {
     await expect(TaskRepository.createTask({ workspaceId: 999, title: 'Ghost' })).rejects.toThrow(/does not exist/);
   });
 });
+
+describe('schedule changes: a day follows another, days off, moves and extras', () => {
+  const { DayRuleRepository } = require('../domains/calendar/dayRules');
+  const { ScheduleExceptionRepository } = require('../domains/calendar/exceptions');
+  const { CalendarService } = require('../domains/calendar/service');
+  const { setOccurrenceStatus } = require('../domains/academic/actions');
+  // Test timetable: OS Thu 9-10 (slot 1), CN Thu 15-16 (slot 2), CN Fri 10-11 (slot 4).
+  const THU = '2026-10-29', FRI = '2026-10-30', TUE = '2026-10-27', PREV_THU = '2026-10-22';
+  const day = async (d: string) => (await CalendarService.getEffectiveSchedule(d, d)).filter((o: any) => o.workspaceId <= 2);
+  const row = (id: string) => mockSqlite.prepare(`SELECT status, notes FROM attendance WHERE occurrence_id = ?`).get(id) as any;
+
+  afterEach(async () => {
+    await DayRuleRepository.removeOn(THU); await DayRuleRepository.removeOn(FRI);
+    mockSqlite.exec(`DELETE FROM schedule_exceptions WHERE specific_date IN ('${THU}','${FRI}','${TUE}','${PREV_THU}')`);
+    mockSqlite.exec(`DELETE FROM attendance WHERE date IN ('${THU}','${FRI}','${TUE}','${PREV_THU}') OR occurrence_id LIKE 'ex_%'`);
+  });
+
+  it("Thursday follows Friday: Friday's classes run on Thursday and Friday is a holiday", async () => {
+    await DayRuleRepository.follow(THU, 5, { reason: 'Event', note: 'Techfest', borrowed: { date: FRI, mode: 'holiday' } });
+    expect((await day(THU)).map((o: any) => [o.id, o.startTime, o.followsWeekday])).toEqual([[`rec_4_${THU}`, '10:00', 5]]);
+    expect(await day(FRI)).toEqual([]);
+    const s = await loadSnapshot({ today: THU, from: THU, to: FRI });
+    const thu = s.occurrences.filter((o: any) => o.date === THU);
+    expect(thu.filter((o: any) => o.cancelled).map((o: any) => [o.workspaceName, o.dropReason])).toEqual([
+      ['Operating Systems', 'Off · day followed Friday (Event)'], ['Computer Networks', 'Off · day followed Friday (Event)'],
+    ]);
+    expect(s.occurrences.find((o: any) => o.date === FRI).dropReason).toMatch(/^Off · Holiday/);
+    expect(s.dayRules.map((r: any) => [r.date, r.kind])).toEqual([[THU, 'follow'], [FRI, 'off']]);
+  });
+
+  it("marks on Friday's classes run on Thursday count; Thursday's own marks are shadowed, never lost", async () => {
+    await setOccurrenceStatus({ id: `rec_1_${THU}`, workspaceId: 1, date: THU, componentId: 1 }, 'present'); // marked before the change
+    const osBefore = (await loadSnapshot({ today: THU })).courseById.get(1).att;
+    await DayRuleRepository.follow(THU, 5, { reason: 'Event', borrowed: { date: FRI, mode: 'holiday' } });
+    expect(row(`rec_1_${THU}`)).toEqual({ status: 'cancelled', notes: 'was:present' });
+    expect((await loadSnapshot({ today: THU })).courseById.get(1).att.attended).toBe(osBefore.attended - 1);
+    // CN's Friday class, held on Thursday, can be marked and counts.
+    const cnBefore = (await loadSnapshot({ today: THU })).courseById.get(2).att;
+    await setOccurrenceStatus({ id: `rec_4_${THU}`, workspaceId: 2, date: THU, componentId: 2 }, 'present');
+    expect((await loadSnapshot({ today: THU })).courseById.get(2).att).toMatchObject({ attended: cnBefore.attended + 1, total: cnBefore.total + 1 });
+    // A dropped class that was never marked cannot be newly marked.
+    await expect(setOccurrenceStatus({ id: `rec_2_${THU}`, workspaceId: 2, date: THU, componentId: 2 }, 'present')).rejects.toThrow(/isn't on your timetable/);
+    // Undo brings Thursday back: the OS mark returns.
+    await DayRuleRepository.removeOn(THU);
+    expect(row(`rec_1_${THU}`)).toEqual({ status: 'present', notes: null });
+    expect((await day(FRI)).map((o: any) => o.id)).toEqual([`rec_4_${FRI}`]); // Friday is normal again
+  });
+
+  it('an extra class survives a follow, but not a day off', async () => {
+    const ex = await ScheduleExceptionRepository.extra(1, THU, '13:00', '14:00', { reason: 'Make-up class' });
+    await DayRuleRepository.follow(THU, 5, { reason: 'Event' });
+    expect((await day(THU)).map((o: any) => [o.id, o.changeReason ?? null])).toEqual([[`rec_4_${THU}`, 'Event'], [`ex_${ex.id}`, 'Make-up class']]);
+    await DayRuleRepository.dayOff(THU, { reason: 'Strike' });
+    expect(await day(THU)).toEqual([]);
+  });
+
+  it('a class moved to another day keeps its mark and shows where it went', async () => {
+    await ScheduleExceptionRepository.move(1, PREV_THU, '13:00', '14:00', undefined, { targetDate: TUE, reason: 'Teacher swap' });
+    expect((await day(PREV_THU)).map((o: any) => o.workspaceId)).toEqual([2]); // OS left Thursday
+    const tue = await day(TUE);
+    expect(tue.map((o: any) => [o.id, o.date, o.startTime, o.movedFromDate])).toEqual([[`rec_1_${PREV_THU}`, TUE, '13:00', PREV_THU]]);
+    await setOccurrenceStatus({ id: `rec_1_${PREV_THU}`, workspaceId: 1, date: TUE, componentId: 1 }, 'present');
+    expect(row(`rec_1_${PREV_THU}`).status).toBe('present');
+    const s = await loadSnapshot({ today: TUE, from: PREV_THU, to: TUE });
+    expect(s.occurrences.find((o: any) => o.date === PREV_THU && o.workspaceId === 1).dropReason).toBe('Moved to Tue 27 Oct, 1:00 PM');
+  });
+
+  it('a whole day off shadows every mark that day, and undo restores them', async () => {
+    await setOccurrenceStatus({ id: `rec_2_${THU}`, workspaceId: 2, date: THU, componentId: 2 }, 'absent');
+    await DayRuleRepository.dayOff(THU, { reason: 'Holiday', note: 'Diwali' });
+    expect(row(`rec_2_${THU}`)).toEqual({ status: 'cancelled', notes: 'was:absent' });
+    await DayRuleRepository.removeOn(THU);
+    expect(row(`rec_2_${THU}`).status).toBe('absent');
+  });
+
+  it('a new rule on the same date replaces the old one cleanly', async () => {
+    await DayRuleRepository.follow(THU, 5, { reason: 'Event', borrowed: { date: FRI, mode: 'holiday' } });
+    await DayRuleRepository.follow(THU, 1, { reason: 'Exam' }); // now follows Monday instead
+    const s = await loadSnapshot({ today: THU, from: THU, to: FRI });
+    expect(s.dayRules.map((r: any) => [r.date, r.kind, r.followsWeekday])).toEqual([[THU, 'follow', 1]]); // Friday's holiday went with the old rule
+  });
+
+  it('"not sure yet" marks the borrowed day, then settles to a holiday', async () => {
+    const rule = await DayRuleRepository.follow(THU, 5, { reason: 'Event', borrowed: { date: FRI, mode: 'unsure' } });
+    expect((await day(FRI)).every((o: any) => o.unsure)).toBe(true);
+    await DayRuleRepository.settleBorrowed(rule.id, 'holiday');
+    expect(await day(FRI)).toEqual([]);
+  });
+
+  it('refuses nonsense', async () => {
+    await expect(DayRuleRepository.follow(THU, 4, { reason: 'Event' })).rejects.toThrow(/own timetable/);
+    await expect(DayRuleRepository.follow(THU, 5, { reason: ' ' })).rejects.toThrow(/reason/);
+    await expect(DayRuleRepository.follow(THU, 5, { reason: 'Event', borrowed: { date: '2026-10-31', mode: 'holiday' } })).rejects.toThrow(/isn't that weekday/);
+    await expect(DayRuleRepository.follow('30/10/2026', 5, { reason: 'Event' })).rejects.toThrow(/date/);
+    await expect(ScheduleExceptionRepository.extra(1, THU, '14:00', '13:00')).rejects.toThrow(/before the end/);
+  });
+});

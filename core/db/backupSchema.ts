@@ -14,6 +14,7 @@ export const CANONICAL_BACKUP_TABLES = [
   'component_faculty_assignments',
   'recurring_schedules',
   'schedule_exceptions',
+  'day_rules',
   'calendar_events',
   'tasks',
   'resources',
@@ -26,6 +27,9 @@ export const CANONICAL_BACKUP_TABLES = [
   'tutor_conversations',
   'tutor_messages'
 ] as const;
+
+/** Tables added after version 2 shipped: an older backup without them is still valid (treated as empty). */
+export const OPTIONAL_BACKUP_TABLES: readonly string[] = ['day_rules'];
 
 export type BackupTableKey = typeof CANONICAL_BACKUP_TABLES[number];
 

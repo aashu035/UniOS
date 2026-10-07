@@ -1,0 +1,1472 @@
+{
+  "format": "unios-backup",
+  "version": 2,
+  "exportedAt": "2026-10-07T06:42:06.793Z",
+  "tables": {
+    "students": [
+      {
+        "id": 1,
+        "name": "*-;₹\"-",
+        "enrollmentNo": null,
+        "university": "DCRUST Murthal",
+        "branch": "\"!\";:\"",
+        "currentSemester": 1,
+        "targetCgpa": 8,
+        "heroPortraitUri": null,
+        "createdAt": "2026-10-07 06:32:42"
+      }
+    ],
+    "semesters": [
+      {
+        "id": 1,
+        "number": 1,
+        "name": "Semester 1",
+        "type": "odd",
+        "startDate": null,
+        "endDate": null,
+        "isActive": true,
+        "sgpa": null
+      }
+    ],
+    "dcrust_grading": [],
+    "venues": [],
+    "faculty": [],
+    "workspaces": [
+      {
+        "id": 1,
+        "semesterId": 1,
+        "name": "Test Course",
+        "shortName": null,
+        "code": null,
+        "credits": 4,
+        "defaultFacultyId": null,
+        "color": "#3B82F6",
+        "icon": "book",
+        "targetAttendance": 75,
+        "notes": null,
+        "needsReview": false,
+        "createdAt": "2026-10-07 06:35:45"
+      },
+      {
+        "id": 2,
+        "semesterId": 1,
+        "name": "Test 2",
+        "shortName": null,
+        "code": null,
+        "credits": 6,
+        "defaultFacultyId": null,
+        "color": "#10B981",
+        "icon": "book",
+        "targetAttendance": 75,
+        "notes": null,
+        "needsReview": false,
+        "createdAt": "2026-10-07 06:38:07"
+      }
+    ],
+    "workspace_timeline": [],
+    "course_components": [
+      {
+        "id": 1,
+        "workspaceId": 1,
+        "type": "theory",
+        "facultyId": null,
+        "durationMinutes": 60,
+        "assessmentAllocation": null,
+        "createdAt": "2026-10-07 06:35:45"
+      },
+      {
+        "id": 2,
+        "workspaceId": 1,
+        "type": "lab",
+        "facultyId": null,
+        "durationMinutes": 120,
+        "assessmentAllocation": null,
+        "createdAt": "2026-10-07 06:35:45"
+      },
+      {
+        "id": 3,
+        "workspaceId": 2,
+        "type": "theory",
+        "facultyId": null,
+        "durationMinutes": 60,
+        "assessmentAllocation": null,
+        "createdAt": "2026-10-07 06:38:07"
+      }
+    ],
+    "component_venue_assignments": [],
+    "component_faculty_assignments": [],
+    "recurring_schedules": [
+      {
+        "id": 1,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 2,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 3,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 4,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 5,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 6,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 7,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 8,
+        "componentId": 1,
+        "dayOfWeek": 1,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 9,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 10,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 11,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 12,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 13,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 14,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 15,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 16,
+        "componentId": 1,
+        "dayOfWeek": 2,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 17,
+        "componentId": 1,
+        "dayOfWeek": 3,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 18,
+        "componentId": 1,
+        "dayOfWeek": 3,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 19,
+        "componentId": 1,
+        "dayOfWeek": 3,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 20,
+        "componentId": 1,
+        "dayOfWeek": 3,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 21,
+        "componentId": 1,
+        "dayOfWeek": 3,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 22,
+        "componentId": 1,
+        "dayOfWeek": 3,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 23,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 24,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 25,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 26,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 27,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 28,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 29,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 30,
+        "componentId": 1,
+        "dayOfWeek": 4,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 31,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 32,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 33,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 34,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 35,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 36,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 37,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 38,
+        "componentId": 1,
+        "dayOfWeek": 5,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 39,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 40,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 41,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 42,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 43,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 44,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 45,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 46,
+        "componentId": 1,
+        "dayOfWeek": 6,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 47,
+        "componentId": 2,
+        "dayOfWeek": 3,
+        "startTime": "10:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 48,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 49,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 50,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 51,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 52,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 53,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 54,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 55,
+        "componentId": 3,
+        "dayOfWeek": 1,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 56,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 57,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 58,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 59,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 60,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 61,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 62,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 63,
+        "componentId": 3,
+        "dayOfWeek": 2,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 64,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 65,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 66,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 67,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 68,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 69,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 70,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 71,
+        "componentId": 3,
+        "dayOfWeek": 3,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 72,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 73,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 74,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 75,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 76,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 77,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 78,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 79,
+        "componentId": 3,
+        "dayOfWeek": 4,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 80,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 81,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 82,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 83,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 84,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 85,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 86,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 87,
+        "componentId": 3,
+        "dayOfWeek": 5,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 88,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 89,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 90,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 91,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "12:00",
+        "endTime": "13:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 92,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "13:00",
+        "endTime": "14:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 93,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 94,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      },
+      {
+        "id": 95,
+        "componentId": 3,
+        "dayOfWeek": 6,
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "venueOverrideId": null,
+        "effectiveStartDate": null,
+        "effectiveEndDate": null
+      }
+    ],
+    "schedule_exceptions": [
+      {
+        "id": 1,
+        "componentId": 3,
+        "recurringScheduleId": 67,
+        "specificDate": "2026-10-07",
+        "action": "move",
+        "startTime": "07:30",
+        "endTime": "08:30",
+        "venueOverrideId": null,
+        "facultyOverrideId": null
+      }
+    ],
+    "calendar_events": [],
+    "tasks": [
+      {
+        "id": 1,
+        "workspaceId": 1,
+        "title": "Test task",
+        "description": null,
+        "type": "assignment",
+        "dueDate": "2026-10-07",
+        "priority": "high",
+        "status": "pending",
+        "marksObtained": null,
+        "marksTotal": null,
+        "feedback": null,
+        "fileUris": null,
+        "createdAt": "2026-10-07 06:40:02"
+      }
+    ],
+    "resources": [
+      {
+        "id": 1,
+        "workspaceId": 1,
+        "title": "Video by thevarunmayya [DeCczhMTU9A].mp4",
+        "type": "file",
+        "uri": "cd6110fc-737d-4d77-a378-9f895118509e.mp4",
+        "textContent": "",
+        "thumbnailUrl": null,
+        "isOffline": false,
+        "sizeBytes": 21038000,
+        "fileHash": "c3c9bf138eb5663fe59582988c3f874d9ffd91ea27f13b2393e1244b37e5cb01",
+        "createdAt": "2026-10-07 06:35:55"
+      }
+    ],
+    "attendance": [
+      {
+        "id": 1,
+        "componentId": 1,
+        "occurrenceId": "rec_4_2026-10-05",
+        "identityStatus": "resolved",
+        "date": "2026-10-05",
+        "source": "local",
+        "status": "exempt",
+        "markedAt": "2026-10-07 06:36:21",
+        "notes": null
+      },
+      {
+        "id": 2,
+        "componentId": 1,
+        "occurrenceId": "rec_22_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "absent",
+        "markedAt": "2026-10-07 06:36:25",
+        "notes": null
+      },
+      {
+        "id": 3,
+        "componentId": 1,
+        "occurrenceId": "rec_21_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "absent",
+        "markedAt": "2026-10-07 06:36:28",
+        "notes": null
+      },
+      {
+        "id": 4,
+        "componentId": 1,
+        "occurrenceId": "rec_20_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:36:31",
+        "notes": null
+      },
+      {
+        "id": 5,
+        "componentId": 1,
+        "occurrenceId": "rec_19_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:36:33",
+        "notes": null
+      },
+      {
+        "id": 6,
+        "componentId": 1,
+        "occurrenceId": "rec_17_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "cancelled",
+        "markedAt": "2026-10-07 06:36:38",
+        "notes": null
+      },
+      {
+        "id": 8,
+        "componentId": 2,
+        "occurrenceId": "rec_47_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "exempt",
+        "markedAt": "2026-10-07 06:36:46",
+        "notes": null
+      },
+      {
+        "id": 10,
+        "componentId": 1,
+        "occurrenceId": "rec_18_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "cancelled",
+        "markedAt": "2026-10-07 06:37:25",
+        "notes": null
+      },
+      {
+        "id": 11,
+        "componentId": 3,
+        "occurrenceId": "rec_71_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:13",
+        "notes": null
+      },
+      {
+        "id": 12,
+        "componentId": 3,
+        "occurrenceId": "rec_70_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:16",
+        "notes": null
+      },
+      {
+        "id": 13,
+        "componentId": 3,
+        "occurrenceId": "rec_64_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:23",
+        "notes": null
+      },
+      {
+        "id": 14,
+        "componentId": 3,
+        "occurrenceId": "rec_65_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:26",
+        "notes": null
+      },
+      {
+        "id": 15,
+        "componentId": 3,
+        "occurrenceId": "rec_66_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:28",
+        "notes": null
+      },
+      {
+        "id": 16,
+        "componentId": 3,
+        "occurrenceId": "rec_67_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:31",
+        "notes": null
+      },
+      {
+        "id": 17,
+        "componentId": 3,
+        "occurrenceId": "rec_68_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:35",
+        "notes": null
+      },
+      {
+        "id": 18,
+        "componentId": 3,
+        "occurrenceId": "rec_69_2026-10-07",
+        "identityStatus": "resolved",
+        "date": "2026-10-07",
+        "source": "local",
+        "status": "present",
+        "markedAt": "2026-10-07 06:38:37",
+        "notes": null
+      }
+    ],
+    "portal_attendance": [],
+    "notifications": [
+      {
+        "id": 1,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-05 marked as exempt.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:21"
+      },
+      {
+        "id": 2,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as absent.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:25"
+      },
+      {
+        "id": 3,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as absent.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:28"
+      },
+      {
+        "id": 4,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:31"
+      },
+      {
+        "id": 5,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:34"
+      },
+      {
+        "id": 6,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as exempt.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:38"
+      },
+      {
+        "id": 7,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as cancelled.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:43"
+      },
+      {
+        "id": 8,
+        "title": "Attendance marked",
+        "message": "lab class on 2026-10-07 marked as exempt.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:46"
+      },
+      {
+        "id": 9,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as exempt.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:36:47"
+      },
+      {
+        "id": 10,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:37:25"
+      },
+      {
+        "id": 11,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:13"
+      },
+      {
+        "id": 12,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:16"
+      },
+      {
+        "id": 13,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:23"
+      },
+      {
+        "id": 14,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:26"
+      },
+      {
+        "id": 15,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:29"
+      },
+      {
+        "id": 16,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:31"
+      },
+      {
+        "id": 17,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:35"
+      },
+      {
+        "id": 18,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as present.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:38:37"
+      },
+      {
+        "id": 19,
+        "title": "Class rescheduled",
+        "message": "Your theory class on 2026-10-07 was rescheduled.",
+        "type": "alert",
+        "isRead": false,
+        "actionUrl": "/workspace/2/attendance",
+        "createdAt": "2026-10-07 06:39:04"
+      },
+      {
+        "id": 20,
+        "title": "Attendance marked",
+        "message": "theory class on 2026-10-07 marked as cancelled.",
+        "type": "success",
+        "isRead": false,
+        "actionUrl": "/workspace/1/attendance",
+        "createdAt": "2026-10-07 06:39:20"
+      },
+      {
+        "id": 21,
+        "title": "Task added",
+        "message": "“Test task” is on your list.",
+        "type": "info",
+        "isRead": false,
+        "actionUrl": "/workspace/1",
+        "createdAt": "2026-10-07 06:40:02"
+      }
+    ],
+    "ai_connections": [],
+    "learning_profiles": [],
+    "material_index_permissions": [],
+    "tutor_conversations": [],
+    "tutor_messages": []
+  }
+}

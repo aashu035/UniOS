@@ -43,7 +43,30 @@ export const scheduleExceptions = sqliteTable('schedule_exceptions', {
   endTime: text('end_time'), // 'HH:MM' (Required for move/replace/extra)
   venueOverrideId: integer('venue_override_id').references(() => venues.id), // Optional
   facultyOverrideId: integer('faculty_override_id').references(() => faculty.id), // Optional
+  targetDate: text('target_date'), // move only: the date it moves to (null = same day)
+  reason: text('reason'), // why: "Teacher absent", "Syllabus catch-up", …
+  createdAt: text('created_at'),
 }, (table) => ({
   exceptionDateIdx: index('idx_exception_date').on(table.specificDate),
+  exceptionTargetIdx: index('idx_exception_target_date').on(table.targetDate),
 }));
+
+/**
+ * Whole-day changes. `follow`: the date runs another weekday's timetable
+ * (Thu 8 Oct follows Friday). `off`: no classes that day (holiday, fest, or the
+ * borrowed day of a follow, linked by `linkedRuleId`). One rule per date.
+ */
+export const dayRules = sqliteTable('day_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(),
+  kind: text('kind').notNull(), // 'follow' | 'off'
+  followsWeekday: integer('follows_weekday'), // 0=Sun … 6=Sat, for 'follow'
+  borrowedDate: text('borrowed_date'), // follow: the date whose timetable was borrowed (if it is a real upcoming date)
+  borrowedMode: text('borrowed_mode'), // follow: 'holiday' | 'normal' | 'unsure'
+  linkedRuleId: integer('linked_rule_id'), // off: the follow rule that made this day a holiday
+  reason: text('reason'),
+  note: text('note'),
+  source: text('source').default('you'),
+  createdAt: text('created_at'),
+});
 

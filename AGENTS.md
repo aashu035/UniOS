@@ -50,6 +50,11 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
   - A 2-hour lab is **one** class (as on the portal).
   - Credits = L + T + P÷2 (7.11), via `creditsFromHours`.
   - Use `setOccurrenceStatus` / `markOccurrence` in `domains/academic/actions.ts`. Passing `null` removes a mark.
+- **Schedule changes** (`domains/calendar/dayRules.ts`, `exceptions.ts`; resolved in `CalendarService.getEffectiveSchedule`):
+  - `day_rules`: a date `follow`s another weekday's timetable, or is `off`. A follow can make the borrowed date a linked holiday. One rule per date.
+  - `schedule_exceptions`: cancel one class, move it (optionally to another date via `target_date`, keeping its id), or add an `extra` class. Each has a `reason`.
+  - Changes never delete marks. Marks on classes that stop counting become `cancelled` with note `was:<status>`, and undo restores them.
+  - On a follow day, the borrowed weekday's slots get ids `rec_<slot>_<date>` and count as usual. Extras and moved-in classes survive a follow, but not a day off.
 - **Occurrence ids.** Regular classes use `rec_<recurringScheduleId>_<YYYY-MM-DD>`; extra classes use `ex_<id>`. `AttendanceRepository.markAttendance` rejects an id that isn't in `CalendarService.getEffectiveSchedule` for that date.
 - **The drizzle driver is synchronous.** `.all()` returns an array, so never chain `.then` on it.
 - **Migrations.**

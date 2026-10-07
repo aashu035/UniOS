@@ -1,4 +1,4 @@
-import { UniOSBackupV2, isUniOSBackupV2, CANONICAL_BACKUP_TABLES } from './backupSchema';
+import { UniOSBackupV2, isUniOSBackupV2, CANONICAL_BACKUP_TABLES, OPTIONAL_BACKUP_TABLES } from './backupSchema';
 
 export function validateBackupStructural(data: any): { valid: boolean; error?: string; parsed?: UniOSBackupV2 } {
   try {
@@ -23,6 +23,7 @@ export function validateBackupStructural(data: any): { valid: boolean; error?: s
 
     // Verify all canonical tables exist in the payload
     for (const table of CANONICAL_BACKUP_TABLES) {
+      if (parsed.tables[table] === undefined && OPTIONAL_BACKUP_TABLES.includes(table)) (parsed.tables as any)[table] = [];
       if (!Array.isArray(parsed.tables[table])) {
         return { valid: false, error: `Backup is missing canonical table array: ${table}` };
       }

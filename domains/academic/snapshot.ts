@@ -1,8 +1,8 @@
 import { and, desc, gte, lte } from 'drizzle-orm';
 import { db } from '../../core/db/client';
-import { getLocalDateString } from '../../core/utils/date';
+import { getLocalDateString, parseLocalDate } from '../../core/utils/date';
 import { attendance, portalAttendance } from '../attendance/model';
-import { recurringSchedules, scheduleExceptions } from '../calendar/model';
+import { dayRules, recurringSchedules, scheduleExceptions } from '../calendar/model';
 import { CalendarService, type EffectiveOccurrence } from '../calendar/service';
 import { NotificationRepository } from '../notification/repository';
 import { resources } from '../resource/model';
@@ -38,7 +38,11 @@ export interface Occ extends EffectiveOccurrence {
   cancelled?: boolean;
   /** For moved classes, the regular slot it moved from. */
   original?: { startTime: string; endTime: string };
+  /** Why this class is Off: "Day followed Friday · Event", "Moved to Tue 13 Oct, 1:00", "Teacher absent". */
+  dropReason?: string;
 }
+
+export interface DayRuleInfo { id: number; date: string; kind: string; followsWeekday: number | null; reason: string | null; note: string | null; borrowedDate: string | null; borrowedMode: string | null; linkedRuleId: number | null }
 
 export interface TaskRow {
   id: number;
@@ -69,6 +73,8 @@ export interface Snapshot {
   files: FileRow[];
   portal: Portal[];
   unread: number;
+  /** Whole-day changes in the window (follow another weekday, day off). */
+  dayRules: DayRuleInfo[];
 }
 
 /**
@@ -165,10 +171,11 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
 
   // Schedule window, plus the cancelled classes CalendarService removes and the
   // original slot of moved classes.
-  const [effective, exceptions, recurring] = await Promise.all([
+  const [effective, exceptions, recurring, rules] = await Promise.all([
     CalendarService.getEffectiveSchedule(from, to),
     db.select().from(scheduleExceptions).where(and(gte(scheduleExceptions.specificDate, from), lte(scheduleExceptions.specificDate, to))).all(),
     db.select().from(recurringSchedules).all(),
+    db.select().from(dayRules).where(and(gte(dayRules.date, from), lte(dayRules.date, to))).all(),
   ]);
   const recById = new Map(recurring.map((r) => [r.id, r]));
   const statusByOcc = new Map(records.map((r) => [r.occurrenceId, r.status as AttStatus]));
@@ -187,7 +194,36 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
       return occ;
     });
 
+  const DAYN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const ruleByDate = new Map(rules.map((r) => [r.date, r]));
+  const pushOff = (rec: typeof recurring[number], date: string, why: string, extra: Partial<Occ> = {}) => {
+    const comp = compById.get(rec.componentId);
+    const ws = comp && wsById.get(comp.workspaceId);
+    if (!comp || !ws || !courseById.has(ws.id)) return;
+    const id = `rec_${rec.id}_${date}`;
+    if (occurrences.some((o) => o.id === id && o.date === date)) return;
+    occurrences.push({
+      id, workspaceId: ws.id, workspaceName: ws.name, workspaceColor: ws.color || '#3B82F6', workspaceIcon: ws.icon || 'book',
+      componentId: comp.id, componentType: comp.type, date, startTime: rec.startTime, endTime: rec.endTime,
+      venueName: courseById.get(ws.id)?.venue ?? undefined, isException: true, exceptionAction: 'cancel', cancelled: true,
+      status: statusByOcc.get(id) ?? null, dropReason: why, ...extra,
+    });
+  };
+  // A day that follows another weekday, or is off: its own classes show as Off with the reason.
+  for (const rule of rules) {
+    const w = parseLocalDate(rule.date).getDay();
+    const why = rule.kind === 'follow'
+      ? `Off · day followed ${DAYN[rule.followsWeekday ?? 0]}${rule.reason ? ` (${rule.reason})` : ''}`
+      : `Off · ${rule.note && rule.linkedRuleId ? `Holiday (${rule.note.replace('Its timetable ran on ', 'timetable ran on ')})` : [rule.reason, rule.note].filter(Boolean).join(' · ') || 'No classes'}`;
+    for (const rec of recurring) if (rec.dayOfWeek === w) pushOff(rec, rule.date, why);
+  }
   for (const ex of exceptions) {
+    // Moved to another date: the old slot shows where it went.
+    if (ex.action === 'move' && ex.targetDate && ex.targetDate !== ex.specificDate && ex.recurringScheduleId) {
+      const rec = recById.get(ex.recurringScheduleId);
+      if (rec && !ruleByDate.has(ex.specificDate)) pushOff(rec, ex.specificDate, `Moved to ${shortDay(ex.targetDate)}, ${clock12(ex.startTime ?? rec.startTime)}`, { status: null });
+      continue;
+    }
     if (ex.action !== 'cancel' || !ex.recurringScheduleId) continue;
     const rec = recById.get(ex.recurringScheduleId);
     const comp = rec && compById.get(rec.componentId);
@@ -198,7 +234,7 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
       id, workspaceId: ws.id, workspaceName: ws.name, workspaceColor: ws.color || '#3B82F6', workspaceIcon: ws.icon || 'book',
       componentId: comp.id, componentType: comp.type, date: ex.specificDate, startTime: rec.startTime, endTime: rec.endTime,
       venueName: courseById.get(ws.id)?.venue ?? undefined, isException: true, exceptionAction: 'cancel', cancelled: true,
-      status: statusByOcc.get(id) ?? null,
+      status: statusByOcc.get(id) ?? null, dropReason: ex.reason ? `Off · ${ex.reason}` : 'Off · cancelled for the day',
     });
   }
   occurrences.sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : a.startTime.localeCompare(b.startTime)));
@@ -219,8 +255,14 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
       .filter((p, i, arr) => scopeIds.has(p.workspaceId) && arr.findIndex((q) => q.workspaceId === p.workspaceId) === i)
       .map((p) => ({ workspaceId: p.workspaceId, total: p.portalTotal, present: p.portalPresent, percent: p.portalPercent, checkedDate: p.checkedDate })),
     unread,
+    dayRules: rules.map((r) => ({ id: r.id, date: r.date, kind: r.kind, followsWeekday: r.followsWeekday, reason: r.reason, note: r.note, borrowedDate: r.borrowedDate, borrowedMode: r.borrowedMode, linkedRuleId: r.linkedRuleId })),
   };
 }
+
+const SD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const SM = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function clock12(t: string) { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; }
+function shortDay(iso: string) { const d = parseLocalDate(iso); return `${SD[d.getDay()]} ${d.getDate()} ${SM[d.getMonth()]}`; }
 
 /** Schedule for an arbitrary window, enriched the same way (used when paging weeks). */
 export async function loadWindow(from: string, to: string, today?: string): Promise<Occ[]> {
