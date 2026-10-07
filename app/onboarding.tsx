@@ -6,6 +6,7 @@ import { colors, spacing, typography, radius } from '../tokens';
 import { ProfileRepository } from '../domains/profile/repository';
 import { ArrowRight } from 'lucide-react-native';
 import { useProfile } from '../core/context/ProfileContext';
+import { checkBranch, checkPersonName } from '../core/utils/validate';
 
 export default function Onboarding() {
   const router = useRouter();
@@ -15,15 +16,25 @@ export default function Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { setHasProfile } = useProfile();
 
+  const nameCheck = checkPersonName(name);
+  const branchCheck = checkBranch(branch);
+  const semNum = /^\d{1,2}$/.test(semester.trim()) ? Number(semester.trim()) : NaN;
+  const semOk = semNum >= 1 && semNum <= 12;
+  const errors = {
+    name: name.trim() && !nameCheck.ok ? nameCheck.error : null,
+    branch: branch.trim() && !branchCheck.ok ? branchCheck.error : null,
+    semester: semester.trim() && !semOk ? 'Enter a semester from 1 to 12.' : null,
+  };
+
   const handleNext = async () => {
-    if (!name.trim() || !branch.trim() || !semester.trim()) return;
+    if (!nameCheck.ok || !branchCheck.ok || !semOk) return;
     
     setIsSubmitting(true);
     try {
       await ProfileRepository.createProfile({
-        name: name.trim(),
-        branch: branch.trim(),
-        currentSemester: parseInt(semester, 10) || 1,
+        name: nameCheck.value,
+        branch: branchCheck.value,
+        currentSemester: semNum,
       });
       setHasProfile(true); // Synchronous update triggers _layout.tsx guard to redirect
     } catch (error) {
@@ -32,7 +43,7 @@ export default function Onboarding() {
     }
   };
 
-  const isFormValid = name.trim() && branch.trim() && semester.trim();
+  const isFormValid = nameCheck.ok && branchCheck.ok && semOk;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -53,7 +64,9 @@ export default function Onboarding() {
               value={name}
               onChangeText={setName}
               autoFocus
+              maxLength={60}
             />
+            {errors.name ? <Text style={styles.error}>{errors.name}</Text> : null}
             
             <Text style={[styles.label, { marginTop: spacing.xl }]}>Branch</Text>
             <TextInput 
@@ -62,7 +75,9 @@ export default function Onboarding() {
               placeholderTextColor={colors.light.textMuted}
               value={branch}
               onChangeText={setBranch}
+              maxLength={60}
             />
+            {errors.branch ? <Text style={styles.error}>{errors.branch}</Text> : null}
             
             <Text style={[styles.label, { marginTop: spacing.xl }]}>Semester</Text>
             <TextInput 
@@ -70,9 +85,11 @@ export default function Onboarding() {
               placeholder="e.g. 4"
               placeholderTextColor={colors.light.textMuted}
               value={semester}
-              onChangeText={setSemester}
-              keyboardType="numeric"
+              onChangeText={(t) => setSemester(t.replace(/[^0-9]/g, ''))}
+              keyboardType="number-pad"
+              maxLength={2}
             />
+            {errors.semester ? <Text style={styles.error}>{errors.semester}</Text> : null}
           </View>
 
           <TouchableOpacity 
@@ -90,6 +107,7 @@ export default function Onboarding() {
 }
 
 const styles = StyleSheet.create({
+  error: { color: colors.light.danger, fontSize: 13, marginTop: 6 },
   safeArea: {
     flex: 1,
     backgroundColor: colors.light.background,

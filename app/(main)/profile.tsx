@@ -16,7 +16,7 @@ import { colors, spacing, radius } from '../../tokens';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { expoDb } from '../../core/db/client';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { exportAndShare, pickBackupText, restoreFromText } from '../../core/db/backupActions';
 
 export default function Profile() {
   const router = useRouter();
@@ -29,69 +29,40 @@ export default function Profile() {
 
   const [isImporting, setIsImporting] = useState(false);
 
+  // Same actions as More → Backup & export (core/db/backupActions).
   const exportData = async () => {
     setIsExporting(true);
     try {
-      const { exportBackup } = await import('../../core/db/backup');
-      const jsonString = await exportBackup();
-      const fileUri = `${FileSystem.cacheDirectory}unios-data-export.json`;
-      await FileSystem.writeAsStringAsync(fileUri, jsonString);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Export UniOS data' });
-      } else {
-        Alert.alert('Export created', `Your data was saved to ${fileUri}`);
-      }
+      const r = await exportAndShare();
+      if (r === 'saved') Alert.alert('Backup created', 'Sharing is not available on this device.');
     } catch (error) {
-      console.error('Could not export data', error);
-      Alert.alert('Export Failed', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Export failed', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setIsExporting(false);
     }
   };
 
   const importData = async () => {
-    try {
-      const DocumentPicker = await import('expo-document-picker');
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/json',
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        return;
-      }
-
-      const file = result.assets[0];
-      
-      Alert.alert(
-        'Restore Backup?',
-        'This will completely replace all your current data with the contents of the backup. This cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Restore Data', 
-            style: 'destructive',
-            onPress: async () => {
-              setIsImporting(true);
-              try {
-                const jsonString = await FileSystem.readAsStringAsync(file.uri);
-                const { importBackup } = await import('../../core/db/backup');
-                await importBackup(jsonString);
-                Alert.alert('Restore Complete', 'Your data has been successfully restored.');
-                refreshProfile();
-              } catch (error) {
-                console.error('Import failed', error);
-                Alert.alert('Restore Failed', error instanceof Error ? error.message : 'The backup file is invalid or corrupted.');
-              } finally {
-                setIsImporting(false);
-              }
-            }
+    let text: string | null = null;
+    try { text = await pickBackupText(); } catch (error) { console.error('Could not pick file', error); }
+    if (!text) return;
+    Alert.alert('Restore backup?', 'This replaces all your current data with the backup. Export first if you want to keep it.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Restore', style: 'destructive', onPress: async () => {
+          setIsImporting(true);
+          try {
+            await restoreFromText(text!);
+            Alert.alert('Restored', 'Your data has been restored.');
+            refreshProfile();
+          } catch (error) {
+            Alert.alert("That file isn't a UniOS backup", error instanceof Error ? error.message : 'Pick the file you exported from UniOS.');
+          } finally {
+            setIsImporting(false);
           }
-        ]
-      );
-    } catch (error) {
-      console.error('Could not pick file', error);
-    }
+        },
+      },
+    ]);
   };
 
   if (isLoading) {

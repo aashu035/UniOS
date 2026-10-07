@@ -9,6 +9,7 @@ import { atRisk, changes, dayWord, openTasks } from '../domains/academic/derive'
 import { useAcademic, useNowMinutes } from '../domains/academic/hooks';
 import { addDays, clock, dayDate, dayName, inMinutes, minutesOf, relDue, shortDate } from '../domains/academic/logic';
 import { NotificationRepository } from '../domains/notification/repository';
+import { modernLink } from '../domains/notification/service';
 
 type Note = Awaited<ReturnType<typeof NotificationRepository.list>>[number];
 
@@ -159,7 +160,7 @@ export default function Alerts() {
               {notes.map((n) => (
                 <Tap key={n.id} style={styles.line} onPress={async () => {
                   if (!n.isRead) { await NotificationRepository.markRead(n.id).catch(() => {}); loadNotes(); }
-                  if (n.actionUrl) router.push(n.actionUrl as any);
+                  if (n.actionUrl) router.push(modernLink(n.actionUrl) as any);
                 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: n.isRead ? 'transparent' : p.primary }} />
                   <View style={{ flex: 1, minWidth: 0 }}>

@@ -10,6 +10,7 @@ import { useAcademic } from '../../domains/academic/hooks';
 import { verdict } from '../../domains/academic/logic';
 import { CourseOverviewService, type CourseOverview } from '../../domains/workspace/CourseOverviewService';
 import { WorkspaceRepository } from '../../domains/workspace/repository';
+import { checkCourseCode, checkCourseName } from '../../core/utils/validate';
 
 const CREDITS = [1, 2, 3, 4, 5, 6];
 const TARGETS = [60, 65, 70, 75, 80, 85];
@@ -69,12 +70,15 @@ export default function EditCourse() {
 
   const save = async () => {
     if (!dirty || saving) { if (!dirty) router.back(); return; }
-    const name = d.name.trim();
-    if (!name || name.length > 100) { Alert.alert('Course name', 'Give the course a name (up to 100 characters).'); return; }
+    const nc = checkCourseName(d.name);
+    if (!nc.ok) { Alert.alert('Course name', nc.error); return; }
+    const cc = checkCourseCode(d.code);
+    if (!cc.ok) { Alert.alert('Course code', cc.error); return; }
+    const name = nc.value;
     if (!d.credits) { Alert.alert('Credits', 'Pick how many credits this course has.'); return; }
     setSaving(true);
     try {
-      await WorkspaceRepository.updateCourseIdentity(courseId, { name, code: d.code, credits: d.credits, targetAttendance: d.target, notes: d.notes });
+      await WorkspaceRepository.updateCourseIdentity(courseId, { name, code: cc.value, credits: d.credits, targetAttendance: d.target, notes: d.notes });
       // Faculty and room changes apply from today, so older classes keep who taught them and where.
       const today = getLocalDateString(new Date());
       for (const comp of detail.components) {

@@ -7,6 +7,7 @@ import { NotificationRepository } from '../domains/notification/repository';
 import { colors, spacing, typography } from '../tokens';
 import { AppCard } from '../components/cards/AppCard';
 import * as Haptics from 'expo-haptics';
+import { modernLink } from '../domains/notification/service';
 
 interface NotificationRow {
   id: number;
@@ -92,7 +93,7 @@ export default function NotificationsModal() {
       // Dismiss the modal first, then navigate. Stack ordering: notifications is a modal on top of the tabs.
       router.dismiss();
       // Small delay so the dismiss animation doesn't collide with the push.
-      setTimeout(() => router.push(n.actionUrl as any), 50);
+      setTimeout(() => router.push(modernLink(n.actionUrl!) as any), 50);
     }
   }, [router]);
 
@@ -172,7 +173,7 @@ export default function NotificationsModal() {
                     </View>
                     <Text style={styles.cardMessage} numberOfLines={2}>{n.message}</Text>
                     {n.actionUrl && (
-                      <Text style={styles.cardLink} numberOfLines={1}>{n.actionUrl}</Text>
+                      <Text style={styles.cardLink} numberOfLines={1}>{modernLink(n.actionUrl)}</Text>
                     )}
                   </View>
                   {!n.isRead && <View style={styles.unreadDot} />}

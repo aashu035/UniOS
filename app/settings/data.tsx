@@ -1,117 +1,117 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, Text } from 'react-native';
-import { AppScaffold } from '../../components/layout/AppScaffold';
-import { PageContainer } from '../../components/layout/PageContainer';
-import { Button } from '../../components/buttons/Button';
-import { colors, spacing, typography, radius } from '../../tokens';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Database, AlertTriangle } from 'lucide-react-native';
+import { Icon, type IconName } from '../../components/uni/Icon';
+import { Card, RoundButton, Screen, T, Tap } from '../../components/uni/primitives';
+import { tint, useUni } from '../../components/uni/theme';
 import { db } from '../../core/db/client';
-import { students, semesters, workspaces, tasks, resources, attendance, calendarEvents, aiConnections, faculty, venues } from '../../core/db/schema';
-import * as Haptics from 'expo-haptics';
+import { exportAndShare, pickBackupText, restoreFromText } from '../../core/db/backupActions';
+import { aiConnections, attendance, calendarEvents, faculty, resources, semesters, students, tasks, venues, workspaces } from '../../core/db/schema';
 
-export default function DataManagement() {
+/**
+ * More → Backup & export. One place to export, restore, and (behind a second
+ * confirmation) clear everything. Previously this entry only offered "Clear".
+ */
+export default function BackupAndExport() {
+  const p = useUni();
   const router = useRouter();
-  const [isClearing, setIsClearing] = useState(false);
+  const [busy, setBusy] = useState<'export' | 'import' | 'clear' | null>(null);
+  const [clearArmed, setClearArmed] = useState(false);
 
-  const clearAllData = async () => {
-    Alert.alert(
-      "Clear All Data",
-      "Are you sure you want to delete all data? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setIsClearing(true);
-            try {
-              // Delete in order to avoid FK constraint issues if any, though ON DELETE CASCADE helps
-              await db.delete(tasks);
-              await db.delete(resources);
-              await db.delete(attendance);
-              await db.delete(calendarEvents);
-              await db.delete(workspaces);
-              await db.delete(semesters);
-              await db.delete(aiConnections);
-              await db.delete(students);
-              // Reference tables are not reachable through cascades; clean them explicitly
-              await db.delete(faculty);
-              await db.delete(venues);
-              
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert("Success", "All data has been cleared.");
-              router.replace('/');
-            } catch (e) {
-              console.error('Failed to clear data:', e);
-              Alert.alert("Error", "Could not clear all data.");
-            } finally {
-              setIsClearing(false);
-            }
-          }
-        }
-      ]
-    );
+  const doExport = async () => {
+    setBusy('export');
+    try {
+      const r = await exportAndShare();
+      if (r === 'saved') Alert.alert('Backup created', 'Sharing is not available on this device, so the backup was saved in the app cache.');
+    } catch (e: any) {
+      Alert.alert('Export failed', e?.message ?? 'Please try again.');
+    } finally {
+      setBusy(null);
+    }
   };
 
+  const doImport = async () => {
+    let text: string | null;
+    try { text = await pickBackupText(); } catch (e: any) { Alert.alert('Could not open the file', e?.message ?? 'Please try again.'); return; }
+    if (!text) return;
+    Alert.alert('Replace everything with this backup?', 'Your current courses, attendance and tasks on this phone will be replaced by the backup. Export first if you want to keep them.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Restore', style: 'destructive', onPress: async () => {
+          setBusy('import');
+          try {
+            await restoreFromText(text!);
+            Alert.alert('Restored', 'Your backup is back on this phone.', [{ text: 'OK', onPress: () => router.replace('/') }]);
+          } catch (e: any) {
+            Alert.alert("That file isn't a UniOS backup", e?.message ?? 'Pick the .json file you exported from UniOS.');
+          } finally {
+            setBusy(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const doClear = async () => {
+    if (!clearArmed) { setClearArmed(true); return; }
+    setBusy('clear');
+    try {
+      for (const t of [tasks, resources, attendance, calendarEvents, workspaces, semesters, aiConnections, students, faculty, venues]) await db.delete(t);
+      router.replace('/');
+    } catch (e: any) {
+      Alert.alert('Could not clear data', e?.message ?? 'Please try again.');
+      setBusy(null);
+    }
+  };
+
+  const row = (icon: IconName, title: string, body: string, onPress: () => void, kind: 'export' | 'import', color = p.primary) => (
+    <Tap onPress={onPress} disabled={!!busy} accessibilityRole="button" style={[styles.row, { backgroundColor: p.elev, borderColor: p.hair }]}>
+      <View style={[styles.well, { backgroundColor: tint(color, 12) }]}><Icon name={icon} size={20} color={color} /></View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <T w={800} size={15}>{title}</T>
+        <T c={p.muted} size={12.5} style={{ lineHeight: 17, marginTop: 2 }}>{body}</T>
+      </View>
+      {busy === kind ? <ActivityIndicator color={color} /> : <Icon name="chevron-right" size={18} color={p.muted} />}
+    </Tap>
+  );
+
   return (
-    <AppScaffold>
-      <PageContainer>
-        <View style={styles.header}>
-          <Database size={48} color={colors.light.primary} />
-          <Text style={styles.title}>Data Management</Text>
-          <Text style={styles.subtitle}>
-            Manage your local app data.
-          </Text>
+    <Screen tabs={false}>
+      <View style={styles.top}>
+        <RoundButton icon="chevron-left" label="Back" onPress={() => router.back()} />
+        <T w={800} size={17}>Backup & export</T>
+        <View style={{ width: 44 }} />
+      </View>
+      <View style={{ paddingHorizontal: 20, gap: 12, marginTop: 8 }}>
+        <T c={p.muted} size={13} style={{ lineHeight: 19 }}>
+          Everything is stored only on this phone. Uninstalling the app or switching phones deletes it, so export a backup now and then (WhatsApp it to yourself or save it to Drive).
+        </T>
+        {row('upload', 'Export a backup', 'Courses, timetable, attendance, tasks and notes as one file.', doExport, 'export')}
+        {row('hard-drive-download', 'Restore from a backup', 'Pick a UniOS backup file. It replaces what is on this phone.', doImport, 'import', p.warn)}
+        <Card flat style={{ padding: 12 }}>
+          <T c={p.muted} size={12} style={{ lineHeight: 17 }}>
+            Attached files (PDFs, photos, videos) stay on this phone; the backup keeps their names, not the files.
+          </T>
+        </Card>
+        <View style={[styles.danger, { backgroundColor: tint(p.danger, 6), borderColor: tint(p.danger, 25) }]}>
+          <T w={800} size={14} c={p.danger}>Clear all data</T>
+          <T c={p.muted} size={12.5} style={{ lineHeight: 17 }}>Deletes your profile, courses, attendance, tasks and files from this phone. This can't be undone.</T>
+          <Tap onPress={doClear} disabled={busy === 'clear'} accessibilityRole="button" style={[styles.del, { borderColor: p.danger, backgroundColor: clearArmed ? p.danger : 'transparent' }]}>
+            <T w={700} size={14} c={clearArmed ? '#fff' : p.danger}>{busy === 'clear' ? 'Clearing…' : clearArmed ? 'Tap again to delete everything' : 'Clear all data'}</T>
+          </Tap>
+          {clearArmed ? (
+            <Tap onPress={() => setClearArmed(false)}><T w={700} size={13} c={p.muted} style={{ textAlign: 'center' }}>Keep my data</T></Tap>
+          ) : null}
         </View>
-
-        <View style={{ backgroundColor: `${colors.light.danger}20`, padding: spacing.md, borderRadius: radius.md, marginBottom: spacing.xl, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <AlertTriangle color={colors.light.danger} size={24} />
-          <Text style={{ color: colors.light.danger, fontWeight: typography.fontWeight.semibold, flex: 1 }}>
-            Warning: These actions are destructive and cannot be undone.
-          </Text>
-        </View>
-
-        <View style={styles.actions}>
-          <Button 
-            variant="secondary" 
-            label={isClearing ? "Clearing Data..." : "Clear All App Data"} 
-            onPress={clearAllData} 
-            disabled={isClearing}
-            style={styles.dangerButton}
-          />
-          <Button 
-            variant="secondary" 
-            label="Back to Profile" 
-            onPress={() => router.back()} 
-          />
-        </View>
-      </PageContainer>
-    </AppScaffold>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xxl,
-    marginTop: spacing.xl,
-  },
-  title: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: colors.light.textMuted,
-    paddingHorizontal: spacing.xl,
-  },
-  actions: {
-    gap: spacing.md,
-  },
-  dangerButton: {
-    borderColor: `${colors.light.danger}50`,
-  }
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 20, borderWidth: 1 },
+  well: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  danger: { marginTop: 10, padding: 14, borderRadius: 20, borderWidth: 1, gap: 10 },
+  del: { height: 46, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });

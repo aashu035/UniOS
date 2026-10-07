@@ -11,6 +11,7 @@ import { workspaces } from '../../domains/workspace/model';
 import { WorkspaceRepository } from '../../domains/workspace/repository';
 import { DURATION, paint, prune, sessionsFor, slotSummary, type Part, type Slots } from '../../domains/academic/setup';
 import { creditsFromHours, minutesOf } from '../../domains/academic/logic';
+import { checkCourseCode, checkCourseName } from '../../core/utils/validate';
 
 const QUESTIONS = ['What’s the course called?', 'What does it include?', 'When does it meet? Tap the slots.', 'What attendance do you want to stay above?'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -48,7 +49,10 @@ export default function CourseSetup() {
   const weekly = { theory: hours('theory'), tutorial: hours('tutorial'), lab: hours('lab') };
   const suggested = creditsFromHours(weekly);
   const credits = creditsPick ?? suggested;
-  const canContinue = step !== 1 || name.trim().length > 0;
+  const nameCheck = checkCourseName(name);
+  const codeCheck = checkCourseCode(code);
+  const step1Error = name.trim() && !nameCheck.ok ? nameCheck.error : code.trim() && !codeCheck.ok ? codeCheck.error : null;
+  const canContinue = step !== 1 || (nameCheck.ok && codeCheck.ok);
 
   const [daysAsRows, setDaysAsRows] = useState(true); // most printed timetables list days down the side
   const cell = (di: number, h: number, small: boolean) => {
@@ -72,7 +76,7 @@ export default function CourseSetup() {
       const used = new Set((await db.select({ color: workspaces.color }).from(workspaces).all()).map((w) => w.color));
       const color = colors.subjects.map((s) => s.base).find((c) => !used.has(c)) ?? colors.subjects[0].base;
       const ws = await WorkspaceRepository.buildCompleteWorkspace({
-        name: name.trim(), code: code.trim() || undefined, credits, color,
+        name: nameCheck.ok ? nameCheck.value : name.trim(), code: (codeCheck.ok && codeCheck.value) || undefined, credits, color,
         components: parts.map((type) => ({ type, durationMinutes: DURATION[type], facultyName: faculty.trim() || undefined, sessions: sessionsFor(slots, type) })),
       });
       if (target !== 75) await WorkspaceRepository.updateCourseIdentity(ws.id, { targetAttendance: target });
@@ -132,6 +136,7 @@ export default function CourseSetup() {
               <TextInput value={faculty} onChangeText={setFaculty} placeholder="Faculty (optional)" placeholderTextColor={p.muted}
                 style={[styles.small, sans(600), { backgroundColor: p.elev, borderColor: p.hair, color: p.text }]} accessibilityLabel="Faculty name" />
             </View>
+            {step1Error ? <T w={600} c={p.danger} size={12.5}>{step1Error}</T> : null}
             <Tap onPress={() => router.push('/course/ai-setup')} style={styles.hint}>
               <Icon name="scan-line" size={15} color={p.muted} />
               <T w={600} c={p.muted} size={12.5}>Or scan your timetable photo to add every course at once</T>

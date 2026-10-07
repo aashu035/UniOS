@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { checkBranch, checkEnrollment, checkPersonName } from '../../core/utils/validate';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -72,25 +73,28 @@ export default function EditProfile() {
   };
 
   const save = async () => {
-    const parsedSemester = Number.parseInt(semester, 10);
-    const parsedCgpa = Number.parseFloat(targetCgpa);
-    if (!name.trim()) {
-      Alert.alert('Name required', 'Please enter your name before saving.');
-      return;
-    }
+    // Strict parsing: "3abc" and "8.5x" are rejected, not read as 3 and 8.5.
+    const parsedSemester = /^\d{1,2}$/.test(semester.trim()) ? Number(semester.trim()) : NaN;
+    const parsedCgpa = /^\d{1,2}(\.\d{1,2})?$/.test(targetCgpa.trim()) ? Number(targetCgpa.trim()) : NaN;
+    const n = checkPersonName(name);
+    if (!n.ok) { Alert.alert('Check your name', n.error); return; }
+    const b = checkBranch(branch, false);
+    if (!b.ok) { Alert.alert('Check your branch', b.error); return; }
+    const e = checkEnrollment(enrollmentNo);
+    if (!e.ok) { Alert.alert('Check enrollment number', e.error); return; }
     if (!Number.isInteger(parsedSemester) || parsedSemester < 1 || parsedSemester > 12) {
       Alert.alert('Check semester', 'Enter a semester between 1 and 12.');
       return;
     }
     if (!Number.isFinite(parsedCgpa) || parsedCgpa < 0 || parsedCgpa > 10) {
-      Alert.alert('Check target CGPA', 'Enter a value between 0 and 10.');
+      Alert.alert('Check target CGPA', 'Enter a value between 0 and 10, e.g. 8.5.');
       return;
     }
 
     setIsSaving(true);
     try {
       await updateProfile({
-        name: name.trim(), branch: branch.trim() || null, enrollmentNo: enrollmentNo.trim() || null,
+        name: n.value, branch: b.value || null, enrollmentNo: e.value || null,
         currentSemester: parsedSemester, targetCgpa: parsedCgpa, avatar
       });
       router.back();

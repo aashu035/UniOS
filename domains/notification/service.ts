@@ -29,7 +29,7 @@ export class NotificationService {
       title: 'Task overdue',
       message: `“${task.title}” was due ${task.dueDate ?? 'recently'}.`,
       type: 'warning',
-      actionUrl: task.workspaceId ? `/workspace/${task.workspaceId}` : '/(main)/work',
+      actionUrl: task.workspaceId ? `/course/${task.workspaceId}` : '/(main)/work',
     });
   }
 
@@ -38,12 +38,9 @@ export class NotificationService {
    * Triggered from domains/academic/actions.ts:setTaskDone and TaskService.updateTaskStatus.
    */
   static async taskCompleted(task: { id: number; title: string; workspaceId?: number }) {
-    return NotificationRepository.create({
-      title: 'Task completed',
-      message: `Nice work — “${task.title}” is done.`,
-      type: 'success',
-      actionUrl: task.workspaceId ? `/workspace/${task.workspaceId}` : '/(main)/work',
-    });
+    // Not an alert: the screen already confirms it, and one alert per tap buried the
+    // ones that matter (21 unread after a few minutes of marking). Kept for callers.
+    return null;
   }
 
   /**
@@ -51,24 +48,18 @@ export class NotificationService {
    * Keeps a low-signal trail so the inbox isn't empty after the first action.
    */
   static async taskCreated(task: { id: number; title: string; workspaceId: number }) {
-    return NotificationRepository.create({
-      title: 'Task added',
-      message: `“${task.title}” is on your list.`,
-      type: 'info',
-      actionUrl: `/workspace/${task.workspaceId}`,
-    });
+    // Not an alert: the screen already confirms it, and one alert per tap buried the
+    // ones that matter (21 unread after a few minutes of marking). Kept for callers.
+    return null;
   }
 
   /**
    * Attendance was marked for a class. Triggered from the attendance hero.
    */
   static async attendanceMarked(occurrence: { componentType: string; date: string; status: string; workspaceId: number }) {
-    return NotificationRepository.create({
-      title: 'Attendance marked',
-      message: `${occurrence.componentType} class on ${occurrence.date} marked as ${occurrence.status}.`,
-      type: 'success',
-      actionUrl: `/workspace/${occurrence.workspaceId}/attendance`,
-    });
+    // Not an alert: the screen already confirms it, and one alert per tap buried the
+    // ones that matter (21 unread after a few minutes of marking). Kept for callers.
+    return null;
   }
 
   /**
@@ -81,7 +72,7 @@ export class NotificationService {
       title: action === 'cancel' ? 'Class cancelled' : 'Class rescheduled',
       message: `Your ${componentType} class on ${date} was ${action === 'cancel' ? 'cancelled' : 'rescheduled'}.`,
       type: 'alert',
-      actionUrl: `/workspace/${workspaceId}/attendance`,
+      actionUrl: `/course/${workspaceId}`,
     });
   }
 
@@ -135,3 +126,9 @@ export class NotificationService {
 }
 
 export { NotificationType };
+
+/** Older alerts link to screens that were replaced; send them to the new ones. */
+export function modernLink(url: string): string {
+  const m = /^\/workspace\/(\d+)(\/attendance)?\/?$/.exec(url);
+  return m ? `/course/${m[1]}` : url;
+}
