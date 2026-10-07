@@ -31,11 +31,12 @@ export default function AddTask() {
     (!isLoading && !workspaces.some(w => w.id === parsedWorkspaceId))
   );
 
+  // 0 = General (no course). Tasks like "pay exam fee" don't belong to a course.
   useEffect(() => {
-    if (selectedWorkspaceId === null && workspaces[0] && !workspaceId) {
-      setSelectedWorkspaceId(workspaces[0].id);
+    if (selectedWorkspaceId === null && !workspaceId && !isLoading) {
+      setSelectedWorkspaceId(workspaces[0]?.id ?? 0);
     }
-  }, [selectedWorkspaceId, workspaces, workspaceId]);
+  }, [selectedWorkspaceId, workspaces, workspaceId, isLoading]);
 
   const save = async () => {
     if (!title.trim()) {
@@ -46,12 +47,7 @@ export default function AddTask() {
       Alert.alert('Invalid Course', 'The selected course does not exist.');
       return;
     }
-    if (!selectedWorkspaceId && !parsedWorkspaceId) {
-      Alert.alert('Choose a course', 'Create a course first, then add a task to it.');
-      return;
-    }
-    
-    const finalWorkspaceId = parsedWorkspaceId || selectedWorkspaceId!;
+    const finalWorkspaceId = parsedWorkspaceId || selectedWorkspaceId || null;
     setIsSaving(true);
     try {
       await TaskService.createTask({
@@ -109,10 +105,11 @@ export default function AddTask() {
           </View>
         ) : isLoading ? (
           <Text style={styles.muted}>Loading courses…</Text>
-        ) : workspaces.length === 0 ? (
-          <Text style={styles.muted}>No courses yet. Add a course from Workspaces first.</Text>
         ) : (
           <View style={styles.chips}>
+            <TouchableOpacity onPress={() => setSelectedWorkspaceId(0)} style={[styles.courseChip, selectedWorkspaceId === 0 && styles.courseChipActive]}>
+              <Text style={[styles.courseChipText, selectedWorkspaceId === 0 && styles.courseChipTextActive]}>General</Text>
+            </TouchableOpacity>
             {workspaces.map(workspace => (
               <TouchableOpacity key={workspace.id} onPress={() => setSelectedWorkspaceId(workspace.id)} style={[styles.courseChip, selectedWorkspaceId === workspace.id && styles.courseChipActive]}>
                 <Text style={[styles.courseChipText, selectedWorkspaceId === workspace.id && styles.courseChipTextActive]}>{workspace.code || workspace.name}</Text>

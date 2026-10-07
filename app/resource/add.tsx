@@ -8,12 +8,15 @@ import { resources } from '../../domains/resource/model';
 import { ArrowLeft, Save, FilePlus, X } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { FileManager } from '../../core/fs/FileManager';
+import { useWorkspaces } from '../../domains/workspace/hooks';
 
 export default function AddResource() {
   const router = useRouter();
   const { workspaceId: initialWorkspaceId } = useLocalSearchParams();
   
-  const [workspaceId, setWorkspaceId] = useState(initialWorkspaceId as string || '');
+  const [workspaceId, setWorkspaceId] = useState(initialWorkspaceId as string || ''); // '' = General, no course
+  const { workspaces } = useWorkspaces();
+  const wsId = workspaceId ? parseInt(workspaceId, 10) : null;
   const [title, setTitle] = useState('');
   const [uri, setUri] = useState('');
   const [textContent, setTextContent] = useState('');
@@ -64,10 +67,6 @@ export default function AddResource() {
       Alert.alert('Error', 'Please enter a title or select files');
       return;
     }
-    if (!workspaceId) {
-      Alert.alert('Error', 'Workspace ID is missing');
-      return;
-    }
 
     try {
       setIsSubmitting(true);
@@ -87,7 +86,7 @@ export default function AddResource() {
           const { filename, hash, sizeBytes } = await FileManager.saveFile(file.uri, file.extension, existingHashFilename);
           
           await db.insert(resources).values({
-            workspaceId: parseInt(workspaceId, 10),
+            workspaceId: wsId,
             title: files.length === 1 && title ? title : file.name, // Use custom title if only 1 file
             uri: filename,
             textContent: '',
@@ -100,7 +99,7 @@ export default function AddResource() {
       } else {
         // Save single note or link
         await db.insert(resources).values({
-          workspaceId: parseInt(workspaceId, 10),
+          workspaceId: wsId,
           title,
           uri: uri,
           textContent,
@@ -131,6 +130,16 @@ export default function AddResource() {
       </View>
       
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Text style={styles.label}>Course</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md }}>
+          {[{ id: '', name: 'General' }, ...workspaces.map((w: any) => ({ id: String(w.id), name: w.code || w.name }))].map((w) => (
+            <TouchableOpacity key={w.id || 'general'} onPress={() => setWorkspaceId(w.id)} accessibilityRole="radio" accessibilityState={{ selected: workspaceId === w.id }}
+              style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: workspaceId === w.id ? colors.light.primary : colors.light.border, backgroundColor: workspaceId === w.id ? colors.light.primary : 'transparent' }}>
+              <Text style={{ fontWeight: '700', color: workspaceId === w.id ? '#fff' : colors.light.text }}>{w.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <Text style={styles.label}>Title *</Text>
         <TextInput 
           style={styles.input}

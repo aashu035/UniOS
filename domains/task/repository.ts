@@ -37,7 +37,8 @@ export class TaskRepository {
   }
 
   static async createTask(data: {
-    workspaceId: number;
+    /** null = a general task, not tied to a course. */
+    workspaceId: number | null;
     title: string;
     description?: string;
     type?: string;
@@ -46,7 +47,7 @@ export class TaskRepository {
     status?: string;
   }) {
     // 1. Validate workspace existence
-    const workspace = await db.select().from(workspaces).where(eq(workspaces.id, data.workspaceId)).get();
+    const workspace = data.workspaceId === null ? true : await db.select().from(workspaces).where(eq(workspaces.id, data.workspaceId)).get();
     if (!workspace) {
       throw new Error(`Workspace with id ${data.workspaceId} does not exist.`);
     }

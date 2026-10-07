@@ -190,8 +190,10 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
   const p = useUni();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  // The class to act on: the one in progress, else the last one that ended unmarked.
-  const target: Occ | null = live.now ?? (live.lastEnded && !live.lastEnded.status ? live.lastEnded : null);
+  // The class to act on: one in progress (pick between them when two overlap), else the last one that ended unmarked.
+  const [pickId, setPickId] = useState<string | null>(null);
+  const picked = live.nowAll.find((o) => o.id === pickId) ?? live.now;
+  const target: Occ | null = picked ?? (live.lastEnded && !live.lastEnded.status ? live.lastEnded : null);
   const course = target ? s.courseById.get(target.workspaceId) : undefined;
   const current = statusToMark(target?.status);
 
@@ -217,7 +219,7 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
     );
   }
 
-  const isNow = target === live.now;
+  const isNow = !!picked && target === picked;
   const att = course?.att ?? { attended: 0, total: 0 };
   // Undo this class's own mark (leave counts like absent) to show the effect of changing it.
   const base = current
@@ -252,6 +254,20 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
         </View>
         <T style={[mono(700), { fontSize: 13, color: 'rgba(255,255,255,0.9)' }]}>{isNow ? `${live.minutesLeft} min left` : onLeave ? 'On leave' : current ? 'Marked' : 'Not marked'}</T>
       </View>
+      {live.nowAll.length > 1 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          <T w={700} c="rgba(255,255,255,0.85)" size={12} style={{ alignSelf: 'center', marginRight: 2 }}>{live.nowAll.length} classes now:</T>
+          {live.nowAll.map((o) => {
+            const on = o.id === target.id;
+            return (
+              <Tap key={o.id} onPress={() => setPickId(o.id)} accessibilityRole="tab" accessibilityState={{ selected: on }}
+                style={{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: 999, backgroundColor: on ? '#FFFFFF' : 'rgba(255,255,255,0.18)' }}>
+                <T w={800} size={12} c={on ? p.primary : '#fff'}>{s.courseById.get(o.workspaceId)?.short ?? o.workspaceName}{o.status ? ' ✓' : ''}</T>
+              </Tap>
+            );
+          })}
+        </View>
+      ) : null}
       <View>
         <Tap onPress={() => router.push(`/course/${target.workspaceId}` as any)}>
           <T w={800} c="#fff" size={24} style={{ letterSpacing: -0.6 }} numberOfLines={1}>{target.workspaceName}</T>

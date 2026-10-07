@@ -258,3 +258,16 @@ describe('attack: cancels, undo and double taps against the real schema', () => 
     expect(row().status).toBe('present');
   });
 });
+
+describe('items without a course', () => {
+  it('a general task (no course) saves and shows up', async () => {
+    const { TaskRepository } = require('../domains/task/repository');
+    await TaskRepository.createTask({ workspaceId: null, title: 'Pay exam fee', dueDate: '2026-10-09' });
+    const s = await loadSnapshot({ today: TODAY });
+    expect(s.tasks.find((t: any) => t.title === 'Pay exam fee')).toMatchObject({ workspaceId: null, dueDate: '2026-10-09' });
+  });
+  it('a task for a course that does not exist is still refused', async () => {
+    const { TaskRepository } = require('../domains/task/repository');
+    await expect(TaskRepository.createTask({ workspaceId: 999, title: 'Ghost' })).rejects.toThrow(/does not exist/);
+  });
+});

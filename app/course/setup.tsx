@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '../../components/uni/Icon';
 import { Card, Pill, RoundButton, Segmented, T, Tap } from '../../components/uni/primitives';
-import { mono, sans, useUni } from '../../components/uni/theme';
+import { mono, sans, tint, useUni } from '../../components/uni/theme';
 import { colors } from '../../tokens';
 import { db } from '../../core/db/client';
 import { workspaces } from '../../domains/workspace/model';
 import { WorkspaceRepository } from '../../domains/workspace/repository';
-import { DURATION, paint, prune, sessionsFor, slotSummary, type Part, type Slots } from '../../domains/academic/setup';
+import { DURATION, clashSummary, findClashes, paint, prune, sessionsFor, slotSummary, type Part, type Slots, type TakenSlot } from '../../domains/academic/setup';
+import { weeklySlots } from '../../domains/academic/weekSlots';
 import { creditsFromHours, minutesOf } from '../../domains/academic/logic';
 import { checkCourseCode, checkCourseName } from '../../core/utils/validate';
 
@@ -55,19 +56,41 @@ export default function CourseSetup() {
   const canContinue = step !== 1 || (nameCheck.ok && codeCheck.ok);
 
   const [daysAsRows, setDaysAsRows] = useState(true); // most printed timetables list days down the side
+  // Other courses' weekly slots, shown faintly in the grid so clashes are visible while painting.
+  const [taken, setTaken] = useState<TakenSlot[]>([]);
+  useEffect(() => { weeklySlots().then(setTaken).catch(() => setTaken([])); }, []);
+  const takenAt = (day: number, h: number) => taken.find((t) => t.dayOfWeek === day && minutesOf(t.startTime) < (h + 1) * 60 && h * 60 < minutesOf(t.endTime));
   const cell = (di: number, h: number, small: boolean) => {
     const key = `${di + 1}-${h}`;
+    const other = takenAt(di + 1, h);
     const cover = Object.entries(slots).find(([k, part]) => { const [d, st] = k.split('-').map(Number); return d === di + 1 && h >= st && h < st + DURATION[part] / 60; });
     const part = cover?.[1];
     const isStart = cover?.[0] === key;
-    const bg = part ? (part === 'theory' ? p.primary : part === 'lab' ? '#10B981' : '#F59E0B') : p.surface;
+    const bg = part ? (part === 'theory' ? p.primary : part === 'lab' ? '#10B981' : '#F59E0B') : other ? tint(other.color, 16) : p.surface;
     return (
       <Tap key={key} onPress={() => setSlots((s) => paint(s, key, parts.includes(brush) ? brush : 'theory', LAST_HOUR))}
         accessibilityLabel={`${DAYS[di]} ${h12(h)} ${h < 12 ? 'AM' : 'PM'}${part ? `, ${PART[part].label}` : ''}`}
-        style={[styles.cell, small && { height: 34, borderRadius: 6 }, { backgroundColor: bg }]}>
-        {part && isStart ? <T w={800} c="#fff" size={small ? 9 : 10}>{PART[part].tag}</T> : null}
+        style={[styles.cell, small && { height: 34, borderRadius: 6 }, { backgroundColor: bg }, part && other ? { borderWidth: 2, borderColor: p.danger } : null]}>
+        {part && isStart ? <T w={800} c="#fff" size={small ? 9 : 10}>{PART[part].tag}</T>
+          : !part && other ? <T w={700} c={other.color} size={small ? 7.5 : 9} numberOfLines={1}>{other.short}</T> : null}
       </Tap>
     );
+  };
+
+  /** Warn before saving a course that overlaps others or packs an unrealistic week; the student decides. */
+  const confirmCreate = () => {
+    const sessions = parts.flatMap((t) => sessionsFor(slots, t));
+    const clashes = findClashes(sessions, taken);
+    const hoursWk = weekly.theory + weekly.tutorial + weekly.lab;
+    const notes = [
+      clashes.length ? `Clashes: ${clashSummary(clashes)}.` : null,
+      hoursWk > 12 ? `${hoursWk} hours a week is far more than one course usually has (3–6).` : null,
+    ].filter(Boolean);
+    if (!notes.length) { create(); return; }
+    Alert.alert(clashes.length ? 'Two classes at the same time' : 'Check the weekly slots', `${notes.join('\n\n')}\n\nKeep both only if this really happens, e.g. a backlog, minor or extra class.`, [
+      { text: 'Go back', style: 'cancel' },
+      { text: 'Keep both', onPress: create },
+    ]);
   };
 
   const create = async () => {
@@ -97,7 +120,7 @@ export default function CourseSetup() {
   const next = () => {
     if (!canContinue || saving) return;
     if (step < 4) setStep(step + 1);
-    else create();
+    else confirmCreate();
   };
   const back = () => (step > 1 ? setStep(step - 1) : router.back());
 

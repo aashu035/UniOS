@@ -290,12 +290,14 @@ export function heatmap(records: Array<{ date: string; status: string }>, today:
 
 export function liveState<O extends { startTime: string; endTime: string; cancelled?: boolean }>(todayOcc: O[], nowMin: number) {
   const live = todayOcc.filter((o) => !o.cancelled);
-  const now = live.find((o) => minutesOf(o.startTime) <= nowMin && nowMin < minutesOf(o.endTime)) ?? null;
+  // Every class in progress: two courses can share a slot (backlog, minor, or a clash).
+  const nowAll = live.filter((o) => minutesOf(o.startTime) <= nowMin && nowMin < minutesOf(o.endTime));
+  const now = nowAll[0] ?? null;
   const next = live.find((o) => minutesOf(o.startTime) > nowMin) ?? null;
   const minutesLeft = now ? minutesOf(now.endTime) - nowMin : 0;
   const progress = now ? (nowMin - minutesOf(now.startTime)) / Math.max(1, minutesOf(now.endTime) - minutesOf(now.startTime)) : 0;
   const ended = live.filter((o) => minutesOf(o.endTime) <= nowMin);
-  return { now, next, minutesLeft, progress, lastEnded: ended[ended.length - 1] ?? null };
+  return { now, nowAll, next, minutesLeft, progress, lastEnded: ended[ended.length - 1] ?? null };
 }
 
 export function inMinutes(m: number): string {

@@ -43,6 +43,9 @@ export default function ResourceViewer() {
       case 'mov':
       case 'avi':
       case 'mkv':
+      case 'webm':
+      case 'm4v':
+      case '3gp':
         return <VideoStrategy uri={absoluteUri} />;
       case 'md':
       case 'txt':
@@ -64,11 +67,8 @@ export default function ResourceViewer() {
       case 'epub':
         return renderIntentStrategy(absoluteUri, extension);
       default:
-        return (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>Unsupported file type: {extension}</Text>
-          </View>
-        );
+        // Anything else (zip, apk, audio, …): hand it to another app rather than dead-end.
+        return renderIntentStrategy(absoluteUri, extension || 'file');
     }
   };
 

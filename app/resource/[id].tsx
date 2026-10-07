@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, typography, radius } from '../../tokens';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,6 +19,12 @@ export default function ResourceDetail() {
     async function loadResource() {
       try {
         const [res] = await db.select().from(resources).where(eq(resources.id, parseInt(id as string, 10)));
+        // A file (PDF, photo, video, document) opens in the viewer instead of this text page,
+        // which used to say "This resource has no text content" for every file.
+        if (res?.uri && !/^https?:\/\//i.test(res.uri)) {
+          router.replace({ pathname: '/resource/viewer', params: { filename: res.uri, title: res.title } });
+          return;
+        }
         setResource(res);
       } catch (e) {
         console.error(e);
@@ -78,10 +84,15 @@ export default function ResourceDetail() {
       <ScrollView>
         <View style={{ padding: spacing.xl }}>
           <View style={styles.card}>
+            {resource.uri && /^https?:\/\//i.test(resource.uri) ? (
+              <TouchableOpacity onPress={() => Linking.openURL(resource.uri)} accessibilityRole="link">
+                <Text style={{ color: colors.light.primary, fontWeight: '700' }} numberOfLines={2}>Open link: {resource.uri}</Text>
+              </TouchableOpacity>
+            ) : null}
             {resource.textContent ? (
               <Text style={styles.textContent}>{resource.textContent}</Text>
             ) : (
-              <Text style={{ color: colors.light.textMuted }}>This resource has no text content.</Text>
+              !resource.uri ? <Text style={{ color: colors.light.textMuted }}>This note is empty.</Text> : null
             )}
           </View>
         </View>

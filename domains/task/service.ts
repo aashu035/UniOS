@@ -7,7 +7,7 @@ export class TaskService {
    * (e.g., scheduling a push notification) without blocking the primary transaction.
    */
   static async createTask(params: {
-    workspaceId: number;
+    workspaceId: number | null;
     title: string;
     description?: string;
     type?: string;
@@ -22,7 +22,7 @@ export class TaskService {
     NotificationService.taskCreated({
       id: (task as any)?.id ?? 0,
       title: params.title,
-      workspaceId: params.workspaceId,
+      workspaceId: params.workspaceId ?? 0,
     }).catch((e) => {
       console.warn('Failed to schedule task notification:', e);
     });

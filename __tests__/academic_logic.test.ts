@@ -242,3 +242,24 @@ describe('leave and condonation (ordinance 9.4, 9.5)', () => {
     expect(creditsFromHours({ theory: 0, tutorial: 0, lab: 0 })).toBe(1);
   });
 });
+
+describe('timetable clashes in course setup', () => {
+  const { findClashes, clashSummary } = require('../domains/academic/setup');
+  const T = (day: number, s: string, e: string, name = 'Test Course', type = 'theory') => ({ workspaceId: 1, name, short: 'TC', color: '#000', type, dayOfWeek: day, startTime: s, endTime: e });
+  it('finds overlaps, ignores touching slots and other days', () => {
+    const taken = [T(1, '09:00', '10:00'), T(3, '10:00', '12:00', 'Test Course', 'lab')];
+    const c = findClashes([
+      { dayOfWeek: 1, startTime: '09:00', endTime: '10:00' }, // same slot
+      { dayOfWeek: 1, startTime: '10:00', endTime: '11:00' }, // touches
+      { dayOfWeek: 3, startTime: '11:00', endTime: '12:00' }, // inside the lab
+      { dayOfWeek: 2, startTime: '09:00', endTime: '10:00' }, // other day
+    ], taken);
+    expect(c.map((x: any) => `${x.day} ${x.start}`)).toEqual(['1 09:00', '3 11:00']);
+    expect(clashSummary(c)).toBe('Mon 9–10 with Test Course, Wed 11–12 with Test Course Lab');
+  });
+  it('the 48-slot test course clashes everywhere and is summarised briefly', () => {
+    const taken = [1, 2, 3, 4, 5, 6].flatMap((d) => [9, 10, 11, 12, 13, 14, 15, 16].map((h) => T(d, `${String(h).padStart(2, '0')}:00`, `${String(h + 1).padStart(2, '0')}:00`)));
+    const c = findClashes([{ dayOfWeek: 1, startTime: '09:00', endTime: '10:00' }, { dayOfWeek: 2, startTime: '09:00', endTime: '10:00' }, { dayOfWeek: 3, startTime: '09:00', endTime: '10:00' }, { dayOfWeek: 4, startTime: '09:00', endTime: '10:00' }], taken);
+    expect(clashSummary(c)).toMatch(/\(\+1 more\)$/);
+  });
+});
