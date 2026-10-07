@@ -30,7 +30,7 @@ const ACTIONS: Array<{ label: string; icon: IconName; color: string; href: strin
   { label: 'Add task', icon: 'list-plus', color: '#D97706', href: '/task/add' },
   { label: 'Upload file', icon: 'upload', color: hue.blue, href: '/resource/add' },
   { label: 'Add exam', icon: 'graduation-cap', color: '#DC2626', href: '/task/add?type=exam' },
-  { label: 'Temporary change', icon: 'calendar-clock', color: hue.cyan, href: '/schedule/change' },
+  { label: 'Schedule change', icon: 'calendar-clock', color: hue.cyan, href: '/schedule/change' },
 ];
 
 /** Open tasks due within a week (overdue included): the badge on the Tasks tab. */

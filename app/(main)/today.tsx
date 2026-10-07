@@ -9,7 +9,7 @@ import {
 } from '../../components/uni/primitives';
 import { hue, mono, tint, useUni } from '../../components/uni/theme';
 import { markOccurrence, statusToMark, type Mark } from '../../domains/academic/actions';
-import { buildAlerts, openTasks } from '../../domains/academic/derive';
+import { buildAlerts, dayRuleBanner, openTasks } from '../../domains/academic/derive';
 import { useAcademic, useNowMinutes } from '../../domains/academic/hooks';
 import {
   addDays, clock, countdownPct, dayName, daySummary, inMinutes, isoWeek, liveState, markMessage, minutesOf, mondayOf,
@@ -41,6 +41,7 @@ export default function Today() {
   const todays = s.occurrences.filter((o) => o.date === today);
   const live = liveState(todays, nowMin);
 
+  const ruleBanner = dayRuleBanner(s, nowMin);
   const alerts = buildAlerts(s);
   const toneColor = (t: string) => (t === 'danger' ? p.danger : t === 'warn' ? p.warn : t === 'success' ? p.success : p.primary);
   const deck: DeckCard[] = alerts.length
@@ -64,6 +65,19 @@ export default function Today() {
           <RoundButton icon="bell" label="Alerts" badge={s.unread} onPress={() => router.push('/alerts')} />
         </>}
       />
+
+      {ruleBanner ? (
+        <Rise i={1}>
+          <Card style={[styles.ruleBanner, { backgroundColor: tint(p.warn, 10), borderColor: tint(p.warn, 30) }]} onPress={() => router.push('/schedule/changes' as any)}>
+            <Icon name="calendar-days" size={20} color={p.warn} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <T w={800} size={14.5}>{ruleBanner.title}</T>
+              <T c={p.muted} size={12.5} style={{ marginTop: 2, lineHeight: 17 }}>{ruleBanner.body}</T>
+            </View>
+            <Icon name="chevron-right" size={16} color={p.muted} />
+          </Card>
+        </Rise>
+      ) : null}
 
       <Rise i={1}>
         <AlertDeck cards={deck} onOpen={(i) => {
@@ -295,6 +309,7 @@ function NowCard({ s, live, nowMin, onChanged }: { s: Snapshot; live: Live; nowM
 }
 
 const styles = StyleSheet.create({
+  ruleBanner: { marginHorizontal: 20, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderWidth: 1 },
   rowBetween: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   nowCard: {
     marginHorizontal: 20, marginTop: 20, padding: 18, borderRadius: 26, gap: 14,

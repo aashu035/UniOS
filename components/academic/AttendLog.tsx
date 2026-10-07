@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Icon, type IconName } from '../uni/Icon';
 import { LEAVE_COLOR, MarkSheet } from '../uni/MarkSheet';
 import { Card, T, Tap } from '../uni/primitives';
@@ -12,6 +13,8 @@ import type { Course, Occ, Snapshot } from '../../domains/academic/snapshot';
 export type Session = {
   id: string; workspaceId: number; date: string; componentId?: number | null; componentType?: string | null;
   startTime?: string; endTime?: string; status: AttStatus | null; note: string | null; cancelled?: boolean;
+  /** Why the timetable changed for this class (day rule, move, extra). */
+  reason?: string | null;
 };
 
 type StatusFilter = 'all' | 'absent' | 'exempt' | 'off' | 'unmarked';
@@ -30,6 +33,7 @@ export function AttendLog({ data, course: c, history, nowMin, onChanged, toast }
   toast: (msg: string, undo?: () => Promise<void>) => void;
 }) {
   const p = useUni();
+  const router = useRouter();
   const [part, setPart] = useState<string>('all');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [showEarlier, setShowEarlier] = useState(false);
@@ -45,7 +49,8 @@ export function AttendLog({ data, course: c, history, nowMin, onChanged, toast }
     if (o.workspaceId !== c.id || o.date > data.today) continue;
     if (o.cancelled && !o.status) continue; // cancelled by a timetable change and never marked
     const prev = map.get(o.id);
-    map.set(o.id, { id: o.id, workspaceId: c.id, date: o.date, componentId: o.componentId, componentType: o.componentType, startTime: o.startTime, endTime: o.endTime, status: o.status ?? prev?.status ?? null, note: prev?.note ?? null, cancelled: o.cancelled });
+    map.set(o.id, { id: o.id, workspaceId: c.id, date: o.date, componentId: o.componentId, componentType: o.componentType, startTime: o.startTime, endTime: o.endTime, status: o.status ?? prev?.status ?? null, note: prev?.note ?? null, cancelled: o.cancelled,
+      reason: o.dropReason?.replace(/^Off · /, '') ?? (o.movedFromDate ? `Moved from ${dayName(o.movedFromDate)} ${shortDate(o.movedFromDate)}${o.changeReason ? ` · ${o.changeReason}` : ''}` : o.changeReason) ?? null });
   }
   const ended = (x: Session) => x.date < data.today || (x.date === data.today && !!x.endTime && minutesOf(x.endTime) <= nowMin);
   const all = [...map.values()].sort((a, b) => b.date.localeCompare(a.date) || (b.startTime ?? '').localeCompare(a.startTime ?? ''));
@@ -105,8 +110,17 @@ export function AttendLog({ data, course: c, history, nowMin, onChanged, toast }
     return ['Off', p.off, 'circle-slash'];
   };
   const sub = (x: Session) => {
-    const reason = x.note && !CANCEL_NOTE.test(x.note) ? x.note : x.status === 'holiday' ? 'Holiday' : x.cancelled ? 'Cancelled on the timetable' : null;
+    const reason = x.reason ?? (x.note && !CANCEL_NOTE.test(x.note) ? x.note : x.status === 'holiday' ? 'Holiday' : x.cancelled ? 'Cancelled on the timetable' : null);
     return [x.status === 'exempt' ? (reason ? `${reason} leave, pending approval` : 'Pending approval') : reason].filter(Boolean).join('');
+  };
+
+  // A class dropped by a schedule change can't be marked; the change itself is undone in Changes.
+  const open = (x: Session) => {
+    if (!x.cancelled) { setMarking(x); return; }
+    Alert.alert('Changed on the timetable', `${x.reason ?? 'This class was cancelled'}. It doesn't count, so it can't be marked. Undo the change to mark it again.`, [
+      { text: 'OK', style: 'cancel' },
+      { text: 'Open changes', onPress: () => router.push('/schedule/changes' as any) },
+    ]);
   };
 
   const pill = (on: boolean, label: string, onPress: () => void) => (
@@ -214,7 +228,7 @@ export function AttendLog({ data, course: c, history, nowMin, onChanged, toast }
               const [label, col, icon] = chip(x);
               const s = sub(x);
               return (
-                <Tap key={x.id} onPress={() => setMarking(x)} accessibilityRole="button" accessibilityLabel={`${dayName(x.date)} ${shortDate(x.date)}, ${label}. Change`}
+                <Tap key={x.id} onPress={() => open(x)} accessibilityRole="button" accessibilityLabel={`${dayName(x.date)} ${shortDate(x.date)}, ${label}. Change`}
                   pressedStyle={{ backgroundColor: p.surface }}
                   style={[styles.row, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: p.hair }]}>
                   <View style={{ width: 36, alignItems: 'center' }}>

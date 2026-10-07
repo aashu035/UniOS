@@ -1,5 +1,5 @@
 import type { IconName } from '../../components/uni/Icon';
-import { addDays, clock, daysBetween, isDone, liveState, minutesOf, mustAttend, relDue, pctOf } from './logic';
+import { addDays, clock, dayName, daysBetween, isDone, liveState, minutesOf, mustAttend, relDue, pctOf } from './logic';
 import type { Course, Occ, Snapshot, TaskRow } from './snapshot';
 
 export type AlertTone = 'danger' | 'warn' | 'primary' | 'success';
@@ -113,4 +113,25 @@ export function overall(courses: Course[]) {
   for (const c of courses) counts.set(c.target, (counts.get(c.target) ?? 0) + 1);
   const target = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 75;
   return { attended, absent, leave, off, total, pct: pctOf(attended, total), target };
+}
+
+const WEEKDAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * Banner for a day whose timetable changed: today's rule all day, and tomorrow's
+ * from 6 PM the evening before, so nobody packs the wrong bag.
+ */
+export function dayRuleBanner(s: Pick<Snapshot, 'dayRules' | 'today'>, nowMin: number): { date: string; when: 'today' | 'tomorrow'; title: string; body: string } | null {
+  const pick = (date: string) => s.dayRules.find((r) => r.date === date);
+  const tomorrow = addDays(s.today, 1);
+  const r = pick(s.today) ?? (nowMin >= 18 * 60 ? pick(tomorrow) : undefined);
+  if (!r) return null;
+  const when = r.date === s.today ? 'today' : 'tomorrow';
+  const Cap = when === 'today' ? 'Today' : 'Tomorrow';
+  const why = [r.reason, r.note].filter(Boolean).join(' · ');
+  if (r.kind === 'follow' && r.followsWeekday !== null) {
+    const wd = WEEKDAY_NAME[r.followsWeekday];
+    return { date: r.date, when, title: `${Cap} follows ${wd}'s timetable`, body: `Bring ${wd}'s books. ${dayName(r.date, true)}'s own classes don't count.${why ? ` ${why}.` : ''}` };
+  }
+  return { date: r.date, when, title: `${Cap} is off`, body: `No classes count${why ? ` · ${why}` : ''}.` };
 }

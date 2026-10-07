@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon, courseIcon } from '../../components/uni/Icon';
 import { Card, Chip, Empty, LargeTitle, Rise, RoundButton, Screen, T, Tap } from '../../components/uni/primitives';
@@ -59,6 +59,22 @@ export default function Schedule() {
     return { left: GUTTER + slot.lane * (w + LANE_GAP), width: w, lanes: slot.lanes };
   };
 
+  const W3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const ruleOn = (d: string) => data?.dayRules.find((x) => x.date === d);
+  const selRule = ruleOn(selDate);
+  const dayTag = (d: string) => { const rl = ruleOn(d); return !rl ? null : rl.kind === 'follow' ? `${W3[rl.followsWeekday ?? 0]} TT` : rl.linkedRuleId ? 'Holiday' : 'Off'; };
+  const longPress = (o: Occ) => {
+    if (o.id.startsWith('ex_')) {
+      Alert.alert('Extra class', 'Manage it from Schedule changes.', [{ text: 'Close', style: 'cancel' }, { text: 'Open changes', onPress: () => router.push('/schedule/changes' as any) }]);
+      return;
+    }
+    Alert.alert(`${o.workspaceName} · ${dayName(o.date)} ${shortDate(o.date)}`, 'What changed?', [
+      { text: 'Other change…', onPress: () => router.push({ pathname: '/schedule/change', params: { date: o.date } } as any) },
+      { text: 'Cancel it', onPress: () => router.push({ pathname: '/schedule/change', params: { mode: 'cancel', occ: o.id, date: o.date } } as any) },
+      { text: 'Move it', onPress: () => router.push({ pathname: '/schedule/change', params: { mode: 'move', occ: o.id, date: o.date } } as any) },
+    ]);
+  };
   const title = selDate === today ? `Today, ${dayName(selDate)} ${shortDate(selDate)}` : `${dayName(selDate)}, ${shortDate(selDate)}`;
 
   return (
@@ -84,12 +100,13 @@ export default function Schedule() {
                 {days.map((d, i) => {
                   const on = i === sel;
                   const list = occ.filter((o) => o.date === d);
-                  const changed = list.some((o) => o.cancelled || o.exceptionAction === 'move' || o.exceptionAction === 'extra');
+                  const changed = !!ruleOn(d) || list.some((o) => o.cancelled || o.exceptionAction === 'move' || o.exceptionAction === 'extra');
                   return (
                     <Tap key={d} onPress={() => setPicked(i)} accessibilityLabel={`${dayName(d, true)} ${shortDate(d)}, ${list.filter((o) => !o.cancelled).length} classes`}
                       style={[styles.glanceDay, { backgroundColor: on ? p.primarySoft : 'transparent' }]}>
                       <T w={700} c={on ? p.primary : p.muted} size={11}>{d === today ? 'Today' : dayName(d)}</T>
-                      <T w={800} c={on ? p.primary : p.text} size={16} style={{ marginBottom: 4 }}>{Number(d.slice(8))}</T>
+                      <T w={800} c={on ? p.primary : p.text} size={16} style={{ marginBottom: dayTag(d) ? 0 : 4 }}>{Number(d.slice(8))}</T>
+                      {dayTag(d) ? <T w={800} c={p.warn} size={8.5} numberOfLines={1} style={{ marginBottom: 3 }}>{dayTag(d)}</T> : null}
                       {GLANCE_HOURS.map((h) => {
                         const c = list.find((o) => hoursOf(o.startTime) <= h + 0.01 && hoursOf(o.endTime) > h + 0.01);
                         if (!c) return <View key={h} style={[styles.cell, { backgroundColor: p.surface }]} />;
@@ -111,17 +128,44 @@ export default function Schedule() {
             </Card>
           </Rise>
 
-          {changes.map((o) => (
+          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 10 }}>
+            <Tap onPress={() => router.push({ pathname: '/schedule/change', params: { date: selDate } } as any)} style={[styles.chgBtn, { backgroundColor: p.elev, borderColor: p.hair }]}>
+              <Icon name="calendar-clock" size={16} color={p.primary} />
+              <T w={700} size={13}>Change schedule</T>
+            </Tap>
+            <Tap onPress={() => router.push('/schedule/changes' as any)} style={[styles.chgBtn, { backgroundColor: p.elev, borderColor: p.hair }]}>
+              <Icon name="history" size={16} color={p.muted} />
+              <T w={700} size={13}>Changes</T>
+            </Tap>
+          </View>
+
+          {selRule ? (
+            <View style={[styles.banner, { backgroundColor: tint(p.warn, 12) }]}>
+              <View style={[styles.bannerIcon, { backgroundColor: p.warn }]}>
+                <Icon name={selRule.kind === 'follow' ? 'calendar-days' : 'party-popper'} size={16} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <T w={700} size={14}>{selRule.kind === 'follow' ? `Follows ${WEEKDAY[selRule.followsWeekday ?? 0]}'s timetable` : selRule.linkedRuleId ? 'Holiday · no classes' : `No classes · ${selRule.reason ?? 'day off'}`}</T>
+                <T c={p.muted} size={12.5} style={{ lineHeight: 17, marginTop: 2 }}>
+                  {selRule.kind === 'follow'
+                    ? `${[selRule.reason, selRule.note].filter(Boolean).join(' · ')}. ${WEEKDAY[new Date(Number(selDate.slice(0, 4)), Number(selDate.slice(5, 7)) - 1, Number(selDate.slice(8, 10)), 12).getDay()]}'s own classes are Off and don't count.`
+                    : selRule.note ? `${selRule.note}. Classes that day don't count.` : "Classes that day don't count."}
+                </T>
+              </View>
+            </View>
+          ) : null}
+
+          {changes.filter((o) => !(selRule && o.cancelled && o.dropReason?.startsWith('Off ·') && !o.dropReason.includes('cancelled'))).filter((o) => !(selRule && o.cancelled)).map((o) => (
             <View key={'chg' + o.id} style={[styles.banner, { backgroundColor: tint(p.warn, 12) }]}>
               <View style={[styles.bannerIcon, { backgroundColor: p.warn }]}>
                 <Icon name={o.cancelled ? 'party-popper' : 'calendar-clock'} size={16} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
                 <T w={700} size={14}>
-                  {o.cancelled ? `${o.workspaceName} cancelled` : o.exceptionAction === 'extra' ? `Extra ${o.workspaceName} class at ${clock(o.startTime)}` : `${o.workspaceName} moved to ${clock(o.startTime)}${o.venueName ? `, ${o.venueName}` : ''}`}
+                  {o.cancelled ? `${o.workspaceName} ${o.dropReason?.startsWith('Moved') ? 'moved' : 'cancelled'}` : o.exceptionAction === 'extra' ? `Extra ${o.workspaceName} class at ${clock(o.startTime)}` : o.movedFromDate ? `${o.workspaceName} moved here from ${dayName(o.movedFromDate)} ${shortDate(o.movedFromDate)}` : `${o.workspaceName} moved to ${clock(o.startTime)}${o.venueName ? `, ${o.venueName}` : ''}`}
                 </T>
                 <T c={p.muted} size={12.5} style={{ lineHeight: 17, marginTop: 2 }}>
-                  {o.cancelled ? 'Mark it Off so it won’t count toward your attendance.' : o.original ? `Temporary. Normally ${clock(o.original.startTime)}–${clock(o.original.endTime)}.` : 'One-off class for this day.'}
+                  {o.cancelled ? `${o.dropReason ?? 'Cancelled for this day'}. It doesn't count toward attendance.` : o.exceptionAction === 'extra' ? `${o.changeReason ?? 'Extra class'}. Counts like any other class.` : o.movedFromDate ? `${o.changeReason ? `${o.changeReason}. ` : ''}Counts for ${o.workspaceName} as usual.` : o.original ? `Temporary. Normally ${clock(o.original.startTime)}–${clock(o.original.endTime)}.` : 'One-off class for this day.'}
                 </T>
               </View>
             </View>
@@ -155,7 +199,7 @@ export default function Schedule() {
                   return (
                     <Block key={o.id} o={o} live={live} box={laneBox(o.id)} short={data?.courseById.get(o.workspaceId)?.short} top={top(hoursOf(o.startTime))} height={(hoursOf(o.endTime) - hoursOf(o.startTime)) * PX - 4}
                       onPress={() => router.push(`/course/${o.workspaceId}` as any)}
-                      onLongPress={() => router.push(`/schedule/change?occ=${encodeURIComponent(o.id)}&date=${o.date}` as any)} />
+                      onLongPress={() => longPress(o)} />
                   );
                 })}
 
@@ -168,7 +212,7 @@ export default function Schedule() {
                   </View>
                 ) : null}
               </View>
-              <T c={p.muted} size={12} style={{ textAlign: 'center', marginTop: 8 }}>Long-press a class to cancel or move it for one day.</T>
+              <T c={p.muted} size={12} style={{ textAlign: 'center', marginTop: 8 }}>Long-press a class to cancel or move it, or use Change schedule for a whole day.</T>
             </>
           )}
         </>
@@ -197,7 +241,7 @@ function Block({ o, live, top, height, ghost, box, short, onPress, onLongPress }
   }
   if (o.cancelled) {
     bg = 'transparent'; border = p.off; opacity = 0.7; strike = true; wellBg = p.surface; wellFg = p.off;
-    chip = ['OFF', p.off, p.surface]; meta = 'Cancelled for this day';
+    chip = ['OFF', p.off, p.surface]; meta = o.dropReason?.replace(/^Off · /, '') ?? 'Cancelled for this day';
   }
   // Narrow lanes use the short course label; short blocks fit one line only.
   const name = (box.lanes > 1 && short ? short : o.workspaceName) + (o.componentType === 'lab' ? ' Lab' : o.componentType === 'tutorial' ? ' Tut' : '');
@@ -227,6 +271,7 @@ function Block({ o, live, top, height, ghost, box, short, onPress, onLongPress }
 }
 
 const styles = StyleSheet.create({
+  chgBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 14, borderWidth: 1 },
   glance: { marginHorizontal: 20, paddingTop: 14, paddingHorizontal: 12, paddingBottom: 12 },
   glanceDay: { flex: 1, alignItems: 'center', gap: 3, paddingTop: 6, paddingBottom: 8, borderRadius: 14 },
   cell: { width: 30, maxWidth: '86%', height: 9, borderRadius: 3 },
