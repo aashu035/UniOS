@@ -12,6 +12,9 @@ import { Skeleton } from '../components/ui/Skeleton';
 
 type SearchResult = { id: number; workspaceId: number | null; title: string; subtitle: string; kind: 'Course' | 'Task' | 'Resource' };
 
+/** Each result opens its own screen; tasks and files without a course work too. */
+const openPath = (r: SearchResult) => r.kind === 'Course' ? `/course/${r.id}` : r.kind === 'Task' ? `/task/edit?id=${r.id}` : `/resource/${r.id}`;
+
 export default function SearchModal() {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -60,7 +63,7 @@ export default function SearchModal() {
         <IconButton icon={<X size={24} color={colors.light.text} />} onPress={() => router.back()} accessibilityLabel="Close search" />
       </View>
       <PageContainer>
-        {!query.trim() ? <EmptyState icon={<SearchIcon size={48} color={colors.light.textMuted} />} title="Search your UniOS" description="Find courses, tasks, and resources saved on this device." /> : results.length === 0 && !isSearching ? <EmptyState icon={<SearchIcon size={48} color={colors.light.textMuted} />} title="No matches" description="Try a course code, task title, or resource name." /> : <View style={styles.results}>{results.map(result => <Pressable key={`${result.kind}-${result.id}`} style={styles.result} onPress={() => result.workspaceId && router.push(`/workspace/${result.workspaceId}`)}><View style={styles.resultIcon}><FileText size={20} color={colors.light.primary} /></View><View style={styles.resultText}><Text style={styles.resultTitle} numberOfLines={1}>{result.title}</Text><Text style={styles.resultSubtitle} numberOfLines={1}>{result.kind} · {result.subtitle}</Text></View></Pressable>)}</View>}
+        {!query.trim() ? <EmptyState icon={<SearchIcon size={48} color={colors.light.textMuted} />} title="Search your UniOS" description="Find courses, tasks, and resources saved on this device." /> : results.length === 0 && !isSearching ? <EmptyState icon={<SearchIcon size={48} color={colors.light.textMuted} />} title="No matches" description="Try a course code, task title, or resource name." /> : <View style={styles.results}>{results.map(result => <Pressable key={`${result.kind}-${result.id}`} style={styles.result} onPress={() => router.push(openPath(result) as any)}><View style={styles.resultIcon}><FileText size={20} color={colors.light.primary} /></View><View style={styles.resultText}><Text style={styles.resultTitle} numberOfLines={1}>{result.title}</Text><Text style={styles.resultSubtitle} numberOfLines={1}>{result.kind} · {result.subtitle}</Text></View></Pressable>)}</View>}
       </PageContainer>
     </AppScaffold>
   );
