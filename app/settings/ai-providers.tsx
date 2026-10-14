@@ -4,26 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Save } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../tokens';
-import { AIProviderKeysStore, AIProviderKeys, AIProvider } from '../../core/settings/aiProviders';
+import { GeminiKey } from '../../core/settings/aiProviders';
 
 export default function AIProvidersSettings() {
   const router = useRouter();
-  const [keys, setKeys] = useState<AIProviderKeys>({
-    gemini: null,
-    openai: null,
-    anthropic: null,
-    openrouter: null,
-    nvidia: null,
-    numtron: null,
-  });
+  const [key, setKey] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     async function loadKeys() {
       try {
-        const storedKeys = await AIProviderKeysStore.getKeys();
-        setKeys(storedKeys);
+        setKey((await GeminiKey.get()) ?? '');
       } catch (err) {
         console.error('Failed to load API keys:', err);
       } finally {
@@ -36,14 +28,8 @@ export default function AIProvidersSettings() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await AIProviderKeysStore.saveKey('gemini', keys.gemini);
-      await AIProviderKeysStore.saveKey('openai', keys.openai);
-      await AIProviderKeysStore.saveKey('anthropic', keys.anthropic);
-      await AIProviderKeysStore.saveKey('openrouter', keys.openrouter);
-      await AIProviderKeysStore.saveKey('nvidia', keys.nvidia);
-      await AIProviderKeysStore.saveKey('numtron', keys.numtron);
-      
-      Alert.alert('Keys Saved', 'Your AI provider API keys have been saved securely on your device.');
+      await GeminiKey.save(key);
+      Alert.alert('Saved', key.trim() ? 'The timetable scanner can now read photos.' : 'Key removed.');
       router.back();
     } catch (err) {
       console.error('Failed to save keys:', err);
@@ -51,10 +37,6 @@ export default function AIProvidersSettings() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const updateKey = (provider: AIProvider, value: string) => {
-    setKeys((prev) => ({ ...prev, [provider]: value }));
   };
 
   if (isLoading) {
@@ -73,49 +55,38 @@ export default function AIProvidersSettings() {
         <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} accessibilityLabel="Go back">
           <ArrowLeft size={24} color={colors.light.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>AI Provider Keys</Text>
+        <Text style={styles.title}>Timetable scanner</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.description}>
-          Add your API keys below to enable local AI capabilities (like the Timetable AI Parser). Keys are stored securely on your device using Expo SecureStore and are never sent to our servers.
+          The timetable scanner reads a photo of your timetable with Google Gemini. Paste your free Gemini API key from aistudio.google.com. It is stored only on this phone and sent only to Google when you scan.
         </Text>
 
-        <ProviderField label="Google Gemini API Key" provider="gemini" value={keys.gemini || ''} onChange={(val) => updateKey('gemini', val)} placeholder="AIzaSy..." />
-        <ProviderField label="OpenAI API Key" provider="openai" value={keys.openai || ''} onChange={(val) => updateKey('openai', val)} placeholder="sk-..." />
-        <ProviderField label="Anthropic API Key" provider="anthropic" value={keys.anthropic || ''} onChange={(val) => updateKey('anthropic', val)} placeholder="sk-ant-..." />
-        <ProviderField label="OpenRouter API Key" provider="openrouter" value={keys.openrouter || ''} onChange={(val) => updateKey('openrouter', val)} placeholder="sk-or-v1-..." />
-        <ProviderField label="NVIDIA NIM API Key" provider="nvidia" value={keys.nvidia || ''} onChange={(val) => updateKey('nvidia', val)} placeholder="nvapi-..." />
-        <ProviderField label="Numtron API Key" provider="numtron" value={keys.numtron || ''} onChange={(val) => updateKey('numtron', val)} placeholder="num-..." />
+        <View style={styles.field}>
+          <Text style={styles.label}>Gemini API key</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="AIzaSy..."
+            placeholderTextColor={colors.light.textMuted}
+            value={key}
+            onChangeText={setKey}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
 
       </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity style={[styles.saveButton, isSaving && styles.disabled]} onPress={handleSave} disabled={isSaving}>
           <Save size={20} color={colors.dark.text} style={styles.saveIcon} />
-          <Text style={styles.saveText}>{isSaving ? 'Saving…' : 'Save Keys'}</Text>
+          <Text style={styles.saveText}>{isSaving ? 'Saving…' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
-}
-
-function ProviderField({ label, value, onChange, placeholder, provider }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; provider: string }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor={colors.light.textMuted}
-        value={value}
-        onChangeText={onChange}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-    </View>
   );
 }
 

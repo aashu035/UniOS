@@ -230,11 +230,8 @@ function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(main)" />
             <Stack.Screen name="onboarding" />
-            <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
             <Stack.Screen name="search" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="course/add" options={{ presentation: 'formSheet', gestureEnabled: false }} />
             <Stack.Screen name="course/edit" />
-            <Stack.Screen name="planner/add" options={{ presentation: 'formSheet' }} />
           </Stack>
         </PaperProvider>
       </ProfileContext.Provider>

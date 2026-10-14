@@ -42,7 +42,7 @@ export function rankListedModels(models: Array<{ name?: string; supportedActions
 export function friendlyGeminiError(e: unknown): string {
   const m = text(e);
   const s = status(e);
-  if (s === 400 && /API key not valid|API_KEY_INVALID/i.test(m)) return 'Your Gemini API key was rejected. Copy it again from aistudio.google.com and save it in Settings → AI API Providers.';
+  if (s === 400 && /API key not valid|API_KEY_INVALID/i.test(m)) return 'Your Gemini API key was rejected. Copy it again from aistudio.google.com and save it in More → Timetable scanner.';
   if (s === 403 || /PERMISSION_DENIED/i.test(m)) return 'This API key is not allowed to use Gemini. Check that the Generative Language API is enabled for its Google Cloud project.';
   if (s === 429 || /RESOURCE_EXHAUSTED|quota/i.test(m)) return 'Gemini says this key is out of quota for now. Wait a minute and try again, or use a key with a higher limit.';
   if (isModelUnavailable(e)) return 'None of the Gemini models this app knows are available to your key right now. Please report this from More → Report a problem.';

@@ -6,8 +6,7 @@ import { colors } from '../../tokens';
 
 /**
  * Tabs: Home (today), Timetable (schedule), Tasks (work), More (menu), with the
- * create button in the middle of the bar. The pre-redesign tab screens stay
- * routable but hidden until they are removed.
+ * create button in the middle of the bar. Profile is a hidden tab opened from More.
  */
 export default function MainLayout() {
   return (
@@ -20,15 +19,7 @@ export default function MainLayout() {
       <Tabs.Screen name="schedule" options={{ title: 'Timetable' }} />
       <Tabs.Screen name="work" options={{ title: 'Tasks' }} />
       <Tabs.Screen name="menu" options={{ title: 'More' }} />
-
-      {/* Pre-redesign screens, reachable by URL only. */}
-      <Tabs.Screen name="planner" options={{ href: null }} />
-      <Tabs.Screen name="more" options={{ href: null }} />
-      <Tabs.Screen name="fab" options={{ href: null }} />
-      <Tabs.Screen name="workspaces" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null }} />
-      <Tabs.Screen name="semester" options={{ href: null }} />
-      <Tabs.Screen name="resources" options={{ href: null }} />
     </Tabs>
   );
 }

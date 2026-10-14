@@ -43,7 +43,7 @@ Never use “supported” or “production-ready” unless release verification 
 ## Change-control protocol
 
 1. Identify the owning document in the authority table before changing behaviour or data.
-2. Record an ownership claim in [`collaboration/CODEX_ANTIGRAVITY_COLLABORATION.md`](collaboration/CODEX_ANTIGRAVITY_COLLABORATION.md) before changing a shared boundary (`core/db/schema.ts`, `drizzle/`, root routing, or an owned document).
+2. Record an ownership claim in [`AGENT_SYNC.md`](../AGENT_SYNC.md) before changing a shared boundary (`core/db/schema.ts`, `drizzle/`, root routing, or an owned document).
 3. Update the canonical artifact first or in the same patch as implementation.
 4. Update cross-references and the traceability matrix if an acceptance condition changes.
 5. Run the relevant check and record its result: type check, migration test, release bundle check, and/or device flow test.

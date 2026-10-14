@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import * as FileSystem from 'expo-file-system/legacy';
-import { AIProviderKeysStore } from '../settings/aiProviders';
+import { GeminiKey } from '../settings/aiProviders';
 import { friendlyGeminiError, withGeminiModel } from './geminiModels';
 
 export interface ParsedClassSession {
@@ -15,13 +15,12 @@ export interface ParsedClassSession {
 
 export class TimetableParser {
   static async parseTimetableImage(imageUri: string, userBatch: string = ''): Promise<ParsedClassSession[]> {
-    const keys = await AIProviderKeysStore.getKeys();
-    
-    if (!keys.gemini) {
-      throw new Error('Gemini API key is not configured. Please add it in Settings > AI Provider Keys.');
+    const apiKey = await GeminiKey.get();
+    if (!apiKey) {
+      throw new Error('Gemini API key is not set. Add it in More → Timetable scanner.');
     }
 
-    const ai = new GoogleGenAI({ apiKey: keys.gemini });
+    const ai = new GoogleGenAI({ apiKey });
 
     // Read the image as base64
     const base64Image = await FileSystem.readAsStringAsync(imageUri, {

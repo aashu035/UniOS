@@ -25,7 +25,7 @@ Shared memory for Hermes (supervisor/auditor/cleanup) and Antigravity (AGY, feat
 ### 🟢 Hermes next (Phase C — carry-forward, optional)
 - `pending_issues.md` re-verification (it was updated by AGY in an earlier turn; cross-check with current code).
 - `AGENT_SYNC.md` (this file) — keep updated.
-- Documentation in `Audit/` or `docs/` if anything is misleading.
+- Documentation in `docs/` if anything is misleading.
 - Could tackle the audit's "Attendance calculation duplication" entry now formally closed since `getLocalAttendanceState` is removed.
 
 ### 🟢 AGY next (parallel-safe lanes)

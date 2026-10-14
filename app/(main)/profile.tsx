@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { AppScaffold } from '../../components/layout/AppScaffold';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { HeroBanner } from '../../components/layout/HeroBanner';
@@ -16,54 +16,14 @@ import { colors, spacing, radius } from '../../tokens';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { expoDb } from '../../core/db/client';
 import * as FileSystem from 'expo-file-system/legacy';
-import { exportAndShare, pickBackupText, restoreFromText } from '../../core/db/backupActions';
 
 export default function Profile() {
   const router = useRouter();
   const { profile, isLoading, refreshProfile } = useProfile();
-  const [isExporting, setIsExporting] = useState(false);
 
   useFocusEffect(useCallback(() => {
     refreshProfile();
   }, [refreshProfile]));
-
-  const [isImporting, setIsImporting] = useState(false);
-
-  // Same actions as More → Backup & export (core/db/backupActions).
-  const exportData = async () => {
-    setIsExporting(true);
-    try {
-      const r = await exportAndShare();
-      if (r === 'saved') Alert.alert('Backup created', 'Sharing is not available on this device.');
-    } catch (error) {
-      Alert.alert('Export failed', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const importData = async () => {
-    let text: string | null = null;
-    try { text = await pickBackupText(); } catch (error) { console.error('Could not pick file', error); }
-    if (!text) return;
-    Alert.alert('Restore backup?', 'This replaces all your current data with the backup. Export first if you want to keep it.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Restore', style: 'destructive', onPress: async () => {
-          setIsImporting(true);
-          try {
-            await restoreFromText(text!);
-            Alert.alert('Restored', 'Your data has been restored.');
-            refreshProfile();
-          } catch (error) {
-            Alert.alert("That file isn't a UniOS backup", error instanceof Error ? error.message : 'Pick the file you exported from UniOS.');
-          } finally {
-            setIsImporting(false);
-          }
-        },
-      },
-    ]);
-  };
 
   if (isLoading) {
     return (
@@ -121,10 +81,7 @@ export default function Profile() {
         <SectionHeader title="Account Settings" />
         <View style={styles.actionsContainer}>
           <SecondaryButton label="Edit Profile" style={styles.actionButton} onPress={() => router.push('/profile/edit')} />
-          <SecondaryButton label="AI Companion Settings" style={styles.actionButton} onPress={() => router.push('/settings/pairing')} />
-          <SecondaryButton label={isExporting ? "Exporting…" : "Export My Data"} style={styles.actionButton} onPress={exportData} disabled={isExporting} loading={isExporting} />
-          <SecondaryButton label={isImporting ? "Importing…" : "Import Data"} style={styles.actionButton} onPress={importData} disabled={isImporting} loading={isImporting} />
-          <SecondaryButton label="About local data" style={[styles.actionButton, styles.signOutButton]} onPress={() => Alert.alert('Your data stays on this device', 'UniOS does not use an online account yet. You can export a backup above.')} />
+          <SecondaryButton label="Backup & export" style={styles.actionButton} onPress={() => router.push('/settings/data')} />
         </View>
 
       </PageContainer>
@@ -149,7 +106,4 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingHorizontal: spacing.xl,
   },
-  signOutButton: {
-    borderColor: `${colors.light.danger}50`,
-  }
 });
