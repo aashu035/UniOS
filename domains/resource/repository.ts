@@ -1,4 +1,5 @@
 import { db } from '../../core/db/client';
+import { isStoredUpload } from '../../core/fs/names';
 import { resources } from './model';
 import { eq, desc } from 'drizzle-orm';
 
@@ -22,10 +23,10 @@ export class ResourceRepository {
    * Delete a stored file once no resource row points at it. Uploads are kept in
    * the app's resources folder under a bare filename (`<uuid>.pdf`), and identical
    * uploads share one file, so a file is only removed when its last row is gone.
-   * Links, notes and anything that isn't a bare filename are left alone.
+   * Links, notes and anything that isn't a name the app gave an upload are left alone.
    */
   static async removeFileIfUnused(uri: string | null | undefined) {
-    if (!uri || /[/\\:]/.test(uri)) return;
+    if (!isStoredUpload(uri)) return;
     const stillUsed = db.select({ id: resources.id }).from(resources).where(eq(resources.uri, uri)).limit(1).all();
     if (stillUsed.length) return;
     const { FileManager } = require('../../core/fs/FileManager');

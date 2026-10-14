@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../../core/db/client';
+import { atomic } from '../../core/db/atomic';
 import { semesters } from './model';
 import { students } from '../profile/model';
 
@@ -19,11 +20,11 @@ export class SemesterRepository {
     startDate?: string;
     endDate?: string;
   }) {
-    return db.transaction(async (tx) => {
-      const existing = await tx.select().from(semesters).limit(1).get();
+    return atomic((tx) => {
+      const existing = tx.select().from(semesters).limit(1).get();
       const isFirst = !existing;
 
-      const newSemester = await tx.insert(semesters).values({
+      const newSemester = tx.insert(semesters).values({
         number: data.number,
         name: data.name,
         type: data.type || 'odd',
@@ -33,13 +34,13 @@ export class SemesterRepository {
 
       if (isFirst) {
         // Activate it since it's the first one
-        await tx.update(semesters)
+        tx.update(semesters)
           .set({ isActive: true })
           .where(eq(semesters.id, newSemester.id))
           .run();
         
         // Also sync profile (we might not have a profile yet, but update just in case)
-        await tx.update(students).set({ currentSemester: newSemester.number }).run();
+        tx.update(students).set({ currentSemester: newSemester.number }).run();
         newSemester.isActive = true;
       }
       
@@ -48,23 +49,23 @@ export class SemesterRepository {
   }
 
   static async activateSemester(id: number) {
-    return db.transaction(async (tx) => {
-      const targetSemester = await tx.select().from(semesters).where(eq(semesters.id, id)).get();
+    return atomic((tx) => {
+      const targetSemester = tx.select().from(semesters).where(eq(semesters.id, id)).get();
       if (!targetSemester) {
         throw new Error(`Semester with id ${id} not found.`);
       }
 
       // Deactivate all
-      await tx.update(semesters).set({ isActive: false }).run();
+      tx.update(semesters).set({ isActive: false }).run();
       
       // Activate target
-      const activated = await tx.update(semesters)
+      const activated = tx.update(semesters)
         .set({ isActive: true })
         .where(eq(semesters.id, id))
         .returning().get();
       
       // Synchronize canonical context to Profile
-      await tx.update(students).set({ currentSemester: targetSemester.number }).run();
+      tx.update(students).set({ currentSemester: targetSemester.number }).run();
 
       return activated;
     });
@@ -83,9 +84,9 @@ export class SemesterRepository {
   }
 
   static async deleteSemester(id: number) {
-    return db.transaction(async (tx) => {
+    return atomic((tx) => {
       const { workspaces } = require('../workspace/model');
-      const attachedWorkspaces = await tx.select().from(workspaces).where(eq(workspaces.semesterId, id)).limit(1).get();
+      const attachedWorkspaces = tx.select().from(workspaces).where(eq(workspaces.semesterId, id)).limit(1).get();
       if (attachedWorkspaces) {
         throw new Error("Cannot delete a semester that contains active subjects. Please delete or reassign the subjects first.");
       }

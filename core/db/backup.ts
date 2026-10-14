@@ -1,7 +1,8 @@
 import { db, expoDb } from './client';
 import * as schema from './schema';
+import { atomic } from './atomic';
 import { UniOSBackupV2, BACKUP_FORMAT_STRING, CURRENT_BACKUP_VERSION, CANONICAL_BACKUP_TABLES, BackupTableKey } from './backupSchema';
-import { validateBackupStructural, validateBackupRelational } from './backupValidation';
+import { sanitizeRestoredValues, validateBackupStructural, validateBackupRelational } from './backupValidation';
 
 /**
  * Ensures that the provided data can be safely inserted.
@@ -61,6 +62,9 @@ export async function importBackup(jsonString: string): Promise<void> {
     throw new Error(relationalCheck.error);
   }
 
+  // 2b. Level C: clear file paths and links that the app did not write itself.
+  sanitizeRestoredValues(parsed);
+
   // 3. Verify Foreign Keys are strictly enforced
   await ensureForeignKeysEnabled();
 
@@ -108,32 +112,23 @@ export async function importBackup(jsonString: string): Promise<void> {
   // 5. Execute Atomic Wipe & Replace
   const toCamelCase = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
 
-  await db.transaction(async (tx) => {
+  // One transaction: if any row fails to insert, the wipe is rolled back too and
+  // the phone keeps what it had. Synchronous on purpose (see core/db/atomic.ts).
+  atomic((tx) => {
     // Delete in Child -> Parent order
     for (const tableName of deletionOrder) {
-      const exportName = toCamelCase(tableName);
-      const tableSchema = (schema as any)[exportName];
-      if (tableSchema) {
-        await tx.delete(tableSchema);
-      }
+      const tableSchema = (schema as any)[toCamelCase(tableName)];
+      if (tableSchema) tx.delete(tableSchema).run();
     }
 
-    // Insert in Parent -> Child order
+    // Insert in Parent -> Child order, 50 rows per statement (SQLite's 999-parameter limit).
+    const CHUNK_SIZE = 50;
     for (const tableName of insertionOrder) {
       const rows = parsed.tables[tableName];
-      const exportName = toCamelCase(tableName);
-      const tableSchema = (schema as any)[exportName];
-      
-      if (tableSchema && rows && rows.length > 0) {
-        // Drizzle allows batch inserts. 
-        // NOTE: If rows array is very large, this might hit SQLite parameter limits,
-        // but for typical UniOS use cases, a single batch is safe.
-        // We chunk it into 100 rows per batch to be safe against SQLite's 999 parameter limit.
-        const CHUNK_SIZE = 50; 
-        for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-          const chunk = rows.slice(i, i + CHUNK_SIZE);
-          await tx.insert(tableSchema).values(chunk);
-        }
+      const tableSchema = (schema as any)[toCamelCase(tableName)];
+      if (!tableSchema || !rows?.length) continue;
+      for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+        tx.insert(tableSchema).values(rows.slice(i, i + CHUNK_SIZE)).run();
       }
     }
   });

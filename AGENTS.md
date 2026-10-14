@@ -58,6 +58,9 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 - **Occurrence ids.** Regular classes use `rec_<recurringScheduleId>_<YYYY-MM-DD>`; extra classes use `ex_<id>`. `AttendanceRepository.markAttendance` rejects an id that isn't in `CalendarService.getEffectiveSchedule` for that date.
 - **File API.** Import `expo-file-system/legacy` for `getInfoAsync`, `deleteAsync`, `getContentUriAsync` and friends. The same names imported from `expo-file-system` throw at runtime on SDK 56.
 - **The drizzle driver is synchronous.** `.all()` returns an array, so never chain `.then` on it.
+- **Transactions must be synchronous.** Use `atomic(tx => …)` from `core/db/atomic.ts`, finishing each query with `.run()`, `.all()` or `.get()`. The expo driver commits as soon as the callback returns, so `db.transaction(async …)` saves nothing atomically and never rolls back.
+- **DB tests run on the device driver.** Use `createDeviceDb()` from `testing/expoSqliteHarness.ts`. Never stub `db.transaction` with `cb => cb(db)`: that hides missing rollbacks.
+- **Untrusted paths and links.** Backups are shared between students, and deep links can come from other apps. Only names from `core/fs/names.ts` (`isStoredUpload`, `isOwnAvatar`) may reach a file operation, because the native layer decodes `%2E%2E%2F` to `../`. Links must pass `isWebLink` or `isAppRoute`. Restores clear anything else (`sanitizeRestoredValues`).
 - **Migrations.**
   - Statements must be separated by `--> statement-breakpoint`.
   - Never rename or renumber existing files: `drizzle/migrations.js` maps them by alias.

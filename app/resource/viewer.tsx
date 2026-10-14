@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { colors, spacing, typography, radius } from '../../tokens';
 import { FileManager } from '../../core/fs/FileManager';
+import { isStoredUpload } from '../../core/fs/names';
 import { Skeleton } from '../../components/ui/Skeleton';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -19,11 +20,12 @@ export default function ResourceViewer() {
   const router = useRouter();
   const { filename, title } = useLocalSearchParams<{ filename: string; title: string }>();
 
-  if (!filename) {
+  // Only files this app stored; a link or backup cannot point the viewer at other app files.
+  if (!isStoredUpload(filename)) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No filename provided.</Text>
+          <Text style={styles.errorText}>This file can't be opened.</Text>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backBtnText}>Go Back</Text>
           </TouchableOpacity>

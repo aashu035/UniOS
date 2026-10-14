@@ -1,4 +1,5 @@
 import { UniOSBackupV2, isUniOSBackupV2, CANONICAL_BACKUP_TABLES, OPTIONAL_BACKUP_TABLES } from './backupSchema';
+import { isAppRoute, isOwnAvatar, isStoredUpload, isWebLink } from '../fs/names';
 
 export function validateBackupStructural(data: any): { valid: boolean; error?: string; parsed?: UniOSBackupV2 } {
   try {
@@ -135,4 +136,20 @@ export function validateBackupRelational(backup: UniOSBackupV2): { valid: boolea
   }
 
   return { valid: true };
+}
+
+/**
+ * Level C: values that later reach the file system or navigation. A backup is a
+ * file people share, so these are cleared (not trusted) unless they have the
+ * shape the app itself writes. Returns how many values were cleared.
+ */
+export function sanitizeRestoredValues(backup: UniOSBackupV2): number {
+  let cleared = 0;
+  const keep = (row: any, key: string, ok: (v: unknown) => boolean) => {
+    if (row[key] != null && !ok(row[key])) { row[key] = null; cleared++; }
+  };
+  for (const s of backup.tables.students as any[]) keep(s, 'heroPortraitUri', isOwnAvatar);
+  for (const r of backup.tables.resources as any[]) keep(r, 'uri', (v) => isStoredUpload(v) || isWebLink(v));
+  for (const n of backup.tables.notifications as any[]) keep(n, 'actionUrl', isAppRoute);
+  return cleared;
 }

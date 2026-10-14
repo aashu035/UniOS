@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../core/db/client';
-import { scheduleExceptions, recurringSchedules } from './model';
+import { dayRules, scheduleExceptions, recurringSchedules } from './model';
 import { attendance } from '../attendance/model';
 import { WorkspaceRepository } from '../workspace/repository';
 
@@ -14,6 +14,12 @@ export function parseRecurringOccurrence(id: string): { recurringScheduleId: num
  * One-day changes to a regular class ("temporary change"): cancel it, or move it to
  * another time and room. Writing a new change replaces any earlier one for that day.
  */
+/** A class put on a day off would never show up or count, so it is refused instead. */
+async function refuseDayOff(date: string) {
+  const rule = await db.select().from(dayRules).where(and(eq(dayRules.date, date), eq(dayRules.kind, 'off'))).get();
+  if (rule) throw new Error(`That day is a day off (${rule.reason ?? 'no classes'}). Undo the day off first, or pick another day.`);
+}
+
 export class ScheduleExceptionRepository {
   private static async slot(recurringScheduleId: number) {
     const rec = await db.select().from(recurringSchedules).where(eq(recurringSchedules.id, recurringScheduleId)).get();
@@ -62,6 +68,7 @@ export class ScheduleExceptionRepository {
     }
     if (opts.targetDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(opts.targetDate)) throw new Error('Pick the new date.');
     const rec = await this.slot(recurringScheduleId);
+    await refuseDayOff(opts.targetDate ?? date);
     const venueOverrideId = venueName?.trim() ? await WorkspaceRepository.resolveVenue(db, venueName.trim()) : null;
     await this.restore(recurringScheduleId, date); // brings back a mark a previous cancel had set to Off
     await db.insert(scheduleExceptions).values({
@@ -74,6 +81,7 @@ export class ScheduleExceptionRepository {
   static async extra(componentId: number, date: string, startTime: string, endTime: string, opts: { venueName?: string; reason?: string } = {}) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Pick a date.');
     if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime) || startTime >= endTime) throw new Error('Pick a start time before the end time.');
+    await refuseDayOff(date);
     const venueOverrideId = opts.venueName?.trim() ? await WorkspaceRepository.resolveVenue(db, opts.venueName.trim()) : null;
     return db.insert(scheduleExceptions).values({
       componentId, specificDate: date, action: 'extra', startTime, endTime, venueOverrideId: venueOverrideId ?? null,

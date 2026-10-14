@@ -15,6 +15,7 @@ import { Settings, BookOpen, User, Hash } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../tokens';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { expoDb } from '../../core/db/client';
+import { isOwnAvatar } from '../../core/fs/names';
 import * as FileSystem from 'expo-file-system/legacy';
 
 export default function Profile() {
@@ -41,9 +42,8 @@ export default function Profile() {
   const enrollment = profile?.enrollmentNo || 'Not specified';
   const semester = profile?.currentSemester ? `Semester ${profile.currentSemester}` : 'Not specified';
   const docDir = FileSystem.documentDirectory ? FileSystem.documentDirectory.replace(/\/$/, '') : '';
-  const displayAvatar = profile?.avatar 
-    ? (profile.avatar.startsWith('http') || profile.avatar.startsWith('file://') ? profile.avatar : `${docDir}/${profile.avatar}`)
-    : undefined;
+  // Only a photo this app saved (see core/fs/names.ts).
+  const displayAvatar = isOwnAvatar(profile?.avatar) ? `${docDir}/${profile!.avatar}` : undefined;
 
   return (
     <AppScaffold>

@@ -6,7 +6,7 @@ import * as schema from '../core/db/schema';
 
 // Deleting a course used to leave its uploaded files on the phone: the cleanup
 // called a file API that throws on SDK 56, and looked for `file://` paths while
-// uploads are stored as bare filenames.
+// uploads are stored as bare `<uuid>.<ext>` filenames.
 
 const sqlite = new Database(':memory:');
 sqlite.pragma('foreign_keys = OFF');
@@ -28,17 +28,17 @@ beforeEach(() => {
     INSERT INTO semesters (id, number, name, start_date, is_active) VALUES (1, 5, 'Sem 5', '2026-07-01', 1);
     INSERT INTO workspaces (id, semester_id, name, color, target_attendance) VALUES (1, 1, 'OS', '#000', 75), (2, 1, 'DBMS', '#000', 75);
     INSERT INTO resources (id, workspace_id, title, type, uri) VALUES
-      (1, 1, 'Unit 1', 'file', 'a1.pdf'),
-      (2, 1, 'Shared notes', 'file', 'shared.pdf'),
-      (3, 2, 'Same notes, other course', 'file', 'shared.pdf'),
+      (1, 1, 'Unit 1', 'file', '0a1b2c3d-1111-4aaa-8bbb-000000000001.pdf'),
+      (2, 1, 'Shared notes', 'file', '0a1b2c3d-2222-4aaa-8bbb-000000000002.pdf'),
+      (3, 2, 'Same notes, other course', 'file', '0a1b2c3d-2222-4aaa-8bbb-000000000002.pdf'),
       (4, 1, 'Syllabus link', 'link', 'https://example.com/syllabus'),
-      (5, NULL, 'General file', 'file', 'g1.pdf');
+      (5, NULL, 'General file', 'file', '0a1b2c3d-3333-4aaa-8bbb-000000000003.pdf');
   `);
 });
 
 it('deleting a course removes its files, but not one another course still uses', async () => {
   await WorkspaceRepository.deleteWorkspace(1);
-  expect(deleted).toEqual(['a1.pdf']);
+  expect(deleted).toEqual(['0a1b2c3d-1111-4aaa-8bbb-000000000001.pdf']);
   const left = sqlite.prepare('SELECT id FROM resources ORDER BY id').all().map((r: any) => r.id);
   expect(left).toEqual([3, 5]);
 });
@@ -47,7 +47,7 @@ it('deleting the last row that uses a shared file removes the file', async () =>
   await ResourceRepository.deleteResource(2);
   expect(deleted).toEqual([]);
   await ResourceRepository.deleteResource(3);
-  expect(deleted).toEqual(['shared.pdf']);
+  expect(deleted).toEqual(['0a1b2c3d-2222-4aaa-8bbb-000000000002.pdf']);
 });
 
 it('never touches links or paths that are not stored uploads', async () => {

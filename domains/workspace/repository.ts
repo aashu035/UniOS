@@ -1,4 +1,6 @@
 import { db } from '../../core/db/client';
+import { atomic } from '../../core/db/atomic';
+import { addDays } from '../academic/logic';
 import { workspaces, workspaceTimeline } from './model';
 import { eq, desc, sql, like, inArray, count } from 'drizzle-orm';
 import { getLocalDateString } from '../../core/utils/date';
@@ -166,33 +168,28 @@ export class WorkspaceRepository {
 
   // --- ENTITY RESOLUTION ---
   
-  private static async resolveEntity(tx: any, table: any, rawName?: string) {
-    if (!rawName || !rawName.trim()) return null;
-    const name = rawName.trim();
-    const canonicalName = name.toLowerCase();
-    
-    // Exact canonical match
-    const matches = await tx.select().from(table).all();
-    const exactMatches = matches.filter((m: any) => m.name.toLowerCase() === canonicalName);
-    
-    if (exactMatches.length > 1) {
-      throw new Error('AMBIGUOUS_ENTITY_RESOLUTION');
-    }
-    
-    if (exactMatches.length === 1) {
-      return exactMatches[0].id;
-    }
-    
-    // Create new
-    const result = await tx.insert(table).values({ name }).returning().get();
-    return result.id;
+  /**
+   * The id of the teacher or room called `rawName`, created if new. Case and
+   * repeated spaces don't matter ("dr.  RD" is "Dr. RD"). If an old backup left
+   * two rows with the same name, the oldest is reused rather than refusing.
+   * Synchronous so it can run inside `atomic()`.
+   */
+  private static resolveEntity(tx: any, table: any, rawName?: string): number | null {
+    const name = (rawName ?? '').trim().replace(/\s+/g, ' ');
+    if (!name) return null;
+    const key = name.toLowerCase();
+    const match = (tx.select().from(table).all() as Array<{ id: number; name: string }>)
+      .filter((m) => m.name.trim().replace(/\s+/g, ' ').toLowerCase() === key)
+      .sort((a, b) => a.id - b.id)[0];
+    if (match) return match.id;
+    return tx.insert(table).values({ name }).returning().get().id;
   }
 
-  static async resolveFaculty(tx: any, name?: string) {
+  static resolveFaculty(tx: any, name?: string) {
     return this.resolveEntity(tx, faculty, name);
   }
 
-  static async resolveVenue(tx: any, name?: string) {
+  static resolveVenue(tx: any, name?: string) {
     return this.resolveEntity(tx, venues, name);
   }
 
@@ -247,15 +244,15 @@ export class WorkspaceRepository {
       }
     }
 
-    return db.transaction(async (tx) => {
+    return atomic((tx) => {
       // 1. Resolve Active Semester
-      let activeSemester = await tx.select().from(semesters).where(eq(semesters.isActive, true)).get();
+      let activeSemester = tx.select().from(semesters).where(eq(semesters.isActive, true)).get();
       if (!activeSemester) {
         throw new Error('NO_ACTIVE_SEMESTER'); // Do not auto-create
       }
 
       // 2. Create Workspace
-      const workspace = await tx.insert(workspaces).values({
+      const workspace = tx.insert(workspaces).values({
         semesterId: activeSemester.id,
         name: data.name.trim(),
         code: data.code?.trim() || null,
@@ -269,10 +266,10 @@ export class WorkspaceRepository {
 
       // 3. Create Components and their Sessions
       for (const compDef of data.components) {
-        const facultyId = await this.resolveFaculty(tx, compDef.facultyName);
-        const venueId = await this.resolveVenue(tx, compDef.venueName);
+        const facultyId = this.resolveFaculty(tx, compDef.facultyName);
+        const venueId = this.resolveVenue(tx, compDef.venueName);
 
-        const component = await tx.insert(courseComponents).values({
+        const component = tx.insert(courseComponents).values({
           workspaceId: workspace.id,
           type: compDef.type,
           facultyId: facultyId,
@@ -282,29 +279,29 @@ export class WorkspaceRepository {
         const initialEffectiveFrom = activeSemester.startDate || getLocalDateString(new Date());
 
         if (venueId) {
-          await tx.insert(componentVenueAssignments).values({
+          tx.insert(componentVenueAssignments).values({
             componentId: component.id,
             venueId: venueId,
             effectiveFrom: initialEffectiveFrom
-          });
+          }).run();
         }
         
         if (facultyId) {
-          await tx.insert(componentFacultyAssignments).values({
+          tx.insert(componentFacultyAssignments).values({
             componentId: component.id,
             facultyId: facultyId,
             effectiveFrom: initialEffectiveFrom
-          });
+          }).run();
         }
 
         // Insert recurring sessions for this component
         for (const session of compDef.sessions) {
-          await tx.insert(recurringSchedules).values({
+          tx.insert(recurringSchedules).values({
             componentId: component.id,
             dayOfWeek: session.dayOfWeek,
             startTime: session.startTime,
             endTime: session.endTime,
-          });
+          }).run();
         }
       }
 
@@ -323,9 +320,9 @@ export class WorkspaceRepository {
       endTime: string;
     }>;
   }) {
-    return db.transaction(async (tx) => {
+    return atomic((tx) => {
       // 1. Resolve Active Semester
-      let activeSemester = await tx.select().from(semesters).where(eq(semesters.isActive, true)).get();
+      let activeSemester = tx.select().from(semesters).where(eq(semesters.isActive, true)).get();
       if (!activeSemester) {
         throw new Error('NO_ACTIVE_SEMESTER');
       }
@@ -333,18 +330,18 @@ export class WorkspaceRepository {
       const { courseComponents, componentVenueAssignments, componentFacultyAssignments } = require('./model');
       const { recurringSchedules } = require('../calendar/model');
 
-      const facultyId = await this.resolveFaculty(tx, compDef.facultyName);
-      const venueId = await this.resolveVenue(tx, compDef.venueName);
+      const facultyId = this.resolveFaculty(tx, compDef.facultyName);
+      const venueId = this.resolveVenue(tx, compDef.venueName);
 
       // Check if a component of this type already exists. If so, maybe we just add sessions to it?
       // Wait, if it's the SAME type (e.g. another lab session), we should add the session to the EXISTING component.
-      let component = await tx.select().from(courseComponents)
+      let component = tx.select().from(courseComponents)
         .where(sql`${courseComponents.workspaceId} = ${workspaceId} AND ${courseComponents.type} = ${compDef.type}`)
         .get();
 
       let componentId: number;
       if (!component) {
-        const created = await tx.insert(courseComponents).values({
+        const created = tx.insert(courseComponents).values({
           workspaceId: workspaceId,
           type: compDef.type,
           facultyId: facultyId,
@@ -355,19 +352,19 @@ export class WorkspaceRepository {
         const initialEffectiveFrom = activeSemester.startDate || getLocalDateString(new Date());
 
         if (venueId) {
-          await tx.insert(componentVenueAssignments).values({
+          tx.insert(componentVenueAssignments).values({
             componentId,
             venueId: venueId,
             effectiveFrom: initialEffectiveFrom
-          });
+          }).run();
         }
 
         if (facultyId) {
-          await tx.insert(componentFacultyAssignments).values({
+          tx.insert(componentFacultyAssignments).values({
             componentId,
             facultyId: facultyId,
             effectiveFrom: initialEffectiveFrom
-          });
+          }).run();
         }
       } else {
         componentId = component.id;
@@ -375,12 +372,12 @@ export class WorkspaceRepository {
 
       // Insert recurring sessions for this component
       for (const session of compDef.sessions) {
-        await tx.insert(recurringSchedules).values({
+        tx.insert(recurringSchedules).values({
           componentId,
           dayOfWeek: session.dayOfWeek,
           startTime: session.startTime,
           endTime: session.endTime,
-        });
+        }).run();
       }
 
       return component;
@@ -390,7 +387,7 @@ export class WorkspaceRepository {
   // --- EDIT LIFECYCLE OPERATIONS ---
 
   static async updateCourseIdentity(id: number, data: { name?: string; code?: string; credits?: number; color?: string; targetAttendance?: number; icon?: string; notes?: string | null }) {
-    return db.transaction(async (tx) => {
+    return atomic((tx) => {
       const updates: any = {};
       if (data.name !== undefined) updates.name = data.name.trim();
       if (data.code !== undefined) updates.code = data.code?.trim() || null;
@@ -401,16 +398,16 @@ export class WorkspaceRepository {
       if (data.notes !== undefined) updates.notes = data.notes?.trim() || null;
 
       if (Object.keys(updates).length > 0) {
-        return await tx.update(workspaces).set(updates).where(eq(workspaces.id, id)).returning().get();
+        return tx.update(workspaces).set(updates).where(eq(workspaces.id, id)).returning().get();
       }
-      return await tx.select().from(workspaces).where(eq(workspaces.id, id)).get();
+      return tx.select().from(workspaces).where(eq(workspaces.id, id)).get();
     });
   }
 
   static async updateComponent(id: number, data: { assessmentAllocation?: number; type?: 'theory' | 'lab' | 'tutorial'; durationMinutes?: number }) {
     const { courseComponents } = require('./model');
-    return db.transaction(async (tx) => {
-      const current = await tx.select().from(courseComponents).where(eq(courseComponents.id, id)).get();
+    return atomic((tx) => {
+      const current = tx.select().from(courseComponents).where(eq(courseComponents.id, id)).get();
       if (!current) throw new Error('Component not found');
 
       const updates: any = {};
@@ -436,7 +433,7 @@ export class WorkspaceRepository {
       }
 
       if (Object.keys(updates).length > 0) {
-        return await tx.update(courseComponents).set(updates).where(eq(courseComponents.id, id)).returning().get();
+        return tx.update(courseComponents).set(updates).where(eq(courseComponents.id, id)).returning().get();
       }
       return current;
     });
@@ -444,8 +441,8 @@ export class WorkspaceRepository {
 
   static async updateRecurringSchedule(id: number, data: { dayOfWeek?: number; startTime?: string; endTime?: string }) {
     const { recurringSchedules } = require('../calendar/model');
-    return db.transaction(async (tx) => {
-      const current = await tx.select().from(recurringSchedules).where(eq(recurringSchedules.id, id)).get();
+    return atomic((tx) => {
+      const current = tx.select().from(recurringSchedules).where(eq(recurringSchedules.id, id)).get();
       if (!current) throw new Error('Schedule not found');
 
       const updates: any = {};
@@ -458,7 +455,7 @@ export class WorkspaceRepository {
       }
 
       // Check overlap against other sessions in the same component
-      const others = await tx.select().from(recurringSchedules).where(eq(recurringSchedules.componentId, current.componentId)).all();
+      const others = tx.select().from(recurringSchedules).where(eq(recurringSchedules.componentId, current.componentId)).all();
       for (const other of others) {
         if (other.id === id) continue; // Skip self
         if (other.dayOfWeek === newDay) {
@@ -473,7 +470,7 @@ export class WorkspaceRepository {
       if (data.endTime !== undefined) updates.endTime = data.endTime;
       
       if (Object.keys(updates).length > 0) {
-        return await tx.update(recurringSchedules).set(updates).where(eq(recurringSchedules.id, id)).returning().get();
+        return tx.update(recurringSchedules).set(updates).where(eq(recurringSchedules.id, id)).returning().get();
       }
       return current;
     });
@@ -481,65 +478,62 @@ export class WorkspaceRepository {
 
   static async changeHistoricalVenue(componentId: number, venueName: string, effectiveFromDateStr: string) {
     const { componentVenueAssignments } = require('./model');
-    return db.transaction(async (tx) => {
+    return atomic((tx) => {
       // 1. Resolve new venue
-      const venueId = await this.resolveVenue(tx, venueName);
+      const venueId = this.resolveVenue(tx, venueName);
       if (!venueId) return;
 
-      // Ensure date format is YYYY-MM-DD
+      // The old assignment ends the day before (local days; never new Date('YYYY-MM-DD')).
       const dateOnly = effectiveFromDateStr.split('T')[0];
-      const d = new Date(dateOnly);
-      d.setDate(d.getDate() - 1);
-      const effectiveUntilStr = getLocalDateString(d);
+      const effectiveUntilStr = addDays(dateOnly, -1);
 
       // 2. End previous active assignment
-      const currentActive = await tx.select().from(componentVenueAssignments)
+      const currentActive = tx.select().from(componentVenueAssignments)
         .where(
           sql`${componentVenueAssignments.componentId} = ${componentId} AND ${componentVenueAssignments.effectiveUntil} IS NULL`
         ).get();
 
       if (currentActive) {
-        await tx.update(componentVenueAssignments)
+        tx.update(componentVenueAssignments)
           .set({ effectiveUntil: effectiveUntilStr })
-          .where(eq(componentVenueAssignments.id, currentActive.id));
+          .where(eq(componentVenueAssignments.id, currentActive.id)).run();
       }
 
       // 3. Create new assignment
-      await tx.insert(componentVenueAssignments).values({
+      tx.insert(componentVenueAssignments).values({
         componentId,
         venueId,
         effectiveFrom: dateOnly
-      });
+      }).run();
     });
   }
 
   static async changeHistoricalFaculty(componentId: number, facultyName: string, effectiveFromDateStr: string) {
     const { componentFacultyAssignments } = require('./model');
-    return db.transaction(async (tx) => {
-      const facultyId = await this.resolveFaculty(tx, facultyName);
+    return atomic((tx) => {
+      const facultyId = this.resolveFaculty(tx, facultyName);
       if (!facultyId) return;
 
+      // The old assignment ends the day before (local days; never new Date('YYYY-MM-DD')).
       const dateOnly = effectiveFromDateStr.split('T')[0];
-      const d = new Date(dateOnly);
-      d.setDate(d.getDate() - 1);
-      const effectiveUntilStr = getLocalDateString(d);
+      const effectiveUntilStr = addDays(dateOnly, -1);
 
-      const currentActive = await tx.select().from(componentFacultyAssignments)
+      const currentActive = tx.select().from(componentFacultyAssignments)
         .where(
           sql`${componentFacultyAssignments.componentId} = ${componentId} AND ${componentFacultyAssignments.effectiveUntil} IS NULL`
         ).get();
 
       if (currentActive) {
-        await tx.update(componentFacultyAssignments)
+        tx.update(componentFacultyAssignments)
           .set({ effectiveUntil: effectiveUntilStr })
-          .where(eq(componentFacultyAssignments.id, currentActive.id));
+          .where(eq(componentFacultyAssignments.id, currentActive.id)).run();
       }
 
-      await tx.insert(componentFacultyAssignments).values({
+      tx.insert(componentFacultyAssignments).values({
         componentId,
         facultyId,
         effectiveFrom: dateOnly
-      });
+      }).run();
     });
   }
 }

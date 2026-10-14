@@ -23,24 +23,30 @@ async function shadowMarks(occurrenceIds: string[]) {
   }
 }
 
-/** Bring back shadowed marks on a date, except classes still cancelled one by one. */
-async function unshadowDate(date: string) {
+/**
+ * Bring back shadowed marks on a date (only `onlyIds` if given), except classes
+ * still cancelled one by one.
+ */
+async function unshadowDate(date: string, onlyIds?: string[]) {
   const stillCancelled = new Set((await db.select().from(scheduleExceptions)
     .where(and(eq(scheduleExceptions.specificDate, date), eq(scheduleExceptions.action, 'cancel'))).all())
     .map((e) => `rec_${e.recurringScheduleId}_${date}`));
+  const only = onlyIds && new Set(onlyIds);
   const rows = await db.select().from(attendance).where(and(eq(attendance.date, date), like(attendance.notes, 'was:%'))).all();
   for (const r of rows) {
-    if (stillCancelled.has(r.occurrenceId)) continue;
+    if (stillCancelled.has(r.occurrenceId) || (only && !only.has(r.occurrenceId))) continue;
     const prev = /^was:(present|absent|exempt)$/.exec(r.notes ?? '')?.[1];
     if (prev) await db.update(attendance).set({ status: prev as any, notes: null }).where(eq(attendance.id, r.id));
   }
 }
 
-/** Occurrence ids of a date's own regular classes (its real weekday). */
-async function ownSlotIds(date: string) {
-  const w = weekdayOf(date);
-  return (await db.select().from(recurringSchedules).where(eq(recurringSchedules.dayOfWeek, w)).all()).map((r) => `rec_${r.id}_${date}`);
+/** Occurrence ids `weekday`'s regular classes get on `date`. */
+async function slotIdsOn(weekday: number, date: string) {
+  return (await db.select().from(recurringSchedules).where(eq(recurringSchedules.dayOfWeek, weekday)).all()).map((r) => `rec_${r.id}_${date}`);
 }
+
+/** Occurrence ids of a date's own regular classes (its real weekday). */
+const ownSlotIds = (date: string) => slotIdsOn(weekdayOf(date), date);
 
 /** Every mark on a date (for a whole day off, extra and moved-in classes stop too). */
 async function allMarkIdsOn(date: string) {
@@ -74,6 +80,8 @@ export class DayRuleRepository {
       date, kind: 'follow', followsWeekday: weekday, reason: opts.reason.trim(), note: opts.note?.trim() || null,
       borrowedDate: opts.borrowed?.date ?? null, borrowedMode: opts.borrowed?.mode ?? null, createdAt: new Date().toISOString(),
     }).returning().get();
+    // Marks made on these classes during an earlier, undone version of this change count again.
+    await unshadowDate(date, await slotIdsOn(weekday, date));
     if (opts.borrowed?.mode === 'holiday') {
       await this.removeOn(opts.borrowed.date);
       await shadowMarks(await allMarkIdsOn(opts.borrowed.date));
@@ -94,7 +102,11 @@ export class DayRuleRepository {
     return db.insert(dayRules).values({ date, kind: 'off', reason: opts.reason.trim(), note: opts.note?.trim() || null, createdAt: new Date().toISOString() }).returning().get();
   }
 
-  /** Undo the rule on `date` (and a holiday it created), bringing marks back. */
+  /**
+   * Undo the rule on `date` (and a holiday it created). The date's own classes
+   * and their marks come back; marks made on classes borrowed from another
+   * weekday stop counting (they come back if the change is made again).
+   */
   static async removeOn(date: string) {
     const rule = await this.forDate(date);
     if (!rule) return;
@@ -103,8 +115,15 @@ export class DayRuleRepository {
       await db.delete(dayRules).where(eq(dayRules.id, l.id));
       await unshadowDate(l.date);
     }
+    // This day was the holiday of another day's follow: that day no longer makes it one.
+    if (rule.linkedRuleId) await db.update(dayRules).set({ borrowedMode: 'normal' }).where(eq(dayRules.id, rule.linkedRuleId));
     await db.delete(dayRules).where(eq(dayRules.id, rule.id));
-    await unshadowDate(date);
+    if (rule.kind === 'follow' && rule.followsWeekday !== null) {
+      await shadowMarks(await slotIdsOn(rule.followsWeekday, date));
+      await unshadowDate(date, await ownSlotIds(date));
+    } else {
+      await unshadowDate(date);
+    }
   }
 
   static async remove(id: number) {

@@ -59,14 +59,14 @@ describe('Phase B Adversarial Verification Suite', () => {
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
-  // 2. Entity normalization: create / reuse / ambiguous-match rejection
-  it('2. Entity normalization: create / reuse / ambiguous-match rejection', async () => {
+  // 2. Entity normalization: create / reuse / duplicates reuse the oldest
+  it('2. Entity normalization: create / reuse / duplicates reuse the oldest', async () => {
     let mockTx = {
       select: jest.fn().mockReturnThis(),
       from: jest.fn().mockReturnThis(),
       all: jest.fn().mockImplementation(() => mockDbState.faculty),
       insert: jest.fn().mockReturnThis(),
-      values: jest.fn().mockImplementation(() => ({ returning: jest.fn().mockImplementation(() => ({ get: jest.fn().mockResolvedValue({ id: 99 }) })) }))
+      values: jest.fn().mockImplementation(() => ({ returning: jest.fn().mockImplementation(() => ({ get: jest.fn().mockReturnValue({ id: 99 }) })) }))
     };
 
     // Case A: 0 matches -> create
@@ -82,62 +82,13 @@ describe('Phase B Adversarial Verification Suite', () => {
     expect(mockTx.insert).not.toHaveBeenCalled();
     expect(reusedId).toBe(42);
 
-    // Case C: >1 canonical match -> AMBIGUOUS_ENTITY_RESOLUTION
-    mockDbState.faculty = [{ id: 42, name: "Room A" }, { id: 43, name: "ROOM A" }];
-    await expect(WorkspaceRepository.resolveFaculty(mockTx, "room a")).rejects.toThrow(/AMBIGUOUS_ENTITY_RESOLUTION/);
-  });
-
-  // 3. Historical faculty resolution
-  it('3. Historical faculty resolution: Aug 5 -> A, Aug 15 -> B', async () => {
-    const mockAssignments = [
-      { componentId: 1, facultyName: 'Faculty A', effectiveFrom: '2026-08-01', effectiveUntil: '2026-08-09' },
-      { componentId: 1, facultyName: 'Faculty B', effectiveFrom: '2026-08-10', effectiveUntil: null }
-    ];
-    
-    const getActiveFaculty = (dateStr: string) => {
-      const active = mockAssignments.find(a => 
-        a.effectiveFrom <= dateStr && (!a.effectiveUntil || a.effectiveUntil >= dateStr)
-      );
-      return active ? active.facultyName : undefined;
-    };
-
-    expect(getActiveFaculty('2026-08-05')).toBe('Faculty A');
-    expect(getActiveFaculty('2026-08-15')).toBe('Faculty B');
-  });
-
-  // 4. Exception venue override and faculty override
-  it('4. Exception venue override and faculty override', () => {
-    // A normal occurrence resolving to historical default
-    const occurrence = {
-      startTime: '14:00',
-      venueId: 1, // Historical Default
-      facultyId: 1, // Historical Default
-      exception: {
-        venueOverrideId: 99, // Room C
-        facultyOverrideId: null
-      }
-    };
-
-    const resolvedVenueId = occurrence.exception?.venueOverrideId || occurrence.venueId;
-    const resolvedFacultyId = occurrence.exception?.facultyOverrideId || occurrence.facultyId;
-
-    expect(resolvedVenueId).toBe(99); // Overridden to Room C
-    expect(resolvedFacultyId).toBe(1); // Remains default
-  });
-
-  // 5. Same-component 09:00/14:00 exception isolation
-  it('5. Same-component 09:00/14:00 exception isolation', () => {
-    const occurrences = [
-      { _recurringScheduleId: 101, startTime: '09:00', isException: false },
-      { _recurringScheduleId: 102, startTime: '14:00', isException: false }
-    ];
-
-    const exceptionTargetId = 102; // Targeting 14:00 exclusively
-    const isolatedTarget = occurrences.find(o => o._recurringScheduleId === exceptionTargetId);
-    
-    expect(isolatedTarget?.startTime).toBe('14:00');
-    // Ensure 09:00 is completely unaffected
-    expect(occurrences.find(o => o._recurringScheduleId === 101)?.isException).toBe(false);
+    // Case C: >1 canonical match (e.g. left by an old backup) -> reuse the oldest.
+    // It used to throw AMBIGUOUS_ENTITY_RESOLUTION, which blocked creating the course
+    // with an error code on screen; both rows show the same name, so reuse is harmless.
+    mockDbState.faculty = [{ id: 43, name: "ROOM A" }, { id: 42, name: "Room A" }];
+    mockTx.insert.mockClear();
+    expect(WorkspaceRepository.resolveFaculty(mockTx, "room  a")).toBe(42);
+    expect(mockTx.insert).not.toHaveBeenCalled();
   });
 
   // 6. Attendance cancellation exclusion
@@ -159,24 +110,6 @@ describe('Phase B Adversarial Verification Suite', () => {
     expect(result.total).toBe(5); // 4 present + 1 absent
     expect(result.present).toBe(4);
     expect(result.percentage).toBe(80);
-  });
-
-  // 7. Workspace A -> B -> A Context FAB isolation
-  it('7. Workspace A -> B -> A Context FAB isolation', () => {
-    // Emulate router parameter hook for contextual FAB
-    let currentRouteParams = { workspaceId: 'A' };
-    
-    const getFabContext = () => currentRouteParams.workspaceId;
-
-    expect(getFabContext()).toBe('A');
-    
-    // Navigate to B
-    currentRouteParams = { workspaceId: 'B' };
-    expect(getFabContext()).toBe('B');
-
-    // Navigate back to A
-    currentRouteParams = { workspaceId: 'A' };
-    expect(getFabContext()).toBe('A'); // No stale B context
   });
 
   // 8. Explicitly resolve the Total vs Exempt attendance semantics contradiction

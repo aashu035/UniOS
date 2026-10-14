@@ -9,6 +9,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { colors, radius, spacing, typography } from '../../tokens';
 import { useProfile } from '../../domains/profile/hooks';
 import { HeroPortrait } from '../../components/avatar/HeroPortrait';
+import { isOwnAvatar } from '../../core/fs/names';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -57,8 +58,8 @@ export default function EditProfile() {
           to: destUri,
         });
 
-        // Delete old avatar if it exists and is a local relative file
-        if (avatar && !avatar.startsWith('http') && !avatar.startsWith('file://')) {
+        // Delete the old photo, but only a file this screen created (a restored backup could name any path)
+        if (isOwnAvatar(avatar)) {
           const oldAbsoluteUri = `${docDir}/${avatar}`;
           await FileSystem.deleteAsync(oldAbsoluteUri, { idempotent: true });
         }
@@ -107,9 +108,8 @@ export default function EditProfile() {
   };
 
   const docDir = FileSystem.documentDirectory ? FileSystem.documentDirectory.replace(/\/$/, '') : '';
-  const displayAvatar = avatar 
-    ? (avatar.startsWith('http') || avatar.startsWith('file://') ? avatar : `${docDir}/${avatar}`)
-    : null;
+  // Only a photo this app saved; a restored backup could otherwise point anywhere, or at a web address.
+  const displayAvatar = isOwnAvatar(avatar) ? `${docDir}/${avatar}` : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>

@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
+import { isStoredUpload } from './names';
 
 /**
  * FileManager handles offline-first file storage, chunked hashing (to prevent OOM),
@@ -87,9 +88,9 @@ export const FileManager = {
    * Throws an error if path traversal sequences are detected.
    */
   getAbsolutePath(filename: string): string {
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-      throw new Error(`Invalid filename detected (potential path traversal): ${filename}`);
-    }
+    // Only names saveFile creates. A plain "no .. or /" check is not enough: the
+    // native layer decodes "%2E%2E%2F" to "../" after this check has run.
+    if (!isStoredUpload(filename)) throw new Error('That is not a file this app stored.');
     return `${STORAGE_DIR}${filename}`;
   },
 
@@ -97,10 +98,11 @@ export const FileManager = {
    * Deletes a file from the local storage
    */
   async deleteFile(filename: string): Promise<void> {
+    if (!isStoredUpload(filename)) return;
     const absolutePath = this.getAbsolutePath(filename);
     try {
       const info = await FileSystem.getInfoAsync(absolutePath);
-      if (info.exists) {
+      if (info.exists && !info.isDirectory) {
         await FileSystem.deleteAsync(absolutePath, { idempotent: true });
       }
     } catch (e) {
