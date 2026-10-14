@@ -6,7 +6,7 @@ import { Card, RoundButton, Screen, Segmented, T, Tap } from '../../components/u
 import { tint, useUni } from '../../components/uni/theme';
 import { Chips, DateStrip, HourGrid, Label, NoteInput, hh, type Busy } from '../../components/schedule/parts';
 import { setOccurrenceStatus } from '../../domains/academic/actions';
-import { addDays, clock, dayDate, dayName, minutesOf, mondayOf, shortDate } from '../../domains/academic/logic';
+import { addDays, clock, dayDate, dayName, minutesOf, mondayOf, shortDate, WEEKDAY_LONG, WEEKDAY_SHORT } from '../../domains/academic/logic';
 import { loadSnapshot, type Occ, type Snapshot } from '../../domains/academic/snapshot';
 import { weeklySlots } from '../../domains/academic/weekSlots';
 import type { TakenSlot } from '../../domains/academic/setup';
@@ -15,8 +15,6 @@ import { ScheduleExceptionRepository, parseRecurringOccurrence } from '../../dom
 import { getLocalDateString } from '../../core/utils/date';
 
 type Mode = 'pick' | 'follow' | 'extra' | 'move' | 'cancel';
-const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const W3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const PART: Record<string, string> = { theory: 'Lecture', tutorial: 'Tutorial', lab: 'Lab' };
 const wdOf = (iso: string) => new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)), 12).getDay();
 const nextSchoolDay = (iso: string) => (dayName(addDays(iso, 1)) === 'Sun' ? addDays(iso, 2) : addDays(iso, 1));
@@ -167,9 +165,9 @@ function FollowFlow({ p, snap, slots, saving, run, header, initialDate }: Common
         <View style={styles.body}>
           <Card style={{ gap: 10, padding: 16 }}>
             <Icon name="circle-check-big" size={28} color={p.success} />
-            <T w={800} size={17}>{`${dayDate(date)} follows ${WEEKDAY[week!]}`}</T>
+            <T w={800} size={17}>{`${dayDate(date)} follows ${WEEKDAY_LONG[week!]}`}</T>
             <T c={p.muted} size={13.5} style={{ lineHeight: 19 }}>
-              {`Classes you mark on ${dayDate(date)} count for ${WEEKDAY[week!]}'s timetable. ${WEEKDAY[w]}'s classes that day won't count.${borrowedOk && borrowedMode === 'holiday' ? ` ${dayDate(borrowedOk)} is a holiday.` : ''}`}
+              {`Classes you mark on ${dayDate(date)} count for ${WEEKDAY_LONG[week!]}'s timetable. ${WEEKDAY_LONG[w]}'s classes that day won't count.${borrowedOk && borrowedMode === 'holiday' ? ` ${dayDate(borrowedOk)} is a holiday.` : ''}`}
             </T>
           </Card>
           <Cta label="Add another day" onPress={() => { setDate(nextSchoolDay(date)); setWeek(null); setStep(1); }} />
@@ -188,12 +186,12 @@ function FollowFlow({ p, snap, slots, saving, run, header, initialDate }: Common
         <View style={styles.body}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Card style={{ flex: 1, padding: 12, gap: 6 }}>
-              <T w={800} size={12} c={p.muted}>{`${WEEKDAY[w].toUpperCase()} · DROPPED`}</T>
+              <T w={800} size={12} c={p.muted}>{`${WEEKDAY_LONG[w].toUpperCase()} · DROPPED`}</T>
               {own.length ? own.map((s, i) => <T key={i} size={12.5} c={p.muted} style={{ textDecorationLine: 'line-through' }}>{`${clock(s.startTime, false)} ${slotLabel(s)}`}</T>) : <T c={p.muted} size={12.5}>No classes</T>}
               <T w={700} size={11.5} c={p.off}>Off · not counted</T>
             </Card>
             <Card style={{ flex: 1, padding: 12, gap: 6 }}>
-              <T w={800} size={12} c={p.success}>{`${WEEKDAY[week!].toUpperCase()} · RUNS`}</T>
+              <T w={800} size={12} c={p.success}>{`${WEEKDAY_LONG[week!].toUpperCase()} · RUNS`}</T>
               {runs.length ? runs.map((s, i) => <T key={i} w={600} size={12.5}>{`${clock(s.startTime, false)} ${slotLabel(s)}`}</T>) : <T c={p.muted} size={12.5}>No classes</T>}
               <T w={700} size={11.5} c={p.success}>Counts as usual</T>
             </Card>
@@ -212,7 +210,7 @@ function FollowFlow({ p, snap, slots, saving, run, header, initialDate }: Common
       <Screen tabs={false}>
         {header(`${dayDate(borrowedOk)} is…`, 'Step 2 of 3', back)}
         <View style={styles.body}>
-          {([['holiday', 'Holiday – no classes', 'Its classes are Off and not counted'], ['normal', `Normal ${WEEKDAY[week!]}`, 'Classes run as usual'], ['unsure', 'Not sure yet', "Tagged 'Not sure'; settle it the evening before"]] as const).map(([k, t, sub]) => (
+          {([['holiday', 'Holiday – no classes', 'Its classes are Off and not counted'], ['normal', `Normal ${WEEKDAY_LONG[week!]}`, 'Classes run as usual'], ['unsure', 'Not sure yet', "Tagged 'Not sure'; settle it the evening before"]] as const).map(([k, t, sub]) => (
             <Tap key={k} onPress={() => setBorrowedMode(k)} accessibilityRole="radio" accessibilityState={{ selected: borrowedMode === k }}
               style={[styles.bigRow, { backgroundColor: borrowedMode === k ? tint(p.primary, 8) : p.elev, borderColor: borrowedMode === k ? p.primary : p.hair }]}>
               <View style={{ flex: 1 }}><T w={800} size={15}>{t}</T><T c={p.muted} size={12.5}>{sub}</T></View>
@@ -231,7 +229,7 @@ function FollowFlow({ p, snap, slots, saving, run, header, initialDate }: Common
       <View style={styles.body}>
         <Label>DATE</Label>
         <DateStrip value={date} onChange={(d) => { setDate(d); if (week === wdOf(d)) setWeek(null); }} start={snap.today} dots={snap.dayRules.map((r) => r.date)} />
-        {existing ? <Note tone="warn">{`${dayDate(date)} already has a change (${existing.kind === 'follow' ? `follows ${WEEKDAY[existing.followsWeekday ?? 0]}` : `day off: ${existing.reason}`}). Saving replaces it.`}</Note> : null}
+        {existing ? <Note tone="warn">{`${dayDate(date)} already has a change (${existing.kind === 'follow' ? `follows ${WEEKDAY_LONG[existing.followsWeekday ?? 0]}` : `day off: ${existing.reason}`}). Saving replaces it.`}</Note> : null}
         <Label>RUNS WHICH DAY'S TIMETABLE?</Label>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {[1, 2, 3, 4, 5, 6].map((d) => {
@@ -239,7 +237,7 @@ function FollowFlow({ p, snap, slots, saving, run, header, initialDate }: Common
             return (
               <Tap key={d} disabled={off} onPress={() => setWeek(d)} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: off }}
                 style={[styles.wk, { backgroundColor: on ? p.primary : p.elev, borderColor: on ? p.primary : p.hair, opacity: off ? 0.35 : 1 }]}>
-                <T w={800} size={13} c={on ? '#fff' : p.text}>{W3[d]}</T>
+                <T w={800} size={13} c={on ? '#fff' : p.text}>{WEEKDAY_SHORT[d]}</T>
                 <T w={600} size={10.5} c={on ? '#fff' : p.muted}>{count(d)} cl</T>
               </Tap>
             );
@@ -248,7 +246,7 @@ function FollowFlow({ p, snap, slots, saving, run, header, initialDate }: Common
         <Label>WHY</Label>
         <Chips items={[['Event', 'Event'], ['Festival', 'Festival'], ['Holiday shift', 'Holiday shift'], ['Exam', 'Exam'], ['Other', 'Other']]} value={reason} onChange={setReason} />
         <NoteInput value={note} onChange={setNote} placeholder={reason === 'Other' ? 'What happened? (required)' : 'Note, e.g. Techfest (optional)'} />
-        <Cta label={week !== null ? `${dayDate(date)} follows ${WEEKDAY[week]}` : 'Pick a weekday'} disabled={!ready} onPress={() => setStep(borrowedOk ? 2 : 3)} />
+        <Cta label={week !== null ? `${dayDate(date)} follows ${WEEKDAY_LONG[week]}` : 'Pick a weekday'} disabled={!ready} onPress={() => setStep(borrowedOk ? 2 : 3)} />
       </View>
     </Screen>
   );

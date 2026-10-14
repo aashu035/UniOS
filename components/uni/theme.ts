@@ -119,6 +119,5 @@ export function shadow(p: UniPalette): ViewStyle {
 export const space = { screenX: 20, card: 14, rowX: 14, rowY: 12, gap: 12 } as const;
 export const listRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: space.gap, paddingVertical: space.rowY, paddingHorizontal: space.rowX };
 
-/** Top padding under the status bar, and bottom padding that clears the tab bar. */
-export const SCREEN_TOP = 8;
+/** Bottom padding that clears the tab bar. */
 export const TAB_CLEARANCE = 124;

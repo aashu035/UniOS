@@ -7,13 +7,12 @@ import { Card, Empty, RoundButton, Screen, Segmented, T, Tap } from '../../compo
 import { tint, useUni } from '../../components/uni/theme';
 import { db } from '../../core/db/client';
 import { getLocalDateString } from '../../core/utils/date';
-import { clock, dayDate } from '../../domains/academic/logic';
+import { clock, dayDate, WEEKDAY_LONG } from '../../domains/academic/logic';
 import { recurringSchedules, scheduleExceptions } from '../../domains/calendar/model';
 import { DayRuleRepository } from '../../domains/calendar/dayRules';
 import { ScheduleExceptionRepository } from '../../domains/calendar/exceptions';
 import { courseComponents, workspaces } from '../../domains/workspace/model';
 
-const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 type Card = { key: string; when: string; icon: IconName; color: string; title: string; sub: string; impact: string; undo: string[]; doUndo: () => Promise<void>; edit?: { mode: string; occ?: string; date?: string } };
 
 /** Every schedule change, upcoming and past, with what Undo brings back (handoff §1e). */
@@ -38,9 +37,9 @@ export default function Changes() {
         const holiday = r.borrowedDate && r.borrowedMode !== 'normal' ? r.borrowedDate : null;
         out.push({
           key: `r${r.id}`, when: r.date, icon: 'calendar-days', color: p.warn,
-          title: `${dayDate(r.date)} follows ${WEEKDAY[r.followsWeekday ?? 0]}'s timetable`,
+          title: `${dayDate(r.date)} follows ${WEEKDAY_LONG[r.followsWeekday ?? 0]}'s timetable`,
           sub: [r.reason, r.note].filter(Boolean).join(' · '),
-          impact: `Its own classes are Off · ${WEEKDAY[r.followsWeekday ?? 0]}'s classes count${holiday ? ` · ${dayDate(holiday)} ${r.borrowedMode === 'holiday' ? 'is a holiday' : 'not sure yet'}` : ''}`,
+          impact: `Its own classes are Off · ${WEEKDAY_LONG[r.followsWeekday ?? 0]}'s classes count${holiday ? ` · ${dayDate(holiday)} ${r.borrowedMode === 'holiday' ? 'is a holiday' : 'not sure yet'}` : ''}`,
           undo: [`${dayDate(r.date)}'s own classes come back and count again`, 'Marks made on them before the change come back', ...(holiday ? [`${dayDate(holiday)} goes back to a normal day`] : [])],
           doUndo: () => DayRuleRepository.remove(r.id), edit: { mode: 'follow', date: r.date },
         });

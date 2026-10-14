@@ -11,11 +11,12 @@ import { workspaces } from '../../domains/workspace/model';
 import { WorkspaceRepository } from '../../domains/workspace/repository';
 import { DURATION, clashSummary, findClashes, paint, prune, sessionsFor, slotSummary, type Part, type Slots, type TakenSlot } from '../../domains/academic/setup';
 import { weeklySlots } from '../../domains/academic/weekSlots';
-import { creditsFromHours, minutesOf } from '../../domains/academic/logic';
+import { creditsFromHours, minutesOf, WEEKDAY_SHORT } from '../../domains/academic/logic';
 import { checkCourseCode, checkCourseName } from '../../core/utils/validate';
 
 const QUESTIONS = ['What’s the course called?', 'What does it include?', 'When does it meet? Tap the slots.', 'What attendance do you want to stay above?'];
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** Monday to Saturday, the days a class can be on. */
+const SETUP_DAYS = WEEKDAY_SHORT.slice(1);
 /** Start hours shown in the grid: 8 AM to 6 PM, so classes can run until 7 PM. */
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 const LAST_HOUR = 18; // the last hour a class may occupy (18:00–19:00)
@@ -69,7 +70,7 @@ export default function CourseSetup() {
     const bg = part ? (part === 'theory' ? p.primary : part === 'lab' ? '#10B981' : '#F59E0B') : other ? tint(other.color, 16) : p.surface;
     return (
       <Tap key={key} onPress={() => setSlots((s) => paint(s, key, parts.includes(brush) ? brush : 'theory', LAST_HOUR))}
-        accessibilityLabel={`${DAYS[di]} ${h12(h)} ${h < 12 ? 'AM' : 'PM'}${part ? `, ${PART[part].label}` : ''}`}
+        accessibilityLabel={`${SETUP_DAYS[di]} ${h12(h)} ${h < 12 ? 'AM' : 'PM'}${part ? `, ${PART[part].label}` : ''}`}
         style={[styles.cell, small && { height: 34, borderRadius: 6 }, { backgroundColor: bg }, part && other ? { borderWidth: 2, borderColor: p.danger } : null]}>
         {part && isStart ? <T w={800} c="#fff" size={small ? 9 : 10}>{PART[part].tag}</T>
           : !part && other ? <T w={700} c={other.color} size={small ? 7.5 : 9} numberOfLines={1}>{other.short}</T> : null}
@@ -204,7 +205,7 @@ export default function CourseSetup() {
                     <View style={{ width: 30 }} />
                     {HOURS.map((h) => <T key={h} style={[mono(500), { flex: 1, textAlign: 'center', fontSize: 9.5, color: p.muted }]}>{h12(h)}{h === HOURS[0] ? (h < 12 ? 'a' : 'p') : h === 12 ? 'p' : ''}</T>)}
                   </View>
-                  {DAYS.map((d, di) => (
+                  {SETUP_DAYS.map((d, di) => (
                     <View key={d} style={[styles.gridRow, { marginTop: 4 }]}>
                       <T w={700} c={p.muted} size={10.5} style={{ width: 30 }}>{d}</T>
                       {HOURS.map((h) => cell(di, h, true))}
@@ -215,12 +216,12 @@ export default function CourseSetup() {
                 <>
                   <View style={styles.gridRow}>
                     <View style={{ width: 44 }} />
-                    {DAYS.map((d) => <T key={d} w={700} c={p.muted} size={11} style={{ flex: 1, textAlign: 'center' }}>{d}</T>)}
+                    {SETUP_DAYS.map((d) => <T key={d} w={700} c={p.muted} size={11} style={{ flex: 1, textAlign: 'center' }}>{d}</T>)}
                   </View>
                   {HOURS.map((h) => (
                     <View key={h} style={[styles.gridRow, { marginTop: 4 }]}>
                       <T style={[mono(500), { width: 44, fontSize: 9.5, color: p.muted }]}>{`${h12(h)}–${h12(h + 1)}${h + 1 < 12 ? 'a' : 'p'}`}</T>
-                      {DAYS.map((_, di) => cell(di, h, false))}
+                      {SETUP_DAYS.map((_, di) => cell(di, h, false))}
                     </View>
                   ))}
                 </>

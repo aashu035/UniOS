@@ -160,20 +160,8 @@ export class WorkspaceRepository {
     // for tasks, resources, attendance, calendar events, and timeline.
     await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
 
-    // Cleanup managed files
-    for (const res of resources) {
-      if (res.uri && res.uri.startsWith('file://')) {
-        try {
-          const FileSystem = require('expo-file-system');
-          const fileInfo = await FileSystem.getInfoAsync(res.uri);
-          if (fileInfo.exists) {
-            await FileSystem.deleteAsync(res.uri);
-          }
-        } catch (err) {
-          console.warn('Failed to delete managed file during workspace cascade:', res.uri, err);
-        }
-      }
-    }
+    // Files are removed after their rows, and only when no other course still uses them.
+    for (const res of resources) await ResourceRepository.removeFileIfUnused(res.uri);
   }
 
   // --- ENTITY RESOLUTION ---

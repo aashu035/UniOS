@@ -22,7 +22,7 @@ const LABEL: Record<Choice, string> = { present: 'Present', exempt: 'On leave', 
 export const LEAVE_COLOR = '#0891B2';
 
 /** What a choice + reason is stored as. */
-export function toStatus(c: Choice, reason: string | null): AttStatus {
+function toStatus(c: Choice, reason: string | null): AttStatus {
   if (c === 'off') return reason === 'Holiday' ? 'holiday' : 'cancelled';
   return c;
 }

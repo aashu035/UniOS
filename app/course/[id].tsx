@@ -8,11 +8,10 @@ import { FILE_COLORS, tint, useUni, listRow } from '../../components/uni/theme';
 import { fileKind } from '../../domains/academic/derive';
 import { useAcademic } from '../../domains/academic/hooks';
 import { loadWindow, type Occ } from '../../domains/academic/snapshot';
-import { addDays, clock, dayName, daysBetween, isDone, minutesOf, relDue, shortDate, taskKind, verdict } from '../../domains/academic/logic';
+import { addDays, clock, dayName, daysBetween, isDone, minutesOf, relDue, shortDate, taskKind, verdict, WEEKDAY_SHORT } from '../../domains/academic/logic';
 import { CourseOverviewService, type CourseOverview } from '../../domains/workspace/CourseOverviewService';
 
 type Tab = 'overview' | 'files' | 'tasks' | 'att';
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TYPE_LABEL: Record<string, string> = { theory: 'Theory', lab: 'Lab', tutorial: 'Tutorial' };
 
 export default function CourseDetail() {
@@ -131,7 +130,7 @@ export default function CourseDetail() {
                 <View key={comp.id} style={{ flexDirection: 'row', gap: 10 }}>
                   <Chip label={(TYPE_LABEL[comp.type] ?? comp.type).toUpperCase()} color={c.color} bg={tint(c.color)} />
                   <View style={{ flex: 1 }}>
-                    <T w={600} size={13}>{comp.schedules.length ? comp.schedules.slice().sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)).map((x) => `${DAYS[x.dayOfWeek]} ${clock(x.startTime, false)}`).join(', ') : 'No weekly slots'}</T>
+                    <T w={600} size={13}>{comp.schedules.length ? comp.schedules.slice().sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)).map((x) => `${WEEKDAY_SHORT[x.dayOfWeek]} ${clock(x.startTime, false)}`).join(', ') : 'No weekly slots'}</T>
                     <T c={p.muted} size={12} style={{ marginTop: 2 }}>{[comp.activeFaculty?.name, comp.activeVenue?.name, `${comp.durationMinutes} min`].filter(Boolean).join(' · ')}</T>
                   </View>
                 </View>

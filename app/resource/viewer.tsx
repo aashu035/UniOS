@@ -7,7 +7,7 @@ import { colors, spacing, typography, radius } from '../../tokens';
 import { FileManager } from '../../core/fs/FileManager';
 import { Skeleton } from '../../components/ui/Skeleton';
 import * as IntentLauncher from 'expo-intent-launcher';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Lazy load heavy native components to prevent monolithic memory usage
 const PdfStrategy = React.lazy(() => import('../../components/viewer/PdfStrategy'));

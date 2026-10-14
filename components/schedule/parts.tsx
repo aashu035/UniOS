@@ -5,10 +5,10 @@ import { sans, tint, useUni } from '../uni/theme';
 import { addDays, dayName, minutesOf, mondayOf, shortDate } from '../../domains/academic/logic';
 
 /** Hours a class can start, 8 AM to 6 PM. */
-export const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 const pad = (n: number) => String(n).padStart(2, '0');
 export const hh = (h: number) => `${pad(h)}:00`;
-export const h12 = (h: number) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
+const h12 = (h: number) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
 
 /**
  * Dates from `start`'s Monday for `weeks` weeks, Sundays left out. Opens scrolled

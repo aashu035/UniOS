@@ -13,7 +13,7 @@ const weekdayOf = (iso: string) => parseLocalDate(iso).getDay(); // 0=Sun
  * Marks are never deleted by a schedule change, only shadowed: a mark on a class
  * that stops counting becomes Off and remembers what it was ("was:present").
  */
-export async function shadowMarks(occurrenceIds: string[]) {
+async function shadowMarks(occurrenceIds: string[]) {
   if (!occurrenceIds.length) return;
   const rows = await db.select().from(attendance).where(inArray(attendance.occurrenceId, occurrenceIds)).all();
   for (const r of rows) {

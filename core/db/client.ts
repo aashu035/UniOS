@@ -3,7 +3,7 @@ import { openDatabaseSync } from 'expo-sqlite';
 import * as schema from './schema';
 
 // This name represents the local SQLite database file on the device
-export const DATABASE_NAME = 'unios.db';
+const DATABASE_NAME = 'unios.db';
 
 // Initialize the SQLite connection synchronously
 export const expoDb = openDatabaseSync(DATABASE_NAME, { enableChangeListener: true });

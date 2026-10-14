@@ -10,7 +10,7 @@ import { semesters } from '../semester/model';
 import { tasks } from '../task/model';
 import { courseComponents, workspaces } from '../workspace/model';
 import { CourseListService } from '../workspace/CourseListService';
-import { addDays, countAttendance, mondayOf, type AttCounts, type AttStatus } from './logic';
+import { addDays, clock, countAttendance, dayName, mondayOf, shortDate, WEEKDAY_LONG, type AttCounts, type AttStatus } from './logic';
 
 export interface Course {
   id: number;
@@ -194,7 +194,6 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
       return occ;
     });
 
-  const DAYN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const ruleByDate = new Map(rules.map((r) => [r.date, r]));
   const pushOff = (rec: typeof recurring[number], date: string, why: string, extra: Partial<Occ> = {}) => {
     const comp = compById.get(rec.componentId);
@@ -213,7 +212,7 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
   for (const rule of rules) {
     const w = parseLocalDate(rule.date).getDay();
     const why = rule.kind === 'follow'
-      ? `Off · day followed ${DAYN[rule.followsWeekday ?? 0]}${rule.reason ? ` (${rule.reason})` : ''}`
+      ? `Off · day followed ${WEEKDAY_LONG[rule.followsWeekday ?? 0]}${rule.reason ? ` (${rule.reason})` : ''}`
       : `Off · ${rule.note && rule.linkedRuleId ? `Holiday (${rule.note.replace('Its timetable ran on ', 'timetable ran on ')})` : [rule.reason, rule.note].filter(Boolean).join(' · ') || 'No classes'}`;
     for (const rec of recurring) if (rec.dayOfWeek === w) pushOff(rec, rule.date, why);
   }
@@ -221,7 +220,7 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
     // Moved to another date: the old slot shows where it went.
     if (ex.action === 'move' && ex.targetDate && ex.targetDate !== ex.specificDate && ex.recurringScheduleId) {
       const rec = recById.get(ex.recurringScheduleId);
-      if (rec && !ruleByDate.has(ex.specificDate)) pushOff(rec, ex.specificDate, `Moved to ${shortDay(ex.targetDate)}, ${clock12(ex.startTime ?? rec.startTime)}`, { status: null });
+      if (rec && !ruleByDate.has(ex.specificDate)) pushOff(rec, ex.specificDate, `Moved to ${dayName(ex.targetDate)} ${shortDate(ex.targetDate)}, ${clock(ex.startTime ?? rec.startTime)}`, { status: null });
       continue;
     }
     if (ex.action !== 'cancel' || !ex.recurringScheduleId) continue;
@@ -259,10 +258,6 @@ export async function loadSnapshot(opts: { today?: string; from?: string; to?: s
   };
 }
 
-const SD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const SM = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-function clock12(t: string) { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; }
-function shortDay(iso: string) { const d = parseLocalDate(iso); return `${SD[d.getDay()]} ${d.getDate()} ${SM[d.getMonth()]}`; }
 
 /** Schedule for an arbitrary window, enriched the same way (used when paging weeks). */
 export async function loadWindow(from: string, to: string, today?: string): Promise<Occ[]> {

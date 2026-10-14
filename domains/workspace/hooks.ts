@@ -30,33 +30,3 @@ export function useWorkspaces() {
   return { workspaces, isLoading, error, refreshWorkspaces: loadWorkspaces };
 }
 
-export function useWorkspace(id: number) {
-  const [workspaceData, setWorkspaceData] = useState<any | null>(null);
-  const [timeline, setTimeline] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const loadWorkspace = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const { CourseOverviewService } = require('./CourseOverviewService');
-      const data = await CourseOverviewService.getCourseDetail(id);
-      const timelineData = await WorkspaceRepository.getTimelineEvents(id);
-      setWorkspaceData(data);
-      setTimeline(timelineData);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load workspace details'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadWorkspace();
-    }, [loadWorkspace])
-  );
-
-  return { workspaceData, timeline, isLoading, error, refreshWorkspace: loadWorkspace };
-}

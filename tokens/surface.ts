@@ -50,31 +50,3 @@ export const glassCard = {
     borderColor: 'rgba(17,24,39,0.05)',
   },
 };
-
-// A reusable sheen overlay you can drop on top of any surface to add a
-// diagonal catch-light. Uses a translucent border + radial-ish top tint.
-export const sheenOverlay = {
-  position: 'absolute' as const,
-  top: 0,
-  left: 0,
-  right: 0,
-  height: 1.5,
-  backgroundColor: 'rgba(255,255,255,0.65)',
-  borderTopLeftRadius: 20,
-  borderTopRightRadius: 20,
-};
-
-// Text + decorative colors that sit correctly on the primary metallic surface.
-//
-// PROPOSED HOIST (no new value, just de-duplication): AttendanceRing.tsx and
-// AttendanceChart.tsx both hardcode 'rgba(255,255,255,0.22)' as the on-primary
-// track colour. FrostedChip (NEW_PRIMITIVE in Fable's home design) reuses it.
-// Hoisting here means one place to change the translucent-on-primary value.
-export const onPrimary = {
-  title: '#FFFFFF',
-  subtitle: 'rgba(255,255,255,0.82)',
-  accent: 'rgba(255,255,255,0.92)',
-  track: 'rgba(255,255,255,0.22)',
-};
-
-export const premium = { premiumShadow, topHighlight, glassCard, sheenOverlay, onPrimary };

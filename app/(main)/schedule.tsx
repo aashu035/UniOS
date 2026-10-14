@@ -5,7 +5,7 @@ import { Icon, courseIcon } from '../../components/uni/Icon';
 import { Card, Chip, Empty, LargeTitle, Rise, RoundButton, Screen, T, Tap } from '../../components/uni/primitives';
 import { mono, tint, useUni } from '../../components/uni/theme';
 import { useAcademic, useNowMinutes } from '../../domains/academic/hooks';
-import { addDays, clock, dayName, hoursOf, isoWeek, layoutLanes, minutesOf, mondayOf, shortDate } from '../../domains/academic/logic';
+import { addDays, clock, dayName, hoursOf, isoWeek, layoutLanes, minutesOf, mondayOf, shortDate, WEEKDAY_LONG, WEEKDAY_SHORT } from '../../domains/academic/logic';
 import { getLocalDateString } from '../../core/utils/date';
 import type { Occ } from '../../domains/academic/snapshot';
 
@@ -59,11 +59,9 @@ export default function Schedule() {
     return { left: GUTTER + slot.lane * (w + LANE_GAP), width: w, lanes: slot.lanes };
   };
 
-  const W3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const ruleOn = (d: string) => data?.dayRules.find((x) => x.date === d);
   const selRule = ruleOn(selDate);
-  const dayTag = (d: string) => { const rl = ruleOn(d); return !rl ? null : rl.kind === 'follow' ? `${W3[rl.followsWeekday ?? 0]} TT` : rl.linkedRuleId ? 'Holiday' : 'Off'; };
+  const dayTag = (d: string) => { const rl = ruleOn(d); return !rl ? null : rl.kind === 'follow' ? `${WEEKDAY_SHORT[rl.followsWeekday ?? 0]} TT` : rl.linkedRuleId ? 'Holiday' : 'Off'; };
   const longPress = (o: Occ) => {
     if (o.id.startsWith('ex_')) {
       Alert.alert('Extra class', 'Manage it from Schedule changes.', [{ text: 'Close', style: 'cancel' }, { text: 'Open changes', onPress: () => router.push('/schedule/changes' as any) }]);
@@ -145,10 +143,10 @@ export default function Schedule() {
                 <Icon name={selRule.kind === 'follow' ? 'calendar-days' : 'party-popper'} size={16} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <T w={700} size={14}>{selRule.kind === 'follow' ? `Follows ${WEEKDAY[selRule.followsWeekday ?? 0]}'s timetable` : selRule.linkedRuleId ? 'Holiday · no classes' : `No classes · ${selRule.reason ?? 'day off'}`}</T>
+                <T w={700} size={14}>{selRule.kind === 'follow' ? `Follows ${WEEKDAY_LONG[selRule.followsWeekday ?? 0]}'s timetable` : selRule.linkedRuleId ? 'Holiday · no classes' : `No classes · ${selRule.reason ?? 'day off'}`}</T>
                 <T c={p.muted} size={12.5} style={{ lineHeight: 17, marginTop: 2 }}>
                   {selRule.kind === 'follow'
-                    ? `${[selRule.reason, selRule.note].filter(Boolean).join(' · ')}. ${WEEKDAY[new Date(Number(selDate.slice(0, 4)), Number(selDate.slice(5, 7)) - 1, Number(selDate.slice(8, 10)), 12).getDay()]}'s own classes are Off and don't count.`
+                    ? `${[selRule.reason, selRule.note].filter(Boolean).join(' · ')}. ${WEEKDAY_LONG[new Date(Number(selDate.slice(0, 4)), Number(selDate.slice(5, 7)) - 1, Number(selDate.slice(8, 10)), 12).getDay()]}'s own classes are Off and don't count.`
                     : selRule.note ? `${selRule.note}. Classes that day don't count.` : "Classes that day don't count."}
                 </T>
               </View>

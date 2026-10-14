@@ -42,8 +42,8 @@ export function projectChange(c: { attended: number; total: number }, from: AttS
 }
 
 /** Condonation the ordinance allows on documents: chairperson 10% (clause 9.4), Dean a further 5% (9.5). */
-export const CONDONE_CHAIR = 10;
-export const CONDONE_DEAN = 5;
+const CONDONE_CHAIR = 10;
+const CONDONE_DEAN = 5;
 
 export interface LeaveNote { text: string; tone: Tone }
 
@@ -176,10 +176,11 @@ export function mondayOf(iso: string): string {
 }
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** Index 0 = Sunday, as `Date.getDay()` and `day_of_week` in the database. */
+export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+export const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function dayName(iso: string, long = false) { return (long ? DAY_LONG : DAY)[weekday(iso)]; }
+export function dayName(iso: string, long = false) { return (long ? WEEKDAY_LONG : WEEKDAY_SHORT)[weekday(iso)]; }
 export function shortDate(iso: string) { const [, m, d] = iso.split('-').map(Number); return `${d} ${MON[m - 1]}`; }
 export function dayDate(iso: string) { return `${dayName(iso)}, ${shortDate(iso)}`; }
 

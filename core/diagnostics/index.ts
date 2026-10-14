@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/react-native';
 import { expoDb } from '../db/client';
 import { formatReport, LogBuffer, type AppInfo } from './report';
 
-export const recentLogs = new LogBuffer();
+const recentLogs = new LogBuffer();
 let installed = false;
 
 /** Mirror console errors/warnings and uncaught JS errors into the report buffer. Call once at startup. */
@@ -26,7 +26,7 @@ export function installDiagnostics() {
 
 export const appVariant = (): string => (Constants.expoConfig?.extra as any)?.appVariant ?? (__DEV__ ? 'development' : 'production');
 
-export function appInfo(): AppInfo {
+function appInfo(): AppInfo {
   const pc = Platform.constants as any;
   return {
     app: Constants.expoConfig?.name ?? 'UniOS',
@@ -44,7 +44,7 @@ export function appInfo(): AppInfo {
 const COUNTED = ['semesters', 'workspaces', 'course_components', 'recurring_schedules', 'schedule_exceptions', 'attendance', 'tasks', 'resources', 'portal_attendance'];
 
 /** Row counts and migration state. Never reads row contents. */
-export async function dataSummary(): Promise<Record<string, number | string | null>> {
+async function dataSummary(): Promise<Record<string, number | string | null>> {
   const out: Record<string, number | string | null> = {};
   for (const t of COUNTED) {
     try { out[t] = ((await expoDb.getFirstAsync(`SELECT COUNT(*) AS n FROM ${t}`)) as any)?.n ?? 0; } catch { out[t] = null; }

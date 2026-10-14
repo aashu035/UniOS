@@ -27,32 +27,24 @@ export class ResourceRepository {
   }
 
   static async deleteResource(resourceId: number) {
-    const [res] = await db.select().from(resources).where(eq(resources.id, resourceId));
+    const [res] = await db.select().from(resources).where(eq(resources.id, resourceId)).all();
     if (!res) return;
-
-    // Delete the database entry first (so if this fails, the file is preserved)
+    // The row goes first, so a failure below never leaves a row without its file.
     await db.delete(resources).where(eq(resources.id, resourceId));
+    await ResourceRepository.removeFileIfUnused(res.uri);
+  }
 
-    // If it's a managed file, delete it from disk safely
-    if (res.uri && res.uri.startsWith('file://')) {
-      try {
-        const FileSystem = require('expo-file-system');
-        const fileInfo = await FileSystem.getInfoAsync(res.uri);
-        if (fileInfo.exists) {
-          await FileSystem.deleteAsync(res.uri);
-        }
-      } catch (err) {
-        console.warn('[ORPHAN_FILE] Failed to delete managed file:', res.uri, err);
-        try {
-          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-          const existing = await AsyncStorage.getItem('ORPHANED_FILES');
-          const orphans = existing ? JSON.parse(existing) : [];
-          orphans.push(res.uri);
-          await AsyncStorage.setItem('ORPHANED_FILES', JSON.stringify(orphans));
-        } catch (storageErr) {
-          console.error('Failed to register orphaned file in AsyncStorage:', storageErr);
-        }
-      }
-    }
+  /**
+   * Delete a stored file once no resource row points at it. Uploads are kept in
+   * the app's resources folder under a bare filename (`<uuid>.pdf`), and identical
+   * uploads share one file, so a file is only removed when its last row is gone.
+   * Links, notes and anything that isn't a bare filename are left alone.
+   */
+  static async removeFileIfUnused(uri: string | null | undefined) {
+    if (!uri || /[/\\:]/.test(uri)) return;
+    const stillUsed = db.select({ id: resources.id }).from(resources).where(eq(resources.uri, uri)).limit(1).all();
+    if (stillUsed.length) return;
+    const { FileManager } = require('../../core/fs/FileManager');
+    await FileManager.deleteFile(uri);
   }
 }

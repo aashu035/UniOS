@@ -1,15 +1,9 @@
 import { calculateAttendanceMetrics } from './attendance';
 
 /**
- * These tests pin down the exact business rules for attendance metrics.
- * The same utility is consumed by:
- *   - AttendanceViewModelBuilder (domains/attendance/viewmodel.ts) — the hero/chart/ring screens
- *   - CourseListService (domains/workspace/CourseListService.ts) — the workspace list card
- *   - CourseOverviewService (domains/workspace/CourseOverviewService.ts) — the workspace detail
- *   - WorkspaceRepository.getCompleteWorkspace (domains/workspace/repository.ts) — per-component
- *
- * If you change a rule here, ALL of those screens change in lockstep.
- * Do not inline attendance math anywhere else — use this utility.
+ * Pins the field names the older services read (CourseListService,
+ * CourseOverviewService, WorkspaceRepository). The rule itself lives in
+ * countAttendance (domains/academic/logic.ts), tested in academic_logic.test.ts.
  */
 describe('attendance utils — canonical metric engine', () => {
   describe('calculateAttendanceMetrics — business rules', () => {

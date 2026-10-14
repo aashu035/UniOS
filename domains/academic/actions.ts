@@ -7,7 +7,7 @@ import type { Occ } from './snapshot';
 export type Mark = 'present' | 'absent' | 'off';
 
 /** "Off" is stored as `cancelled`: the class wasn't held and isn't counted. */
-export const markToStatus = (m: Mark) => (m === 'off' ? 'cancelled' : m) as 'present' | 'absent' | 'cancelled';
+const markToStatus = (m: Mark) => (m === 'off' ? 'cancelled' : m) as 'present' | 'absent' | 'cancelled';
 export const statusToMark = (s: string | null | undefined): Mark | null =>
   s === 'present' ? 'present' : s === 'absent' || s === 'exempt' ? 'absent' : s === 'cancelled' || s === 'holiday' ? 'off' : null;
 

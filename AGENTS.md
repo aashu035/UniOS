@@ -38,7 +38,7 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 - `domains/<name>/repository.ts`: data access per domain (attendance, workspace, task, calendar, …).
 - `core/diagnostics/`: in-app log buffer and bug-report builder.
 - `domains/timetable/grammar.ts`: reads printed timetable cell text (`ES-L`, `SC Lab, CSE-2, RS Lab, AS`) into one student's classes. Tested against the DCRUST Section A timetable in `__tests__/timetable_grammar.test.ts`.
-- `app/workspace/[id]/attendance.tsx`: the older full attendance log. Keep it; the course page links to it.
+- `core/fs/FileManager.ts`: uploads live in the app's `resources/` folder under a bare filename (`<uuid>.pdf`) stored in `resources.uri`; identical uploads share one file. Delete through `ResourceRepository.removeFileIfUnused`.
 
 ## Rules that bite
 
@@ -56,6 +56,7 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
   - Changes never delete marks. Marks on classes that stop counting become `cancelled` with note `was:<status>`, and undo restores them.
   - On a follow day, the borrowed weekday's slots get ids `rec_<slot>_<date>` and count as usual. Extras and moved-in classes survive a follow, but not a day off.
 - **Occurrence ids.** Regular classes use `rec_<recurringScheduleId>_<YYYY-MM-DD>`; extra classes use `ex_<id>`. `AttendanceRepository.markAttendance` rejects an id that isn't in `CalendarService.getEffectiveSchedule` for that date.
+- **File API.** Import `expo-file-system/legacy` for `getInfoAsync`, `deleteAsync`, `getContentUriAsync` and friends. The same names imported from `expo-file-system` throw at runtime on SDK 56.
 - **The drizzle driver is synchronous.** `.all()` returns an array, so never chain `.then` on it.
 - **Migrations.**
   - Statements must be separated by `--> statement-breakpoint`.

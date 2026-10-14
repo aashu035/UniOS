@@ -1,5 +1,5 @@
 import type { IconName } from '../../components/uni/Icon';
-import { addDays, clock, dayName, daysBetween, isDone, liveState, minutesOf, mustAttend, relDue, pctOf } from './logic';
+import { addDays, clock, dayName, daysBetween, isDone, liveState, minutesOf, mustAttend, relDue, pctOf, WEEKDAY_LONG } from './logic';
 import type { Course, Occ, Snapshot, TaskRow } from './snapshot';
 
 export type AlertTone = 'danger' | 'warn' | 'primary' | 'success';
@@ -115,7 +115,6 @@ export function overall(courses: Course[]) {
   return { attended, absent, leave, off, total, pct: pctOf(attended, total), target };
 }
 
-const WEEKDAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
  * Banner for a day whose timetable changed: today's rule all day, and tomorrow's
@@ -130,7 +129,7 @@ export function dayRuleBanner(s: Pick<Snapshot, 'dayRules' | 'today'>, nowMin: n
   const Cap = when === 'today' ? 'Today' : 'Tomorrow';
   const why = [r.reason, r.note].filter(Boolean).join(' · ');
   if (r.kind === 'follow' && r.followsWeekday !== null) {
-    const wd = WEEKDAY_NAME[r.followsWeekday];
+    const wd = WEEKDAY_LONG[r.followsWeekday];
     return { date: r.date, when, title: `${Cap} follows ${wd}'s timetable`, body: `Bring ${wd}'s books. ${dayName(r.date, true)}'s own classes don't count.${why ? ` ${why}.` : ''}` };
   }
   return { date: r.date, when, title: `${Cap} is off`, body: `No classes count${why ? ` · ${why}` : ''}.` };

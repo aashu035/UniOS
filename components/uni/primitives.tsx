@@ -112,10 +112,6 @@ export function SectionTitle({ title, action, onAction, style }: { title: string
   );
 }
 
-export function Eyebrow({ children, color, style }: { children: React.ReactNode; color: string; style?: StyleProp<TextStyle> }) {
-  return <T w={800} c={color} size={11.5} style={[{ letterSpacing: 0.8, textTransform: 'uppercase' }, style]}>{children}</T>;
-}
-
 export function Pill({ label, bg, fg, onPress, border }: { label: string; bg: string; fg: string; onPress?: () => void; border?: string }) {
   const body = (
     <View style={{ paddingVertical: 7, paddingHorizontal: 13, borderRadius: 999, backgroundColor: bg, borderWidth: border ? 1 : 0, borderColor: border }}>
@@ -220,19 +216,6 @@ export function Segmented<K extends string>({ items, value, onChange }: { items:
   );
 }
 
-export function Toggle({ on, onPress, label }: { on: boolean; onPress: () => void; label: string }) {
-  const p = useUni();
-  const x = useSharedValue(on ? 21 : 3);
-  useEffect(() => { x.value = withTiming(on ? 21 : 3, { duration: 200 }); }, [on]);
-  const knob = useAnimatedStyle(() => ({ left: x.value }));
-  return (
-    <Pressable onPress={onPress} accessibilityRole="switch" accessibilityState={{ checked: on }} accessibilityLabel={label}
-      style={{ width: 46, height: 28, borderRadius: 14, backgroundColor: on ? p.success : p.border }}>
-      <Animated.View style={[{ position: 'absolute', top: 3, width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', ...shadow(p) }, knob]} />
-    </Pressable>
-  );
-}
-
 /** Rows inside one card, separated by hairlines. */
 export function ListCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const p = useUni();
@@ -257,8 +240,6 @@ export function Empty({ icon, title, body, action, onAction }: { icon: IconName;
     </Card>
   );
 }
-
-export function usePalette(): UniPalette { return useUni(); }
 
 const styles = StyleSheet.create({
   card: { borderRadius: 24, borderWidth: 1, padding: space.card },

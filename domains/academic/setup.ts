@@ -1,5 +1,7 @@
 /** Course setup wizard: the tap-to-paint weekly grid and what it saves. */
 
+import { minutesOf, WEEKDAY_SHORT } from './logic';
+
 export type Part = 'theory' | 'lab' | 'tutorial';
 export const DURATION: Record<Part, number> = { theory: 60, lab: 120, tutorial: 60 };
 
@@ -53,19 +55,16 @@ export function prune(slots: Slots, parts: Part[]): Slots {
   return Object.fromEntries(Object.entries(slots).filter(([, p]) => parts.includes(p)));
 }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function slotSummary(slots: Slots): string {
   const n = Object.keys(slots).length;
   if (!n) return 'No weekly slots';
-  const days = [...new Set(Object.keys(slots).map((k) => Number(k.split('-')[0])))].sort().map((d) => DAYS[d]);
+  const days = [...new Set(Object.keys(slots).map((k) => Number(k.split('-')[0])))].sort().map((d) => WEEKDAY_SHORT[d]);
   return `${n} session${n === 1 ? '' : 's'} · ${days.join(', ')}`;
 }
 
 /** A weekly slot already on the timetable (from another course). */
 export interface TakenSlot { workspaceId: number; name: string; short: string; color: string; type: string; dayOfWeek: number; startTime: string; endTime: string }
 
-const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
-const DAY3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const hm = (t: string) => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''}`; };
 
 /**
@@ -76,7 +75,7 @@ export function findClashes(sessions: Array<{ dayOfWeek: number; startTime: stri
   const out: Array<{ day: number; start: string; end: string; with: TakenSlot }> = [];
   for (const s of sessions) {
     for (const t of taken) {
-      if (t.dayOfWeek === s.dayOfWeek && mins(s.startTime) < mins(t.endTime) && mins(t.startTime) < mins(s.endTime)) {
+      if (t.dayOfWeek === s.dayOfWeek && minutesOf(s.startTime) < minutesOf(t.endTime) && minutesOf(t.startTime) < minutesOf(s.endTime)) {
         out.push({ day: s.dayOfWeek, start: s.startTime, end: s.endTime, with: t });
       }
     }
@@ -86,6 +85,6 @@ export function findClashes(sessions: Array<{ dayOfWeek: number; startTime: stri
 
 /** "Mon 9–10 with Test Course, Tue 2–3 with CN Lab (+3 more)". */
 export function clashSummary(clashes: ReturnType<typeof findClashes>, max = 3): string {
-  const parts = clashes.slice(0, max).map((c) => `${DAY3[c.day]} ${hm(c.start)}–${hm(c.end)} with ${c.with.name}${c.with.type === 'lab' ? ' Lab' : c.with.type === 'tutorial' ? ' Tutorial' : ''}`);
+  const parts = clashes.slice(0, max).map((c) => `${WEEKDAY_SHORT[c.day]} ${hm(c.start)}–${hm(c.end)} with ${c.with.name}${c.with.type === 'lab' ? ' Lab' : c.with.type === 'tutorial' ? ' Tutorial' : ''}`);
   return parts.join(', ') + (clashes.length > max ? ` (+${clashes.length - max} more)` : '');
 }

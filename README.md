@@ -7,7 +7,7 @@ UniOS is a comprehensive, privacy-first, offline academic organizer designed for
 - **Academic Management (In-Progress)**: Organize semesters, workspaces (courses), venues, and faculty with full CRUD capabilities.
 - **Planner & Timetable (In-Progress)**: Track recurring classes with weekday schedule grouping and assignments.
 - **Resource Hub (In-Progress)**: Attach, organize, and manage study materials lifecycle.
-- **Privacy Focused AI (Proposed)**: No cloud syncing, no data sharing. Future integrations will feature a local, private AI companion running natively on a paired laptop.
+- **Privacy first**: no account and no cloud sync. The optional timetable scanner sends a photo to Google Gemini with your own key, only when you scan.
 
 ## Getting Started
 
