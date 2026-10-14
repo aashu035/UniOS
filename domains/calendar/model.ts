@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { workspaces, courseComponents } from '../workspace/model';
 import { venues } from '../venue/model';
 import { faculty } from '../faculty/model';
@@ -67,6 +68,8 @@ export const dayRules = sqliteTable('day_rules', {
   reason: text('reason'),
   note: text('note'),
   source: text('source').default('you'),
-  createdAt: text('created_at'),
-});
+  createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`),
+}, (table) => ({
+  dateIdx: uniqueIndex('day_rules_date_idx').on(table.date),
+}));
 
