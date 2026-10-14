@@ -7,6 +7,7 @@ import { db } from '../../core/db/client';
 import { resources } from '../../domains/resource/model';
 import { ArrowLeft, Save, FilePlus, X } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { extensionFor } from '../../core/fs/fileType';
 import { FileManager } from '../../core/fs/FileManager';
 import { useWorkspaces } from '../../domains/workspace/hooks';
 
@@ -49,7 +50,7 @@ export default function AddResource() {
       const pickedFiles = result.assets.map(file => ({
         name: file.name,
         uri: file.uri,
-        extension: file.name.split('.').pop() || 'unknown',
+        extension: extensionFor(file.name, file.mimeType),
       }));
       
       setFiles(prev => [...prev, ...pickedFiles]);
