@@ -24,7 +24,7 @@ export type UniPalette = {
   dark: boolean;
 };
 
-export const light: UniPalette = {
+const light: UniPalette = {
   bg: '#F5F6F8',
   elev: '#FFFFFF',
   surface: '#EEF0F4',
@@ -43,7 +43,7 @@ export const light: UniPalette = {
   dark: false,
 };
 
-export const dark: UniPalette = {
+const dark: UniPalette = {
   bg: '#09090B',
   elev: '#18181B',
   surface: '#27272A',

@@ -19,4 +19,3 @@ export const tasks = sqliteTable('tasks', {
 });
 
 export type TaskPriority = 'high' | 'medium' | 'low';
-export const PRIORITY_ORDER: TaskPriority[] = ['high', 'medium', 'low'];

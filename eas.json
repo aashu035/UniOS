@@ -12,7 +12,6 @@
       },
       "env": {
         "APP_VARIANT": "development",
-        "EXPO_PUBLIC_DIAGNOSTIC_SENTRY": "true",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
@@ -21,8 +20,7 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "preview",
-        "EXPO_PUBLIC_DIAGNOSTIC_SENTRY": "true"
+        "APP_VARIANT": "preview"
       },
       "autoIncrement": true
     },

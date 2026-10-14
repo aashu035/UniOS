@@ -121,7 +121,6 @@ export const FileManager = {
       
       for (const file of files) {
         if (!validSet.has(file)) {
-          console.log(`Deleting orphaned file: ${file}`);
           await this.deleteFile(file);
         }
       }

@@ -8,18 +8,7 @@ export default function PdfStrategy({ uri }: { uri: string }) {
     <View style={styles.container}>
       <Pdf
         source={{ uri, cache: true }}
-        onLoadComplete={(numberOfPages, filePath) => {
-          console.log(`Number of pages: ${numberOfPages}`);
-        }}
-        onPageChanged={(page, numberOfPages) => {
-          console.log(`Current page: ${page}`);
-        }}
-        onError={(error) => {
-          console.log(error);
-        }}
-        onPressLink={(link) => {
-          console.log(`Link pressed: ${link}`);
-        }}
+        onError={(error) => console.error('PDF failed to render', error)}
         style={styles.pdf}
       />
     </View>

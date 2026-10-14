@@ -233,32 +233,16 @@ export class WorkspaceRepository {
       throw new Error('Invalid component combination. Cannot have both Lab and Tutorial.');
     }
 
-    // Time & Overlap Validation
+    // Duration and time validation
     for (const comp of data.components) {
       if (comp.type === 'theory' && comp.durationMinutes !== 60) throw new Error('Theory must be 60 mins.');
       if (comp.type === 'tutorial' && comp.durationMinutes !== 60) throw new Error('Tutorial must be 60 mins.');
       if (comp.type === 'lab' && comp.durationMinutes !== 120) throw new Error('Lab must be 120 mins.');
 
-      // Check session overlaps
-      for (let i = 0; i < comp.sessions.length; i++) {
-        const s1 = comp.sessions[i];
+      // Clashes are warned about in setup (findClashes), not blocked here.
+      for (const s1 of comp.sessions) {
         if (s1.startTime >= s1.endTime) {
           throw new Error(`Invalid session time: ${s1.startTime} >= ${s1.endTime}`);
-        }
-        for (let j = i + 1; j < comp.sessions.length; j++) {
-          const s2 = comp.sessions[j];
-          if (s1.dayOfWeek === s2.dayOfWeek) {
-            // overlap = newStart < existingEnd AND newEnd > existingStart
-            if (s2.startTime < s1.endTime && s2.endTime > s1.startTime) {
-              // We're converting overlap errors to soft warnings in the UI layer. 
-              // The repository layer shouldn't enforce a hard block if we want soft warnings!
-              // But we can throw a specific error code if we want the UI to catch it.
-              // Actually, the user specifically requested overlap should be a warning.
-              // So I'll remove the hard throw here, and let the UI handle the warning,
-              // or throw a specific error that the UI can choose to ignore on "Proceed Anyway".
-              // Let's just remove the hard block in the DB layer, as overlap is logically allowed (e.g. reappearing).
-            }
-          }
         }
       }
     }

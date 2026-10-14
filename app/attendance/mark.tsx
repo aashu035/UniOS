@@ -7,7 +7,7 @@ import { Icon, courseIcon } from '../../components/uni/Icon';
 import { Card, Empty, Rise, RoundButton, T, Tap, Well } from '../../components/uni/primitives';
 import { tint, useUni } from '../../components/uni/theme';
 import { markOccurrence, statusToMark, type Mark } from '../../domains/academic/actions';
-import { overall } from '../../domains/academic/derive';
+import { markQueue, overall } from '../../domains/academic/derive';
 import { clock, deckNote, pctOf, projectMark } from '../../domains/academic/logic';
 import { loadSnapshot, type Occ, type Snapshot } from '../../domains/academic/snapshot';
 
@@ -27,7 +27,7 @@ export default function MarkToday() {
     loadSnapshot().then((s) => {
       setSnap(s);
       const today = s.occurrences.filter((o) => o.date === s.today && !o.cancelled && o.componentId);
-      setQueue(today.filter((o) => !o.status));
+      setQueue(markQueue(s));
       const already: Record<string, Mark> = {};
       for (const o of today) { const m = statusToMark(o.status); if (m) already[o.id] = m; }
       setMarks(already);

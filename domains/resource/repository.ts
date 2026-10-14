@@ -1,7 +1,6 @@
 import { db } from '../../core/db/client';
 import { resources } from './model';
 import { eq, desc } from 'drizzle-orm';
-import { workspaces } from '../workspace/model';
 
 export class ResourceRepository {
   static async getResourcesForWorkspace(workspaceId: number) {
@@ -9,21 +8,6 @@ export class ResourceRepository {
       .from(resources)
       .where(eq(resources.workspaceId, workspaceId))
       .orderBy(desc(resources.createdAt));
-  }
-
-  static async getRecentResources(limit: number = 5) {
-    return await db.select({
-      id: resources.id,
-      title: resources.title,
-      type: resources.type,
-      uri: resources.uri,
-      createdAt: resources.createdAt,
-      workspaceName: workspaces.name
-    })
-    .from(resources)
-    .leftJoin(workspaces, eq(resources.workspaceId, workspaces.id))
-    .orderBy(desc(resources.createdAt))
-    .limit(limit);
   }
 
   static async deleteResource(resourceId: number) {
