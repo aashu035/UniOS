@@ -1,11 +1,11 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
-import { isStoredUpload } from './names';
+import { isOwnAvatar, isStoredUpload } from './names';
 
 /**
- * FileManager handles offline-first file storage, chunked hashing (to prevent OOM),
- * and orphan cleanup syncing with Drizzle.
+ * FileManager handles offline-first file storage, native hashing (no JS buffer),
+ * and deletes that only touch names this app wrote.
  */
 
 // We store files in the app's document directory
@@ -111,23 +111,23 @@ export const FileManager = {
   },
 
   /**
-   * Cleans up orphaned files in the storage directory
-   * that do not exist in the provided list of valid filenames
+   * Delete every upload and the profile photo (Clear all data). Only names this app
+   * wrote are touched (core/fs/names.ts). Returns the number of files deleted.
    */
-  async cleanupOrphanedFiles(validFilenames: string[]): Promise<void> {
-    try {
-      await this.init();
-      const files = await FileSystem.readDirectoryAsync(STORAGE_DIR);
-      
-      const validSet = new Set(validFilenames);
-      
-      for (const file of files) {
-        if (!validSet.has(file)) {
-          await this.deleteFile(file);
-        }
+  async deleteAllOwnFiles(): Promise<number> {
+    const docDir = FileSystem.documentDirectory ?? '';
+    const places: Array<[string, (n: unknown) => boolean]> = [[STORAGE_DIR, isStoredUpload], [docDir, isOwnAvatar]];
+    let count = 0;
+    for (const [dir, isOurs] of places) {
+      if (!dir) continue;
+      let names: string[] = [];
+      try { names = await FileSystem.readDirectoryAsync(dir); } catch { continue; } // folder not created yet
+      for (const n of names) {
+        if (!isOurs(n)) continue;
+        await FileSystem.deleteAsync(`${dir}${n}`, { idempotent: true });
+        count++;
       }
-    } catch (e) {
-      console.error('Failed to cleanup orphaned files:', e);
     }
-  }
+    return count;
+  },
 };

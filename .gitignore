@@ -68,3 +68,7 @@ AUDIT_BRIEF_AND_BUNDLE.pdf
 AUDITOR_BUNDLE_GPT6.pdf
 AUDIT_PDF_FOR_ASTRA.pdf
 docs/samarth/capture-*/
+
+# Deep audit tool output (regenerable with audit/stryker.conf.json)
+audit/mutation/
+audit/.stryker-tmp/

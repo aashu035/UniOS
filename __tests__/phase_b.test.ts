@@ -1,94 +1,38 @@
-import { WorkspaceRepository } from '../domains/workspace/repository';
-import { AttendanceService } from '../domains/attendance/service';
-import { db } from '../core/db/client';
 import { calculateAttendanceMetrics } from '../core/utils/attendance';
+import { createDeviceDb } from '../testing/expoSqliteHarness';
 
-// Mock DB interactions for unit tests
-let mockDbState: any = {
-  recurringSchedules: [],
-  faculty: [],
-  venues: []
-};
-
-jest.mock('../core/db/client', () => {
-  return {
-    db: {
-      transaction: jest.fn(async (cb) => {
-        const tx = {
-          select: jest.fn().mockReturnThis(),
-          from: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          all: jest.fn().mockImplementation(() => mockDbState.faculty),
-          get: jest.fn().mockResolvedValue({ id: 1 }), // Mock active semester
-          insert: jest.fn().mockImplementation((table: any) => {
-             return {
-               values: jest.fn().mockImplementation(() => {
-                  return { returning: jest.fn().mockImplementation(() => ({ get: jest.fn().mockResolvedValue({ id: Math.random() }) })) };
-               })
-             };
-          }),
-          update: jest.fn().mockReturnThis(),
-          set: jest.fn().mockReturnThis(),
-        };
-        return await cb(tx);
-      }),
-    }
-  };
-});
+// Entity resolution runs on the device driver against the real faculty table.
+const mockDevice: { db?: any; expoDb?: any } = {};
+jest.mock('../core/db/client', () => ({
+  get db() { return mockDevice.db; },
+  get expoDb() { return mockDevice.expoDb; },
+}));
+const { WorkspaceRepository } = require('../domains/workspace/repository');
+const { atomic } = require('../core/db/atomic');
 
 describe('Phase B Adversarial Verification Suite', () => {
-  
+  let sqlite: any;
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockDbState.faculty = [];
-    mockDbState.venues = [];
+    const h = createDeviceDb();
+    mockDevice.db = h.db; mockDevice.expoDb = h.expoDb; sqlite = h.sqlite;
   });
-
-  // 1. Review screen with no confirmation → zero DB writes
-  it('1. Review screen with no confirmation -> zero DB writes', async () => {
-    // If the user builds a payload but does not call WorkspaceRepository.buildCompleteWorkspace (meaning they don't confirm),
-    // no DB transaction is initiated.
-    const formPayload = {
-      name: "Unconfirmed Course",
-      components: [{ type: "theory" as any, durationMinutes: 60, sessions: [] }]
-    };
-    
-    // Validate payload logic in memory
-    expect(formPayload.name).toBe("Unconfirmed Course");
-    // Assert db.transaction was NEVER called
-    expect(db.transaction).not.toHaveBeenCalled();
-  });
+  const facultyRows = () => sqlite.prepare('SELECT id, name FROM faculty ORDER BY id').all();
 
   // 2. Entity normalization: create / reuse / duplicates reuse the oldest
-  it('2. Entity normalization: create / reuse / duplicates reuse the oldest', async () => {
-    let mockTx = {
-      select: jest.fn().mockReturnThis(),
-      from: jest.fn().mockReturnThis(),
-      all: jest.fn().mockImplementation(() => mockDbState.faculty),
-      insert: jest.fn().mockReturnThis(),
-      values: jest.fn().mockImplementation(() => ({ returning: jest.fn().mockImplementation(() => ({ get: jest.fn().mockReturnValue({ id: 99 }) })) }))
-    };
+  it('2. Entity normalization: create / reuse / duplicates reuse the oldest', () => {
+    // Case A: no match -> create, with spaces trimmed
+    const createdId = atomic((tx: any) => WorkspaceRepository.resolveFaculty(tx, ' Room A '));
+    expect(facultyRows()).toEqual([{ id: createdId, name: 'Room A' }]);
 
-    // Case A: 0 matches -> create
-    mockDbState.faculty = [];
-    const createdId = await WorkspaceRepository.resolveFaculty(mockTx, " Room A ");
-    expect(mockTx.insert).toHaveBeenCalled();
-    expect(createdId).toBe(99);
+    // Case B: same name, other case and spacing -> reuse, no new row
+    expect(atomic((tx: any) => WorkspaceRepository.resolveFaculty(tx, ' room  a '))).toBe(createdId);
+    expect(facultyRows()).toHaveLength(1);
 
-    // Case B: 1 match -> reuse
-    mockDbState.faculty = [{ id: 42, name: "Room A" }];
-    mockTx.insert.mockClear();
-    const reusedId = await WorkspaceRepository.resolveFaculty(mockTx, " room a ");
-    expect(mockTx.insert).not.toHaveBeenCalled();
-    expect(reusedId).toBe(42);
-
-    // Case C: >1 canonical match (e.g. left by an old backup) -> reuse the oldest.
-    // It used to throw AMBIGUOUS_ENTITY_RESOLUTION, which blocked creating the course
-    // with an error code on screen; both rows show the same name, so reuse is harmless.
-    mockDbState.faculty = [{ id: 43, name: "ROOM A" }, { id: 42, name: "Room A" }];
-    mockTx.insert.mockClear();
-    expect(WorkspaceRepository.resolveFaculty(mockTx, "room  a")).toBe(42);
-    expect(mockTx.insert).not.toHaveBeenCalled();
+    // Case C: two rows with the same name (e.g. from an old backup) -> reuse the oldest.
+    // It used to throw AMBIGUOUS_ENTITY_RESOLUTION, which blocked creating the course.
+    sqlite.exec("INSERT INTO faculty (name) VALUES ('ROOM A')");
+    expect(atomic((tx: any) => WorkspaceRepository.resolveFaculty(tx, 'room  a'))).toBe(createdId);
+    expect(facultyRows()).toHaveLength(2);
   });
 
   // 6. Attendance cancellation exclusion

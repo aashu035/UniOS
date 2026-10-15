@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, ActivityIndicator, Text } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import { markdownParser, MAX_MARKDOWN_BYTES } from './markdownParser';
 import * as FileSystem from 'expo-file-system/legacy';
 import { colors, spacing, typography } from '../../tokens';
 
-export default function MarkdownStrategy({ uri }: { uri: string }) {
+/** Markdown is parsed with markdownParser (see there why); other text is shown as is. */
+export default function MarkdownStrategy({ uri, plain = false }: { uri: string; plain?: boolean }) {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -41,9 +43,13 @@ export default function MarkdownStrategy({ uri }: { uri: string }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Markdown style={markdownStyles}>
-        {content}
-      </Markdown>
+      {plain || content.length > MAX_MARKDOWN_BYTES ? (
+        <Text selectable style={markdownStyles.body}>{content}</Text>
+      ) : (
+        <Markdown style={markdownStyles} markdownit={markdownParser}>
+          {content}
+        </Markdown>
+      )}
     </ScrollView>
   );
 }

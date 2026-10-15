@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { ProfileContext } from '../core/context/ProfileContext';
 import * as FileSystem from 'expo-file-system/legacy';
+import { FileManager } from '../core/fs/FileManager';
 import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
 import { StatusBar } from 'expo-status-bar';
@@ -134,7 +135,8 @@ function DatabaseErrorScreen({ error, onRetry }: { error: Error; onRetry: () => 
           onPress: async () => {
             try {
               const dbPath = `${FileSystem.documentDirectory}SQLite/unios.db`;
-              await FileSystem.deleteAsync(dbPath, { idempotent: true });
+              for (const f of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) await FileSystem.deleteAsync(f, { idempotent: true });
+              await FileManager.deleteAllOwnFiles().catch(() => 0); // uploads and photo go too, as the dialog says
               reloadApp();
             } catch (e) {
               console.error('Failed to reset database:', e);

@@ -4,9 +4,8 @@ import { useRouter } from 'expo-router';
 import { Icon, type IconName } from '../../components/uni/Icon';
 import { Card, RoundButton, Screen, T, Tap } from '../../components/uni/primitives';
 import { tint, useUni } from '../../components/uni/theme';
-import { db } from '../../core/db/client';
 import { exportAndShare, pickBackupText, restoreFromText } from '../../core/db/backupActions';
-import { aiConnections, attendance, calendarEvents, faculty, resources, semesters, students, tasks, venues, workspaces } from '../../core/db/schema';
+import { clearAllData } from '../../core/db/clearData';
 
 /**
  * More → Backup & export. One place to export, restore, and (behind a second
@@ -56,7 +55,7 @@ export default function BackupAndExport() {
     if (!clearArmed) { setClearArmed(true); return; }
     setBusy('clear');
     try {
-      for (const t of [tasks, resources, attendance, calendarEvents, workspaces, semesters, aiConnections, students, faculty, venues]) await db.delete(t);
+      await clearAllData();
       router.replace('/');
     } catch (e: any) {
       Alert.alert('Could not clear data', e?.message ?? 'Please try again.');
@@ -95,7 +94,7 @@ export default function BackupAndExport() {
         </Card>
         <View style={[styles.danger, { backgroundColor: tint(p.danger, 6), borderColor: tint(p.danger, 25) }]}>
           <T w={800} size={14} c={p.danger}>Clear all data</T>
-          <T c={p.muted} size={12.5} style={{ lineHeight: 17 }}>Deletes your profile, courses, attendance, tasks and files from this phone. This can't be undone.</T>
+          <T c={p.muted} size={12.5} style={{ lineHeight: 17 }}>Deletes your profile, courses, attendance, tasks, files and Gemini key from this phone. This can't be undone.</T>
           <Tap onPress={doClear} disabled={busy === 'clear'} accessibilityRole="button" style={[styles.del, { borderColor: p.danger, backgroundColor: clearArmed ? p.danger : 'transparent' }]}>
             <T w={700} size={14} c={clearArmed ? '#fff' : p.danger}>{busy === 'clear' ? 'Clearing…' : clearArmed ? 'Tap again to delete everything' : 'Clear all data'}</T>
           </Tap>

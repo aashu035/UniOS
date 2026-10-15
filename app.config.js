@@ -18,6 +18,9 @@ module.exports = ({ config }) => ({
   android: {
     ...config.android,
     package: IS_DEV ? `${config.android.package}.dev` : config.android.package,
+    // Permissions no code uses (audit 2026-10-14, SEC-05). The dev client keeps the
+    // overlay permission for its developer menu.
+    blockedPermissions: ['android.permission.RECORD_AUDIO', ...(IS_DEV ? [] : ['android.permission.SYSTEM_ALERT_WINDOW'])],
   },
   ios: {
     ...config.ios,

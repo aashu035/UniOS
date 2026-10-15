@@ -1,6 +1,6 @@
 import { db, expoDb } from './client';
 import * as schema from './schema';
-import { atomic } from './atomic';
+import { atomic, type Tx } from './atomic';
 import { UniOSBackupV2, BACKUP_FORMAT_STRING, CURRENT_BACKUP_VERSION, CANONICAL_BACKUP_TABLES, BackupTableKey } from './backupSchema';
 import { sanitizeRestoredValues, validateBackupStructural, validateBackupRelational } from './backupValidation';
 
@@ -15,13 +15,36 @@ async function ensureForeignKeysEnabled(): Promise<void> {
   }
 }
 
+/** Every backed-up table, children before parents, so deletes respect foreign keys. */
+export const USER_TABLES_CHILD_FIRST: readonly BackupTableKey[] = [
+  'day_rules', 'tutor_messages', 'tutor_conversations', 'material_index_permissions', 'ai_connections',
+  'learning_profiles', 'notifications', 'portal_attendance', 'attendance', 'resources', 'tasks',
+  'schedule_exceptions', 'recurring_schedules', 'calendar_events', 'component_faculty_assignments',
+  'component_venue_assignments', 'course_components', 'workspace_timeline', 'workspaces', 'faculty',
+  'venues', 'dcrust_grading', 'semesters', 'students',
+];
+
+// The list above must name every backed-up table exactly once.
+if (USER_TABLES_CHILD_FIRST.length !== CANONICAL_BACKUP_TABLES.length || CANONICAL_BACKUP_TABLES.some((t) => !USER_TABLES_CHILD_FIRST.includes(t))) {
+  throw new Error('USER_TABLES_CHILD_FIRST does not match CANONICAL_BACKUP_TABLES.');
+}
+
+const toCamelCase = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+
+/** Delete every row of every backed-up table inside `tx` (restore and Clear all data). */
+export function wipeUserTables(tx: Tx) {
+  for (const tableName of USER_TABLES_CHILD_FIRST) {
+    const tableSchema = (schema as any)[toCamelCase(tableName)];
+    if (!tableSchema) throw new Error(`No schema for table '${tableName}'.`);
+    tx.delete(tableSchema).run();
+  }
+}
+
 /**
  * Exports all canonical tables into a UniOS Backup V2 format.
  */
 export async function exportBackup(): Promise<string> {
   const tablesData: Record<string, any[]> = {};
-
-  const toCamelCase = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
 
   for (const tableName of CANONICAL_BACKUP_TABLES) {
     const exportName = toCamelCase(tableName);
@@ -68,58 +91,15 @@ export async function importBackup(jsonString: string): Promise<void> {
   // 3. Verify Foreign Keys are strictly enforced
   await ensureForeignKeysEnabled();
 
-  // 4. Determine Deletion and Insertion Order
-  // Child -> Parent deletion order to respect foreign keys
-  const deletionOrder: BackupTableKey[] = [
-    'day_rules',
-    'tutor_messages',
-    'tutor_conversations',
-    'material_index_permissions',
-    'ai_connections',
-    'learning_profiles',
-    'notifications',
-    'portal_attendance',
-    'attendance',
-    'resources',
-    'tasks',
-    'schedule_exceptions',
-    'recurring_schedules',
-    'calendar_events',
-    'component_faculty_assignments',
-    'component_venue_assignments',
-    'course_components',
-    'workspace_timeline',
-    'workspaces',
-    'faculty',
-    'venues',
-    'dcrust_grading',
-    'semesters',
-    'students'
-  ];
-
-  // Sanity check: Ensure our hardcoded deletion order matches the canonical tables exactly
-  if (deletionOrder.length !== CANONICAL_BACKUP_TABLES.length) {
-    throw new Error('Critical mismatch between deletion order array and canonical tables array.');
-  }
-  for (const t of CANONICAL_BACKUP_TABLES) {
-    if (!deletionOrder.includes(t)) {
-      throw new Error(`Table ${t} is missing from the deletion order array.`);
-    }
-  }
-
+  const deletionOrder = USER_TABLES_CHILD_FIRST;
   const insertionOrder = [...deletionOrder].reverse();
 
   // 5. Execute Atomic Wipe & Replace
-  const toCamelCase = (str: string) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
 
   // One transaction: if any row fails to insert, the wipe is rolled back too and
   // the phone keeps what it had. Synchronous on purpose (see core/db/atomic.ts).
   atomic((tx) => {
-    // Delete in Child -> Parent order
-    for (const tableName of deletionOrder) {
-      const tableSchema = (schema as any)[toCamelCase(tableName)];
-      if (tableSchema) tx.delete(tableSchema).run();
-    }
+    wipeUserTables(tx);
 
     // Insert in Parent -> Child order, 50 rows per statement (SQLite's 999-parameter limit).
     const CHUNK_SIZE = 50;

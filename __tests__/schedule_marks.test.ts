@@ -92,6 +92,17 @@ describe('undo never counts a class that did not run', () => {
   });
 });
 
+describe('input checks', () => {
+  it.each([7, -1, 2.5, NaN])('follow refuses weekday %p', async (w) => {
+    await expect(DayRuleRepository.follow(THU, w, { reason: 'Event' })).rejects.toThrow('Pick a weekday.');
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM day_rules').get()).toEqual({ n: 0 });
+  });
+  it.each(['2026-10-29x', ' 2026-10-29', '29-10-2026'])('follow and day off refuse date %p', async (d) => {
+    await expect(DayRuleRepository.follow(d, 5, { reason: 'Event' })).rejects.toThrow('Pick a date.');
+    await expect(DayRuleRepository.dayOff(d, { reason: 'Holiday' })).rejects.toThrow('Pick a date.');
+  });
+});
+
 describe('a change and its marks are saved together', () => {
   it('a day off that fails to save leaves the marks as they were', async () => {
     await setOccurrenceStatus(await occ(THU, `rec_1_${THU}`), 'present');

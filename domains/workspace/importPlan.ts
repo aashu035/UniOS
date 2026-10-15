@@ -34,21 +34,34 @@ export function to24h(t: string, collegeDay = false): string | null {
   return `${pad(h)}:${pad(min)}`;
 }
 
-const mostCommon = (xs: Array<string | undefined>) => {
+/** Model output is untrusted: anything that is not a string counts as missing. */
+const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+const dayNumber = (v: unknown): number | undefined => {
+  const key = str(v).trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(DAY, key) ? DAY[key] : undefined; // not "constructor", "__proto__"
+};
+
+const mostCommon = (xs: unknown[]) => {
   const n = new Map<string, number>();
-  for (const x of xs) if (x?.trim()) n.set(x.trim(), (n.get(x.trim()) ?? 0) + 1);
+  for (const x of xs.map(str)) if (x.trim()) n.set(x.trim(), (n.get(x.trim()) ?? 0) + 1);
   return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 };
 
 /**
  * Group scanned classes into courses: every weekly slot kept (not just the first),
  * theory/lab/tutorial as separate parts, times in 24-hour form, credits from hours.
+ * `sessions` comes straight from the model, so every field is checked here: a row
+ * that breaks the schema is skipped with a warning, and the other rows still import.
  */
-export function planImport(sessions: ScannedSession[]): { courses: PlannedCourse[]; warnings: string[] } {
+export function planImport(sessions: unknown): { courses: PlannedCourse[]; warnings: string[] } {
   const warnings: string[] = [];
   const byCode = new Map<string, Map<Part, ScannedSession[]>>();
-  for (const s of sessions) {
-    const code = s.subjectCode?.trim().toUpperCase();
+  const rows: unknown[] = Array.isArray(sessions) ? sessions : [];
+  if (!Array.isArray(sessions)) warnings.push("The scan didn't return a list of classes.");
+  for (const raw of rows) {
+    if (!raw || typeof raw !== 'object') { warnings.push('Skipped an unreadable row.'); continue; }
+    const s = raw as ScannedSession;
+    const code = str(s.subjectCode).trim().toUpperCase();
     if (!code) continue;
     const parts = byCode.get(code) ?? new Map<Part, ScannedSession[]>();
     const type: Part = s.type === 'lab' || s.type === 'tutorial' ? s.type : 'theory';
@@ -69,10 +82,10 @@ export function planImport(sessions: ScannedSession[]): { courses: PlannedCourse
       const seen = new Set<string>();
       const slots: PlannedCourse['components'][number]['sessions'] = [];
       for (const s of list) {
-        const day = DAY[s.day?.toLowerCase()];
-        const start = to24h(s.startTime, true);
-        const end = to24h(s.endTime, true);
-        if (day === undefined || !start || !end || start >= end) { warnings.push(`${code}: skipped an unreadable slot (${s.day} ${s.startTime}–${s.endTime}).`); continue; }
+        const day = dayNumber(s.day);
+        const start = to24h(str(s.startTime), true);
+        const end = to24h(str(s.endTime), true);
+        if (day === undefined || !start || !end || start >= end) { warnings.push(`${code}: skipped an unreadable slot (${str(s.day)} ${str(s.startTime)}–${str(s.endTime)}).`); continue; }
         const key = `${day}-${start}`;
         if (seen.has(key)) continue;
         seen.add(key);

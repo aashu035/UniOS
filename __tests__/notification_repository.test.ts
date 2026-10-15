@@ -23,7 +23,7 @@ const testDb: any = drizzle(sqlite, { schema });
 // Drizzle expects a transaction method; the better-sqlite3 driver supports
 // it natively via .transaction, but we expose it as async for parity with
 // the production expo-sqlite client.
-testDb.transaction = async (cb: any) => cb(testDb);
+// Real transactions (no stub), so a missing rollback would show.
 
 // Mock the client module BEFORE the repository imports it. jest hoists jest.mock
 // above imports, so this works even though the require is below.

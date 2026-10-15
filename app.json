@@ -34,8 +34,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you set a profile picture.",
-          "cameraPermission": "The app accesses your camera to let you take a profile picture."
+          "photosPermission": "UniOS opens your photos when you add one to a course, your profile or the timetable scanner.",
+          "cameraPermission": "UniOS uses the camera when you photograph notes, the board, your timetable or a profile picture.",
+          "microphonePermission": false
         }
       ],
       [

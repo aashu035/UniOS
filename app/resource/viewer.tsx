@@ -50,10 +50,11 @@ export default function ResourceViewer() {
       case '3gp':
         return <VideoStrategy uri={absoluteUri} />;
       case 'md':
+        return <MarkdownStrategy uri={absoluteUri} />;
       case 'txt':
       case 'json':
       case 'csv':
-        return <MarkdownStrategy uri={absoluteUri} />;
+        return <MarkdownStrategy uri={absoluteUri} plain />;
       case 'jpg':
       case 'jpeg':
       case 'png':

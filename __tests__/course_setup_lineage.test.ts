@@ -150,9 +150,8 @@ sqlite.exec(`
 `);
 
 const testDb = drizzle(sqlite, { schema });
-(testDb as any).transaction = async (cb: any) => {
-  return await cb(testDb);
-};
+// Real transactions: better-sqlite3 runs drizzle's transaction() with the synchronous
+// callbacks that atomic() requires, so a missing rollback would fail these tests.
 
 jest.mock('../core/db/client', () => ({
   db: testDb,

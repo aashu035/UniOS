@@ -115,7 +115,7 @@ export function validateBackupRelational(backup: UniOSBackupV2): { valid: boolea
   // Relational Check: Resources -> Workspaces
   for (const resource of tables.resources) {
     if (resource.workspaceId && !workspaces.has(resource.workspaceId)) {
-      return { valid: false, error: `Relational integrity failed: Resource '${resource.name}' references missing workspace ID ${resource.workspaceId}.` };
+      return { valid: false, error: `Relational integrity failed: Resource '${resource.title}' references missing workspace ID ${resource.workspaceId}.` };
     }
   }
 

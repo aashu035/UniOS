@@ -164,9 +164,14 @@ describe('findings from the earlier audits still hold', () => {
 
   it('two teachers with the same name (e.g. from an old backup) do not block creating a course', async () => {
     sqlite.exec("INSERT INTO faculty (id, name) VALUES (2, 'DR. RD')");
-    await expect(WorkspaceRepository.buildCompleteWorkspace({
+    const ws = await WorkspaceRepository.buildCompleteWorkspace({
       name: 'Embedded Systems', components: [{ type: 'theory', facultyName: 'Dr. RD', durationMinutes: 60, sessions: [{ dayOfWeek: 1, startTime: '09:00', endTime: '10:00' }] }],
-    })).resolves.toBeDefined();
+    });
+    // No third row, and the course uses the oldest of the two.
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM faculty').get().n).toBe(2);
+    const used = sqlite.prepare(`SELECT DISTINCT faculty_id AS id FROM component_faculty_assignments
+      WHERE component_id IN (SELECT id FROM course_components WHERE workspace_id = ?)`).all(ws.id);
+    expect(used).toEqual([{ id: 1 }]);
   });
 
   it('P5-07: a task for a course that does not exist is refused and nothing is saved', async () => {
