@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { db, expoDb } from './client';
 import migrations from '../../drizzle/migrations';
 import { AttendanceRepairService, type RepairResult } from '../../domains/attendance/repair';
+import { reconcileAllMarks } from '../../domains/calendar/marks';
+import { atomic } from './atomic';
 
 /**
  * Database Coordinator
@@ -43,6 +45,14 @@ async function initializeDatabase(): Promise<RepairResult | null> {
   // Phase 2: Run idempotent attendance repair using the same db handle
   // This uses raw queries against the same connection — no nested transactions.
   const repairResult = await AttendanceRepairService.repairLegacyIdentities(db);
+
+  // Phase 2b: every mark agrees with the schedule changes (a mark counts only if its class
+  // runs). Heals data saved by older versions. Not fatal: the app works without it.
+  try {
+    atomic((tx) => reconcileAllMarks(tx));
+  } catch (e) {
+    console.error('Could not check marks against schedule changes', e);
+  }
 
   // Phase 3: Invariant verification
   // Verify no blank occurrence_id values exist (should have been cleaned by migration)

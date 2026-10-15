@@ -5,6 +5,7 @@ import { venues } from '../venue/model';
 import { faculty } from '../faculty/model';
 import { eq, and, gte, lte, asc, desc, or } from 'drizzle-orm';
 import { parseLocalDate, getLocalDateString } from '../../core/utils/date';
+import type { Q } from '../../core/db/atomic';
 
 export interface EffectiveOccurrence {
   id: string; // synthetic ID for UI keying
@@ -51,19 +52,27 @@ export class CalendarService {
    * 2. Schedule exceptions (cancellations, moves, extras).
    */
   static async getEffectiveSchedule(startDateStr: string, endDateStr: string): Promise<EffectiveOccurrence[]> {
+    return this.scheduleIn(db, startDateStr, endDateStr);
+  }
+
+  /**
+   * The same schedule, computed synchronously through `q` (the db, or a transaction
+   * from `atomic()`), so a schedule change can check marks inside its own transaction.
+   */
+  static scheduleIn(q: Q, startDateStr: string, endDateStr: string): EffectiveOccurrence[] {
     const start = parseLocalDate(startDateStr);
     const end = parseLocalDate(endDateStr);
     end.setHours(23, 59, 59, 999);
 
     const occurrences: EffectiveOccurrence[] = [];
 
-    const allWorkspaces = await db.select().from(workspaces).all();
-    const allComponents = await db.select().from(courseComponents).all();
-    const allRecurring = await db.select().from(recurringSchedules).all();
+    const allWorkspaces = q.select().from(workspaces).all();
+    const allComponents = q.select().from(courseComponents).all();
+    const allRecurring = q.select().from(recurringSchedules).all();
     
     // Fetch venue assignments
     const { componentVenueAssignments, componentFacultyAssignments } = require('../workspace/model');
-    const allVenueAssignments = await db.select({
+    const allVenueAssignments = q.select({
       id: componentVenueAssignments.id,
       componentId: componentVenueAssignments.componentId,
       venueName: venues.name,
@@ -76,7 +85,7 @@ export class CalendarService {
     .all();
 
     // Fetch faculty assignments
-    const allFacultyAssignments = await db.select({
+    const allFacultyAssignments = q.select({
       id: componentFacultyAssignments.id,
       componentId: componentFacultyAssignments.componentId,
       facultyName: faculty.name,
@@ -88,8 +97,8 @@ export class CalendarService {
     .leftJoin(faculty, eq(componentFacultyAssignments.facultyId, faculty.id))
     .all();
 
-    const facultyList = await db.select().from(faculty).all();
-    const venueList = await db.select().from(venues).all();
+    const facultyList = q.select().from(faculty).all();
+    const venueList = q.select().from(venues).all();
     
     // Maps for fast lookup
     const workspaceMap = new Map(allWorkspaces.map(w => [w.id, w]));
@@ -111,10 +120,10 @@ export class CalendarService {
     };
 
     // Whole-day rules: a day off, or a day that follows another weekday's timetable.
-    const rules = await db.select().from(dayRules).where(and(gte(dayRules.date, startDateStr), lte(dayRules.date, endDateStr))).all();
+    const rules = q.select().from(dayRules).where(and(gte(dayRules.date, startDateStr), lte(dayRules.date, endDateStr))).all();
     const ruleByDate = new Map(rules.map((r) => [r.date, r]));
     // Dates that lent their timetable with "not sure yet".
-    const unsureDates = new Set((await db.select().from(dayRules).where(eq(dayRules.borrowedMode, 'unsure')).all()).map((r) => r.borrowedDate).filter(Boolean) as string[]);
+    const unsureDates = new Set((q.select().from(dayRules).where(eq(dayRules.borrowedMode, 'unsure')).all()).map((r) => r.borrowedDate).filter(Boolean) as string[]);
 
     // 2. Expand recurring schedules into dates
     let current = new Date(start);
@@ -163,7 +172,7 @@ export class CalendarService {
     }
 
     // 3. Fetch exceptions for the date range
-    const exceptions = await db.select()
+    const exceptions = q.select()
       .from(scheduleExceptions)
       .where(or(
         and(gte(scheduleExceptions.specificDate, startDateStr), lte(scheduleExceptions.specificDate, endDateStr)),

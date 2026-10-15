@@ -53,7 +53,8 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 - **Schedule changes** (`domains/calendar/dayRules.ts`, `exceptions.ts`; resolved in `CalendarService.getEffectiveSchedule`):
   - `day_rules`: a date `follow`s another weekday's timetable, or is `off`. A follow can make the borrowed date a linked holiday. One rule per date.
   - `schedule_exceptions`: cancel one class, move it (optionally to another date via `target_date`, keeping its id), or add an `extra` class. Each has a `reason`.
-  - Changes never delete marks. Marks on classes that stop counting become `cancelled` with note `was:<status>`, and undo restores them.
+  - Changes never delete marks. A mark counts if and only if its class runs on the effective schedule. `reconcileMarks` (`domains/calendar/marks.ts`) enforces this: a mark whose class stops running becomes `cancelled` with note `was:<status>`, and comes back when the class runs again, whatever the order of changes and undos.
+  - Each change writes its rule or exception and reconciles the affected dates in one `atomic()` call. `CalendarService.scheduleIn(tx, …)` is the synchronous schedule for use inside a transaction. The coordinator runs `reconcileAllMarks` at startup.
   - On a follow day, the borrowed weekday's slots get ids `rec_<slot>_<date>` and count as usual. Extras and moved-in classes survive a follow, but not a day off.
 - **Occurrence ids.** Regular classes use `rec_<recurringScheduleId>_<YYYY-MM-DD>`; extra classes use `ex_<id>`. `AttendanceRepository.markAttendance` rejects an id that isn't in `CalendarService.getEffectiveSchedule` for that date.
 - **File API.** Import `expo-file-system/legacy` for `getInfoAsync`, `deleteAsync`, `getContentUriAsync` and friends. The same names imported from `expo-file-system` throw at runtime on SDK 56.
@@ -76,9 +77,16 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 2. With the Expo MCP server connected, use `collect_app_logs`, `automation_take_screenshot`, `automation_tap` and `open_devtools`.
 3. Check Sentry, via the `sentry` MCP server or sentry.io:
    - Filter by `environment` (`development` / `preview` / `production`).
+   - User reports arrive as Feedback, with `diagnostics.md` attached.
+4. Write a failing test in `__tests__/` first when the bug is in logic or data, then fix.
+5. Run `npm run check` before committing.
 
+Users can send reports from **More → Report a problem**. The same text can be shared to any app, so a pasted report is a valid starting point.
 
-   # DEEP AUDIT PROTOCOL
+## Deep audit protocol (only when the user asks for an audit)
+
+The protocol below applies only to a task that the user starts as a deep audit. Its limits (no code changes, no commits) do not apply to other work.
+
 ### Evidence-only audit: security, tests, dead code, earlier audits
 
 Write everything in this task about 80% of the way to ASD-STE100 Simplified Technical English.
@@ -525,9 +533,3 @@ Output one table: | ID | Verdict (HOLDS / WEAK EVIDENCE / WRONG) | Reason | Evid
 Then list each Lead that the audit closed as REFUTED without enough evidence.
 Write about 80% of the way to ASD-STE100. No intro. No closing offer.
 ```
-
-   - User reports arrive as Feedback, with `diagnostics.md` attached.
-4. Write a failing test in `__tests__/` first when the bug is in logic or data, then fix.
-5. Run `npm run check` before committing.
-
-Users can send reports from **More → Report a problem**. The same text can be shared to any app, so a pasted report is a valid starting point.

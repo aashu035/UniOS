@@ -1,6 +1,9 @@
 import { db } from './client';
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Something to run queries through: the db itself, or a transaction from `atomic()`. */
+export type Q = typeof db | Tx;
 
 /**
  * Run `fn` inside one SQLite transaction: all of it is saved, or none of it.
