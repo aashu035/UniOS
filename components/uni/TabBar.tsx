@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, FadeOut, useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { and, eq, isNotNull, lte } from 'drizzle-orm';
+import { and, eq, isNotNull, lt } from 'drizzle-orm';
 import { db } from '../../core/db/client';
 import { tasks } from '../../domains/task/model';
 import { getLocalDateString } from '../../core/utils/date';
@@ -35,9 +35,10 @@ const ACTIONS: Array<{ label: string; icon: IconName; color: string; href: strin
 
 /** Open tasks due within a week (overdue included): the badge on the Tasks tab. */
 async function dueThisWeek(): Promise<number> {
-  const limit = addDays(getLocalDateString(new Date()), 7);
+  // Before the 8th day, so "YYYY-MM-DD HH:MM" on day 7 still counts (text comparison).
+  const before = addDays(getLocalDateString(new Date()), 8);
   const rows = await db.select({ id: tasks.id }).from(tasks)
-    .where(and(eq(tasks.status, 'pending'), isNotNull(tasks.dueDate), lte(tasks.dueDate, limit))).all();
+    .where(and(eq(tasks.status, 'pending'), isNotNull(tasks.dueDate), lt(tasks.dueDate, before))).all();
   return rows.length;
 }
 

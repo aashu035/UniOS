@@ -160,7 +160,16 @@ export default function CourseDetail() {
           </ListCard>
         ) : <Empty icon="upload" title="No files yet" body="Add PDFs, notes and links for this course." action="Add file" onAction={() => router.push({ pathname: '/resource/add', params: { workspaceId: String(c.id) } })} />)}
 
-        {tab === 'tasks' && (tasks.length ? <ListCard>{tasks.map(taskRow)}</ListCard>
+        {tab === 'tasks' && (tasks.length ? (
+          <View style={{ gap: 10 }}>
+            <Tap onPress={() => router.push({ pathname: '/task/add', params: { workspaceId: String(c.id) } })} accessibilityRole="button"
+              style={{ minHeight: 48, borderRadius: 16, borderWidth: 1, borderColor: p.hair, backgroundColor: p.elev, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Icon name="plus" size={17} color={p.primary} />
+              <T w={800} c={p.primary} size={14}>Add task for {c.short}</T>
+            </Tap>
+            <ListCard>{tasks.map(taskRow)}</ListCard>
+          </View>
+        )
           : <Empty icon="list-plus" title="No tasks yet" body="Assignments, lab files and exams for this course show up here." action="Add task" onAction={() => router.push({ pathname: '/task/add', params: { workspaceId: String(c.id) } })} />)}
 
         {tab === 'att' && <AttendLog data={data} course={c} history={history} nowMin={nowMin} onChanged={reload} toast={toast} />}

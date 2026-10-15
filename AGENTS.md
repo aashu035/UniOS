@@ -68,7 +68,7 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
   - `__tests__/migration_chain.test.ts` must pass.
 - **NativeWind drops function-form styles** (`style={({ pressed }) => …}`) on native. Use `Tap` from `components/uni/primitives.tsx`.
 - **No Android `Alert.alert` with more than 3 buttons.** Android silently drops the rest. Use a sheet (see `MarkSheet`).
-- **Dates.** Stored dates are normalised with `normalizeDate` in `domains/academic/snapshot.ts`. Never call `new Date('YYYY-MM-DD')` for local days; use the helpers in `domains/academic/logic.ts`.
+- **Dates.** Stored dates are normalised with `normalizeDate` in `domains/academic/logic.ts`. Never call `new Date('YYYY-MM-DD')` for local days; use the helpers in `domains/academic/logic.ts`.
 - **Portal data is read-only.** Never ask for, store or log a student's portal password. The Samarth integration must use an in-app login where the user types it themselves.
 
 ## Debugging loop

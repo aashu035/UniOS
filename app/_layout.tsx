@@ -10,6 +10,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { ProfileContext } from '../core/context/ProfileContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import { FileManager } from '../core/fs/FileManager';
+import { ToastProvider } from '../components/uni/Toast';
 import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
 import { StatusBar } from 'expo-status-bar';
@@ -229,12 +230,14 @@ function RootLayout() {
         <PaperProvider theme={theme}>
           {/* Dark clock and icons on the light app background ("auto" follows the colour scheme). */}
           <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(main)" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="search" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="course/edit" />
-          </Stack>
+          <ToastProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(main)" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="search" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="course/edit" />
+            </Stack>
+          </ToastProvider>
         </PaperProvider>
       </ProfileContext.Provider>
     </AppErrorBoundary>

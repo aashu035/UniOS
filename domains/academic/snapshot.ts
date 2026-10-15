@@ -10,7 +10,7 @@ import { semesters } from '../semester/model';
 import { tasks } from '../task/model';
 import { courseComponents, workspaces } from '../workspace/model';
 import { CourseListService } from '../workspace/CourseListService';
-import { addDays, clock, countAttendance, dayName, mondayOf, shortDate, WEEKDAY_LONG, type AttCounts, type AttStatus } from './logic';
+import { addDays, clock, countAttendance, dayName, mondayOf, normalizeDate, shortDate, WEEKDAY_LONG, type AttCounts, type AttStatus } from './logic';
 
 export interface Course {
   id: number;
@@ -77,33 +77,8 @@ export interface Snapshot {
   dayRules: DayRuleInfo[];
 }
 
-/**
- * Due dates are stored as YYYY-MM-DD by the current task form, but older rows can
- * hold a full timestamp (e.g. toISOString()). Reduce anything parseable to a local
- * YYYY-MM-DD so date math never sees NaN; unparseable values become null.
- */
-export function normalizeDate(v: string | null | undefined): string | null {
-  if (v === null || v === undefined) return null;
-  const t = String(v).trim();
-  if (!t) return null;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  // Real calendar dates only: 30 Feb, 31 Apr and 29 Feb in a non-leap year are rejected.
-  const daysIn = (y: number, m: number) => [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
-  const ok = (y: number, m: number, d: number) => m >= 1 && m <= 12 && d >= 1 && d <= daysIn(y, m) ? `${y}-${pad(m)}-${pad(d)}` : null;
-  // Explicit patterns rather than Date parsing: Hermes (the phone's JS engine) rejects some formats Node accepts.
-  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
-  if (m) return ok(+m[1], +m[2], +m[3]);
-  m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/.exec(t);
-  if (m) {
-    if (!m[6]) return ok(+m[1], +m[2], +m[3]); // no zone: already local wall time
-    const d = new Date(t.replace(' ', 'T'));
-    return isNaN(d.getTime()) ? ok(+m[1], +m[2], +m[3]) : getLocalDateString(d);
-  }
-  m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(t); // day first, as written in India
-  if (m) return ok(+m[3], +m[2], +m[1]);
-  if (/^\d{10,13}$/.test(t)) { const d = new Date(t.length === 10 ? +t * 1000 : +t); return isNaN(d.getTime()) ? null : getLocalDateString(d); }
-  return null;
-}
+/** Kept here for existing imports; the function lives in logic.ts (pure, no database). */
+export { normalizeDate } from './logic';
 
 export function shortLabel(name: string, shortName?: string | null): string {
   if (shortName && shortName.trim()) return shortName.trim();

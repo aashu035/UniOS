@@ -1,7 +1,8 @@
 import { db } from '../../core/db/client';
 import { tasks } from './model';
-import { eq, desc, asc, and, lte, sql } from 'drizzle-orm';
+import { eq, desc, asc, and, lt, sql } from 'drizzle-orm';
 import { getLocalDateString } from '../../core/utils/date';
+import { addDays } from '../academic/logic';
 import { workspaces } from '../workspace/model';
 
 const prioritySort = sql`CASE ${tasks.priority} WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`;
@@ -26,12 +27,13 @@ export class TaskRepository {
   }
 
   static async getTasksDueSoon() {
-    const today = getLocalDateString(new Date());
+    // Due today or earlier. "Before tomorrow" also covers "YYYY-MM-DD HH:MM" today.
+    const tomorrow = addDays(getLocalDateString(new Date()), 1);
     return await db.select()
       .from(tasks)
       .where(and(
         eq(tasks.status, 'pending'),
-        lte(tasks.dueDate, today)
+        lt(tasks.dueDate, tomorrow)
       ))
       .orderBy(prioritySort, asc(tasks.dueDate));
   }
@@ -99,20 +101,37 @@ export class TaskRepository {
 
   static async updateTask(id: number, data: Partial<{
     title: string;
-    description: string;
+    description: string | null;
     type: string;
-    dueDate: string;
+    dueDate: string | null;
     priority: string;
     status: string;
     marksObtained: number;
     marksTotal: number;
     feedback: string;
-    // explicit exclusion of workspaceId for safety
+    /** null = a general task. A course id must exist. */
+    workspaceId: number | null;
   }>) {
+    if (data.workspaceId !== undefined && data.workspaceId !== null) {
+      const ws = await db.select().from(workspaces).where(eq(workspaces.id, data.workspaceId)).get();
+      if (!ws) throw new Error(`Workspace with id ${data.workspaceId} does not exist.`);
+    }
     return db.update(tasks).set(data).where(eq(tasks.id, id)).returning().get();
   }
 
+  /** Deletes the task and returns the row, so Undo can put it back with restoreTask. */
   static async deleteTask(id: number) {
-    return db.delete(tasks).where(eq(tasks.id, id)).run();
+    const row = await db.select().from(tasks).where(eq(tasks.id, id)).get();
+    db.delete(tasks).where(eq(tasks.id, id)).run();
+    return row ?? null;
+  }
+
+  /** Undo a delete: the same row, same id, so links to it (alerts) still work. Its course must still exist. */
+  static async restoreTask(row: typeof tasks.$inferSelect) {
+    if (row.workspaceId !== null) {
+      const ws = await db.select().from(workspaces).where(eq(workspaces.id, row.workspaceId)).get();
+      if (!ws) throw new Error('Its course was deleted, so the task cannot come back.');
+    }
+    return db.insert(tasks).values(row).onConflictDoNothing().returning().get();
   }
 }
