@@ -7,7 +7,7 @@ import { isOwnAvatar } from '../../core/fs/names';
 import { initials } from '../../domains/profile/form';
 
 /** Absolute path of the profile photo, or null for anything this app did not write. */
-export function avatarUri(file: string | null | undefined): string | null {
+function avatarUri(file: string | null | undefined): string | null {
   if (!isOwnAvatar(file) || !FileSystem.documentDirectory) return null;
   return `${FileSystem.documentDirectory.replace(/\/$/, '')}/${file}`;
 }

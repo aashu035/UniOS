@@ -172,7 +172,7 @@ export function scanErrorKind(e: unknown): ScanErrorKind {
   return 'other';
 }
 
-export const GEMINI_KEY_FORMAT = /^AIza[0-9A-Za-z_-]{35}$/;
+const GEMINI_KEY_FORMAT = /^AIza[0-9A-Za-z_-]{35}$/;
 export const isGeminiKey = (k: string) => GEMINI_KEY_FORMAT.test(k.trim());
 /** "AIza••••••••••••7Qx": enough to recognise the key, not enough to use it. */
 export const maskKey = (k: string) => (k.length > 7 ? `${k.slice(0, 4)}${'•'.repeat(12)}${k.slice(-3)}` : '•'.repeat(12));

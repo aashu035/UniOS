@@ -239,6 +239,7 @@ jest.mock('../core/db/client', () => ({
 }));
 
 import { WorkspaceRepository } from '../domains/workspace/repository';
+import { CourseOverviewService } from '../domains/workspace/CourseOverviewService';
 import { CalendarService } from '../domains/calendar/service';
 import { AttendanceRepository } from '../domains/attendance/repository';
 import { TaskRepository } from '../domains/task/repository';
@@ -338,17 +339,17 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     expect(schedLab.end_time).toBe('16:00');
   });
 
-  // TEST 2 — Course read-back (getCompleteWorkspace)
-  it('Test 2 — Course read-back: getCompleteWorkspace returns enriched components, faculty, venue, schedules', async () => {
+  // TEST 2 — Course read-back (CourseOverviewService.getCourseDetail)
+  it('Test 2 — Course read-back: getCourseDetail returns enriched components, faculty, venue, schedules', async () => {
     const wsRow = sqlite.prepare("SELECT id FROM workspaces WHERE name = 'Embedded System'").get() as any;
     expect(wsRow).toBeDefined();
 
-    const complete = await WorkspaceRepository.getCompleteWorkspace(wsRow.id);
+    const complete = await CourseOverviewService.getCourseDetail(wsRow.id);
     expect(complete).toBeDefined();
-    expect(complete!.workspace.name).toBe('Embedded System');
-    expect(complete!.workspace.code).toBe('ESECE301D');
-    expect(complete!.workspace.credits).toBe(4);
-    expect(complete!.workspace.icon).toBe('cpu');
+    expect(complete!.course.name).toBe('Embedded System');
+    expect(complete!.course.code).toBe('ESECE301D');
+    expect(complete!.course.credits).toBe(4);
+    expect(complete!.course.iconId).toBe('cpu');
 
     // Primary faculty & venue (resolved from active assignment, eliminating Root Cause A)
     // We are no longer exposing legacy faculty and venue directly on complete
@@ -356,20 +357,20 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
 
     // Components array with active faculty and venue resolved per component
     expect(complete!.components).toHaveLength(2);
-    const theoryComp = complete!.components.find((c: any) => c.type === 'theory');
-    const labComp = complete!.components.find((c: any) => c.type === 'lab');
+    const theoryComp = complete!.components.find((c: any) => c.type === 'theory')!;
+    const labComp = complete!.components.find((c: any) => c.type === 'lab')!;
 
     expect(theoryComp).toBeDefined();
-    expect(theoryComp.activeFacultyName).toBe('Dr. RD');
-    expect(theoryComp.activeVenueName).toBe('JCB 213');
+    expect(theoryComp.activeFaculty?.name).toBe('Dr. RD');
+    expect(theoryComp.activeVenue?.name).toBe('JCB 213');
     expect(theoryComp.durationMinutes).toBe(60);
     expect(theoryComp.schedules).toHaveLength(1);
     expect(theoryComp.schedules[0].dayOfWeek).toBe(1);
     expect(theoryComp.schedules[0].startTime).toBe('09:00');
 
     expect(labComp).toBeDefined();
-    expect(labComp.activeFacultyName).toBe('Dr. XYZ');
-    expect(labComp.activeVenueName).toBe('Lab X');
+    expect(labComp.activeFaculty?.name).toBe('Dr. XYZ');
+    expect(labComp.activeVenue?.name).toBe('Lab X');
     expect(labComp.durationMinutes).toBe(120);
     expect(labComp.schedules).toHaveLength(1);
     expect(labComp.schedules[0].dayOfWeek).toBe(3);
@@ -531,8 +532,8 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
       ],
     });
 
-    const complete = await WorkspaceRepository.getCompleteWorkspace(freshCourse.id);
-    expect(complete!.workspace.targetAttendance).toBe(75.0);
+    const complete = await CourseOverviewService.getCourseDetail(freshCourse.id);
+    expect(complete!.course.targetAttendance).toBe(75.0);
 
     // Initial state: 0 records
     const initialHistory = await AttendanceRepository.getAttendanceHistory(freshCourse.id);
@@ -557,7 +558,7 @@ describe('Phase B.5 — Forensic Rectification Verification Suite', () => {
     expect(updatedMetrics.total).toBe(1);
 
     // Target attendance remains unchanged at 75.0
-    expect(complete!.workspace.targetAttendance).toBe(75.0);
+    expect(complete!.course.targetAttendance).toBe(75.0);
   });
 
   // TEST 8 — Task persistence and status toggle

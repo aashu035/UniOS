@@ -11,7 +11,7 @@ export type ResultRow = { kind: 'course' | 'task' | 'file' | 'note'; id: number;
 export type ResultGroup = { key: 'courses' | 'tasks' | 'files' | 'notes'; title: string; rows: ResultRow[] };
 
 const PER_GROUP = 30;
-export const RECENT_MAX = 8;
+const RECENT_MAX = 8;
 
 /** Split `text` into plain and matching parts, for highlighting. */
 export function highlight(text: string, q: string): Seg[] {

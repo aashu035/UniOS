@@ -21,16 +21,6 @@ export class AttendanceRepository {
       .orderBy(desc(attendance.date));
   }
 
-  static async getPortalAttendance(workspaceId: number) {
-    const result = await db.select()
-      .from(portalAttendance)
-      .where(eq(portalAttendance.workspaceId, workspaceId))
-      .orderBy(desc(portalAttendance.checkedDate))
-      .limit(1);
-    
-    return result[0] || null;
-  }
-
   static async markAttendance(
     workspaceId: number, 
     date: string, 

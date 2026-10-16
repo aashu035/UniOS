@@ -167,6 +167,7 @@ import { eq } from 'drizzle-orm';
 import { workspaces, courseComponents, componentFacultyAssignments, componentVenueAssignments } from '../domains/workspace/model';
 import { recurringSchedules } from '../domains/calendar/model';
 import { WorkspaceRepository } from '../domains/workspace/repository';
+import { CourseOverviewService } from '../domains/workspace/CourseOverviewService';
 import { semesters } from '../domains/semester/model';
 import { faculty } from '../domains/faculty/model';
 import { venues } from '../domains/venue/model';
@@ -247,35 +248,35 @@ describe('Course Setup Lineage', () => {
     await db.insert(attendance).values({ occurrenceId: 'lab_occ_1', identityStatus: 'resolved', componentId: labId, date: '2025-01-05', status: 'present' });
 
     // 4. Extract Canonical View Model
-    const viewData = await WorkspaceRepository.getCompleteWorkspace(newCourse.id);
+    const viewData = await CourseOverviewService.getCourseDetail(newCourse.id);
     expect(viewData).not.toBeNull();
 
     // Verify Identity
-    expect(viewData!.workspace.name).toBe('Lineage Course');
-    expect(viewData!.workspace.code).toBe('LIN-101');
-    expect(viewData!.workspace.targetAttendance).toBe(75);
+    expect(viewData!.course.name).toBe('Lineage Course');
+    expect(viewData!.course.code).toBe('LIN-101');
+    expect(viewData!.course.targetAttendance).toBe(75);
 
     // Verify Hierarchy
     expect(viewData!.components.length).toBe(2);
 
-    const theoryComp = viewData!.components.find((c: any) => c.type === 'theory');
-    const labComp = viewData!.components.find((c: any) => c.type === 'lab');
+    const theoryComp = viewData!.components.find((c: any) => c.type === 'theory')!;
+    const labComp = viewData!.components.find((c: any) => c.type === 'lab')!;
 
     // Theory assertions
-    expect(theoryComp.activeFacultyName).toBe('Dr. Theory');
-    expect(theoryComp.activeVenueName).toBe('Theory Hall');
+    expect(theoryComp.activeFaculty?.name).toBe('Dr. Theory');
+    expect(theoryComp.activeVenue?.name).toBe('Theory Hall');
     expect(theoryComp.schedules.length).toBe(2);
-    expect(theoryComp.attendanceMetrics.present).toBe(1);
-    expect(theoryComp.attendanceMetrics.total).toBe(2);
-    expect(theoryComp.attendanceMetrics.percentage).toBe(50); // 1/2
+    expect(theoryComp.attendance.present).toBe(1);
+    expect(theoryComp.attendance.present + theoryComp.attendance.absent + theoryComp.attendance.exempt).toBe(2);
+    expect(theoryComp.attendance.actualPercentage).toBe(50); // 1/2
 
     // Lab assertions
-    expect(labComp.activeFacultyName).toBe('Prof. Lab');
-    expect(labComp.activeVenueName).toBe('Lab 101');
+    expect(labComp.activeFaculty?.name).toBe('Prof. Lab');
+    expect(labComp.activeVenue?.name).toBe('Lab 101');
     expect(labComp.schedules.length).toBe(1);
-    expect(labComp.attendanceMetrics.present).toBe(1);
-    expect(labComp.attendanceMetrics.total).toBe(1);
-    expect(labComp.attendanceMetrics.percentage).toBe(100); // 1/1
+    expect(labComp.attendance.present).toBe(1);
+    expect(labComp.attendance.present + labComp.attendance.absent + labComp.attendance.exempt).toBe(1);
+    expect(labComp.attendance.actualPercentage).toBe(100); // 1/1
   });
 
   it('exposes explicit nulls and empty arrays for empty states without manufacturing defaults', async () => {
@@ -294,19 +295,18 @@ describe('Course Setup Lineage', () => {
       ]
     });
 
-    const viewData = await WorkspaceRepository.getCompleteWorkspace(newCourse.id);
+    const viewData = await CourseOverviewService.getCourseDetail(newCourse.id);
     
     // Verify Identity
-    expect(viewData!.workspace.name).toBe('Empty Course');
+    expect(viewData!.course.name).toBe('Empty Course');
 
     const comp = viewData!.components[0];
     
     // Verify pure empty state
-    expect(comp.activeFacultyName).toBeNull();
-    expect(comp.activeVenueName).toBeNull();
+    expect(comp.activeFaculty).toBeNull();
+    expect(comp.activeVenue).toBeNull();
     expect(comp.schedules).toEqual([]);
-    expect(comp.attendanceMetrics.hasData).toBe(false);
-    expect(comp.attendanceMetrics.present).toBe(0);
-    expect(comp.attendanceMetrics.total).toBe(0);
+    expect(comp.attendance.actualPercentage).toBeNull(); // no data: never a manufactured 75 or 0
+    expect([comp.attendance.present, comp.attendance.absent, comp.attendance.exempt]).toEqual([0, 0, 0]);
   });
 });

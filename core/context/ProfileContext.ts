@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 
 export const ProfileContext = createContext<{
   hasProfile: boolean | null;
@@ -8,4 +8,4 @@ export const ProfileContext = createContext<{
   setHasProfile: () => {},
 });
 
-export const useProfile = () => useContext(ProfileContext);
+

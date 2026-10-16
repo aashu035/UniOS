@@ -63,7 +63,7 @@ export function parseLegend(text: string): CourseInfo[] {
 }
 
 /** The group family from the student's own group: "CSE-2" → "CSE". */
-export const groupPrefix = (group: string) => (/^([A-Z]+)-?\d+$/i.exec(group.trim())?.[1] ?? '').toUpperCase();
+const groupPrefix = (group: string) => (/^([A-Z]+)-?\d+$/i.exec(group.trim())?.[1] ?? '').toUpperCase();
 
 const tokenize = (text: string) => text.replace(/[\n,;]+/g, ' ').split(/\s+/).map((t) => t.trim().toUpperCase()).filter(Boolean);
 

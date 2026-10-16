@@ -103,15 +103,4 @@ describe('NotificationRepository — CRUD + unread semantics', () => {
     const rows = await NotificationRepository.list();
     expect(rows.length).toBe(3);
   });
-
-  it('listUnread returns only unread rows in newest-first order', async () => {
-    // Same second-level precision issue as the previous test; use explicit timestamps.
-    sqlite.exec(`INSERT INTO notifications (id, title, message, type, is_read, action_url, created_at) VALUES
-      (1, 'a', 'm', 'info', 0, NULL, '2025-01-01T10:00:00.000Z'),
-      (2, 'b', 'm', 'info', 0, NULL, '2025-01-01T11:00:00.000Z'),
-      (3, 'c', 'm', 'info', 0, NULL, '2025-01-01T12:00:00.000Z');`);
-    await NotificationRepository.markRead(2);
-    const unread = await NotificationRepository.listUnread();
-    expect(unread.map((r: any) => r.id)).toEqual([3, 1]);
-  });
 });

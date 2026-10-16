@@ -165,7 +165,7 @@ export function daysBetween(fromIso: string, toIso: string): number {
   return Math.round((b - a) / 86400000);
 }
 
-export function weekday(iso: string): number {
+function weekday(iso: string): number {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d).getDay();
 }

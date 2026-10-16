@@ -62,20 +62,6 @@ export class NotificationService {
     return null;
   }
 
-  /**
-   * A class is cancelled or rescheduled (exception). Triggered when the
-   * CalendarService produces an effective exception. Placeholder for now —
-   * the wiring is done in the next phase.
-   */
-  static async scheduleException(workspaceId: number, componentType: string, date: string, action: 'cancel' | 'reschedule') {
-    return NotificationRepository.create({
-      title: action === 'cancel' ? 'Class cancelled' : 'Class rescheduled',
-      message: `Your ${componentType} class on ${date} was ${action === 'cancel' ? 'cancelled' : 'rescheduled'}.`,
-      type: 'alert',
-      actionUrl: `/course/${workspaceId}`,
-    });
-  }
-
   // ─── On-launch scan ────────────────────────────────────────────────────
 
   /**
@@ -125,7 +111,6 @@ export class NotificationService {
   }
 }
 
-export { NotificationType };
 
 /** Older alerts link to screens that were replaced; send them to the new ones. */
 export function modernLink(url: string): string {

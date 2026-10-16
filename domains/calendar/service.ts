@@ -32,19 +32,6 @@ export interface EffectiveOccurrence {
   unsure?: boolean;
 }
 
-export interface AcademicWeatherFacts {
-  upcomingClasses: number;
-  labs: number;
-  deadlines: number;
-  exams: number;
-  attendanceRisks: number;
-}
-
-export interface AcademicWeatherState {
-  state: 'Light week' | 'Balanced week' | 'Busy week' | 'Heavy week';
-  description: string;
-}
-
 export class CalendarService {
   /**
    * Generates the effective schedule for a given date range by merging:
@@ -277,30 +264,4 @@ export class CalendarService {
     return occurrences;
   }
 
-  /**
-   * Deterministic logic to calculate Academic Weather based on provided facts.
-   */
-  static calculateAcademicWeather(facts: AcademicWeatherFacts): AcademicWeatherState {
-    if (facts.exams > 0 || facts.attendanceRisks > 0) {
-      return { 
-        state: 'Heavy week', 
-        description: `${facts.exams} exams, ${facts.deadlines} deadlines, ${facts.attendanceRisks} attendance risk(s).` 
-      };
-    } else if (facts.labs > 2 || facts.deadlines > 3) {
-      return { 
-        state: 'Busy week', 
-        description: `${facts.labs} labs, ${facts.deadlines} deadlines.` 
-      };
-    } else if (facts.upcomingClasses < 10 && facts.deadlines === 0) {
-      return { 
-        state: 'Light week', 
-        description: 'Take it easy.' 
-      };
-    } else {
-      return { 
-        state: 'Balanced week', 
-        description: `${facts.upcomingClasses} classes, ${facts.deadlines} deadlines.` 
-      };
-    }
-  }
 }

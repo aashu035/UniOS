@@ -31,7 +31,32 @@ The report below is unchanged: it describes commit `93e74c4`. This table shows w
 | TEST-05 | FIXED | | `schedule_marks.test.ts` › "input checks" |
 | TEST-06 | FIXED | | `break_it.test.ts` checks the row count and that the oldest teacher is used |
 | TEST-07 | FIXED | also fixed `resource.name` → `resource.title` in the error text | `__tests__/backup_relational.test.ts` |
-| TEST-03, TEST-04, DUP-*, DEAD-*, CPLX-*, OLD-* | OPEN | see Section 12 | |
+| TEST-03, DUP-01 | FIXED | `getCompleteWorkspace` and `getWorkspaceById` removed; the 4 tests now read `CourseOverviewService.getCourseDetail` (the one resolver the app uses) | `forensic_rectification.test.ts` Test 2 and the target check, `course_setup_lineage.test.ts` (2 tests); the empty state now asserts `activeFaculty`/`activeVenue` are `null` and `actualPercentage` is `null` |
+| DEAD-01a/b/d/e, DEAD-02, DEAD-05, DEAD-07 | FIXED | Removed, each after a grep showing 0 references in `app/ components/ domains/ core/ __tests__/` (Section "Cleanup, 2026-10-16" below) | `npm run check` (tsc + 379 tests) |
+| DEAD-06 | FIXED | `weekday`, `groupPrefix`, the `NotificationType` re-export, `USER_TABLES_CHILD_FIRST` are no longer exported | `npx tsc --noEmit`; knip |
+| DUP-02 | OBSOLETE | `app/resource/[id].tsx` was rewritten; no inline link regex remains (`grep -rn "https?:" app/resource` shows only `isWebLink` users) | |
+| DUP-03 | FIXED | `TaskService` keeps only `createTask`; the other 6 pass-throughs had 0 callers | `npm run check` |
+| CPLX-04 | FIXED (partly) | see DUP-03; `TaskService.createTask` stays because it sends the notification | |
+| OLD-03 | FIXED | knip and `grep colors.light` show no screen on the old components; 13 unused old components and 6 unused token files deleted | |
+| TEST-04, DUP-04, CPLX-01, CPLX-02, CPLX-03, OLD-01, OLD-02 | OPEN | see "Cleanup, 2026-10-16" | |
+
+## Cleanup, 2026-10-16
+
+Method: for each candidate, `grep -rnE "\.name\b|\bname\(" app components domains core` (production) and `__tests__` (tests), excluding the definition. A method is removed only when production has 0 references. Knip 5 (`knip --config`, the audit's config) was re-run before and after.
+
+| Removed | Evidence | Why safe |
+|---|---|---|
+| `WorkspaceRepository`: `count`, `getWorkspaceById`, `getCompleteWorkspace`, `getTimelineEvents`, `addComponentToWorkspace`, `updateComponent`, `updateRecurringSchedule` | 0 production references; the 2 test files that read `getCompleteWorkspace` were ported (ported assertions pass) | One course resolver remains (`CourseOverviewService`) |
+| `domains/attendance/service.ts` (whole file) | 0 references anywhere. It held a second attendance write path (`markLocalAttendance`) without the validation, transaction and reconcile of `domains/academic/actions.ts` | A footgun, not a feature: the portal read is done in `snapshot.ts` |
+| `AttendanceRepository.getPortalAttendance`, `TaskRepository.getTasksForWorkspace/getPendingTasks`, `NotificationRepository.listUnread` (+ its test), `NotificationService.scheduleException`, `CalendarService.calculateAcademicWeather` (+ 2 interfaces) | 0 production references | `scheduleException` was marked "Placeholder for now" in the August code |
+| 15 unused files: 13 old components (`components/avatar|buttons|cards|layout|ui/*`), `domains/semester/hooks.ts`, `domains/workspace/hooks.ts`; 6 token files (`spacing`, `radius`, `typography`, `elevation`, `opacity`, `surface`) | knip "unused files"; per-file grep for importers (only other dead files import them); `from '.*tokens'` imports only `colors` | They were used by screens the redesign replaced |
+
+Added: `markdown-it` as an explicit dependency at `10.0.0` (knip "unlisted dependency"): `components/viewer/markdownParser.ts` imports it directly, and it was only present through `react-native-markdown-display`. The lockfile changed by one line; `npm ls markdown-it` shows one copy, deduped.
+
+Still open, with the evidence:
+- **OLD-01** (edit a course's slots): `grep -n "dayOfWeek\|recurring" app/course/edit.tsx` returns nothing. **OLD-02** (room field and teacher suggestions in setup): `grep -n "venue\|Room" app/course/setup.tsx` returns nothing. Both are features. No design in the Claude Design project covers them (checked: the three handoff files and the `Uni*.dc.html` screens), so I have not invented one. `updateComponent` and `updateRecurringSchedule` were deleted with 0 callers; `git show` of this commit restores them.
+- **CPLX-01..03, DUP-04, TEST-04**: not changed. `getEffectiveSchedule` (CCN 66) is the read path every attendance number depends on. It is now protected by the schedule property test, but splitting 217 lines without a reason other than length adds risk for no user-visible gain.
+- Knip still lists `expo-dev-client`, `punycode`, `babel-plugin-inline-import`, `expo-mcp` (false positives, evidence in Section 9: DEAD-K2..K5), `playwright` and 3 binaries (by design), and 39 exported *types* (no runtime cost; left).
 
 To re-run mutation testing: `npx -p @stryker-mutator/core@8.7.1 -p @stryker-mutator/jest-runner@8.7.1 stryker run audit/stryker.conf.json` (output in `audit/mutation/`, gitignored).
 

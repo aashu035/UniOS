@@ -16,7 +16,7 @@ async function ensureForeignKeysEnabled(): Promise<void> {
 }
 
 /** Every backed-up table, children before parents, so deletes respect foreign keys. */
-export const USER_TABLES_CHILD_FIRST: readonly BackupTableKey[] = [
+const USER_TABLES_CHILD_FIRST: readonly BackupTableKey[] = [
   'day_rules', 'tutor_messages', 'tutor_conversations', 'material_index_permissions', 'ai_connections',
   'learning_profiles', 'notifications', 'portal_attendance', 'attendance', 'resources', 'tasks',
   'schedule_exceptions', 'recurring_schedules', 'calendar_events', 'component_faculty_assignments',

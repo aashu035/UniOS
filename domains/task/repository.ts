@@ -12,20 +12,6 @@ export class TaskRepository {
     return await db.select().from(tasks).where(eq(tasks.id, id)).get();
   }
 
-  static async getTasksForWorkspace(workspaceId: number) {
-    return await db.select()
-      .from(tasks)
-      .where(eq(tasks.workspaceId, workspaceId))
-      .orderBy(prioritySort, asc(tasks.dueDate));
-  }
-
-  static async getPendingTasks() {
-    return await db.select()
-      .from(tasks)
-      .where(eq(tasks.status, 'pending'))
-      .orderBy(prioritySort, asc(tasks.dueDate));
-  }
-
   static async getTasksDueSoon() {
     // Due today or earlier. "Before tomorrow" also covers "YYYY-MM-DD HH:MM" today.
     const tomorrow = addDays(getLocalDateString(new Date()), 1);

@@ -30,40 +30,4 @@ export class TaskService {
     return task;
   }
 
-  static async updateTask(id: number, params: any) {
-    return TaskRepository.updateTask(id, params);
-  }
-
-  static async updateTaskStatus(id: number, status: Parameters<typeof TaskRepository.updateTaskStatus>[1], taskTitle?: string, workspaceId?: number) {
-    const result = await TaskRepository.updateTaskStatus(id, status);
-    
-    // Dispath background side-effect for completion
-    if (status === 'submitted' && taskTitle && workspaceId !== undefined) {
-      NotificationService.taskCompleted({
-        id,
-        title: taskTitle,
-        workspaceId,
-      }).catch((e) => {
-        console.warn('Failed to dispatch task completion notification', e);
-      });
-    }
-    
-    return result;
-  }
-
-  static async deleteTask(id: number) {
-    return TaskRepository.deleteTask(id);
-  }
-
-  static async getTaskById(id: number) {
-    return TaskRepository.getTaskById(id);
-  }
-
-  static async getAllTasksWithWorkspaces() {
-    return TaskRepository.getAllTasksWithWorkspaces();
-  }
-
-  static async getTasksDueSoon() {
-    return TaskRepository.getTasksDueSoon();
-  }
 }

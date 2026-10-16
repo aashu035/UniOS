@@ -44,20 +44,6 @@ export class NotificationRepository {
   }
 
   /**
-   * List only unread notifications (used by the bell badge).
-   * Cheap: indexed on is_read + ordered by created_at.
-   */
-  static async listUnread(limit = 50) {
-    return await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.isRead, false))
-      .orderBy(desc(notifications.createdAt))
-      .limit(limit)
-      .all();
-  }
-
-  /**
    * Count unread notifications. The home screen bell dot uses this.
    * Returns 0 if there are none.
    */

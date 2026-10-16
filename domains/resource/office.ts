@@ -18,7 +18,7 @@ export const MAX_FILE = 25 * 1024 * 1024;
 const MAX_PART = 20 * 1024 * 1024;
 const MAX_TOTAL = 60 * 1024 * 1024;
 export const MAX_ROWS = 1000;
-export const MAX_COLS = 60;
+const MAX_COLS = 60;
 const MAX_BLOCKS = 5000;
 const MAX_SLIDES = 300;
 

@@ -21,9 +21,6 @@ export function viewerFor(ext: string): ViewerKind {
   return BY_KIND[k] ?? 'external';
 }
 
-/** Formats the phone's own player usually cannot decode (the design's "Can't open" example). */
-export const LIKELY_UNPLAYABLE = new Set(['wmv', 'avi']);
-
 /** The app to suggest when nothing on the phone opens a file. Searched by name in the store, so no package id is assumed. */
 export function suggestedApp(ext: string): string | null {
   const e = ext.toLowerCase();

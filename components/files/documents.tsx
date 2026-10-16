@@ -146,7 +146,7 @@ function TableView({ rows }: { rows: string[][] }) {
 // ─── Excel / CSV ─────────────────────────────────────────────────────────────
 
 const ROW_H = 44, HEAD_H = 40;
-export const columnWidths = (rows: string[][], cols: number): number[] =>
+const columnWidths = (rows: string[][], cols: number): number[] =>
   Array.from({ length: cols }, (_, c) => Math.max(64, Math.min(240, 24 + 8 * Math.max(1, ...rows.slice(0, 60).map((r) => (r[c] ?? '').length)))));
 
 /** A grid with the first row and first column frozen; scrolls both ways. Rows are virtualised. */
