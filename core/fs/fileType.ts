@@ -46,3 +46,11 @@ export const extOf = (nameOrUri: string | null | undefined) => /\.([A-Za-z0-9]{1
 
 /** What kind of file this is, from its extension. Decides the viewer and the type tile. */
 export const kindOf = (nameOrUri: string | null | undefined): FileKind => KIND_BY_EXT[extOf(nameOrUri)] ?? 'other';
+
+/** The MIME type to hand another app for an extension ("pdf" → "application/pdf"); "*\/*" when unknown. */
+export function mimeFor(ext: string): string {
+  const e = ext.toLowerCase();
+  if (e === 'jpeg') return 'image/jpeg';
+  if (e === 'm4v') return 'video/mp4';
+  return Object.keys(BY_MIME).find((m) => BY_MIME[m] === e) ?? '*/*';
+}

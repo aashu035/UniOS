@@ -235,6 +235,7 @@ function RootLayout() {
               <Stack.Screen name="(main)" />
               <Stack.Screen name="onboarding" />
               <Stack.Screen name="search" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="add" options={{ presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }} />
               <Stack.Screen name="course/edit" />
             </Stack>
           </ToastProvider>

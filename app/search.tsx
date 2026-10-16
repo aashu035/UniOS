@@ -62,6 +62,7 @@ export default function Search() {
     remember();
     if (r.kind === 'course') router.push(`/course/${r.id}` as any);
     else if (r.kind === 'task') router.push(`/task/edit?id=${r.id}` as any);
+    else if (r.kind === 'note') router.push(`/note/${r.id}` as any);
     else router.push(`/resource/${r.id}` as any);
   };
 

@@ -35,7 +35,7 @@ export default function Hub() {
         <T w={600} c={p.muted} size={13}>{data ? `${data.files.length} files · ${data.courses.length} courses` : ' '}</T>
         <T w={800} size={32} style={{ letterSpacing: -1, marginTop: 2, lineHeight: 38 }}>Knowledge Hub</T>
       </View>
-      <RoundButton icon="upload" label="Add file" onPress={() => router.push(picked ? `/resource/add?workspaceId=${picked}` as any : '/resource/add')} />
+      <RoundButton icon="upload" label="Add file" onPress={() => router.push(picked ? `/add?workspaceId=${picked}` as any : '/add')} />
     </View>
   );
   if (!data) return <Screen tabs={false}>{header}</Screen>;
@@ -135,7 +135,7 @@ export default function Hub() {
           {sel && !groups.length ? (
             <View style={{ paddingHorizontal: 20, marginTop: 14 }}>
               <Empty icon="upload" title={filter === 'all' ? `No files in ${sel.short} yet` : 'Nothing matches this filter'}
-                body="Add PDFs, photos of the board, notes and links." action="Add file" onAction={() => router.push(`/resource/add?workspaceId=${sel.id}` as any)} />
+                body="Add PDFs, photos of the board, notes and links." action="Add file" onAction={() => router.push(`/add?workspaceId=${sel.id}` as any)} />
             </View>
           ) : null}
 

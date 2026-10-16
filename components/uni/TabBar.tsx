@@ -26,9 +26,9 @@ const ORDER = ['today', 'schedule', null, 'work', 'menu'] as const;
 
 const ACTIONS: Array<{ label: string; icon: IconName; color: string; href: string }> = [
   { label: 'Mark attendance', icon: 'check-check', color: '#16A34A', href: '/attendance/mark' },
-  { label: 'Add a note', icon: 'notebook-pen', color: hue.violet, href: '/resource/add' },
+  { label: 'Add a note', icon: 'notebook-pen', color: hue.violet, href: '/note/new' },
   { label: 'Add task', icon: 'list-plus', color: '#D97706', href: '/task/add' },
-  { label: 'Upload file', icon: 'upload', color: hue.blue, href: '/resource/add' },
+  { label: 'Add file or note', icon: 'file-plus', color: hue.blue, href: '/add' },
   { label: 'Add exam', icon: 'graduation-cap', color: '#DC2626', href: '/task/add?type=exam' },
   { label: 'Schedule change', icon: 'calendar-clock', color: hue.cyan, href: '/schedule/change' },
 ];

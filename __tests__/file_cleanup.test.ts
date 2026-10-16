@@ -43,15 +43,21 @@ it('deleting a course removes its files, but not one another course still uses',
   expect(left).toEqual([3, 5]);
 });
 
+/** What deleting a file in the viewer does once the Undo window has passed (FileActions → purgeLater). */
+const deleteFile = async (id: number) => {
+  const row = ResourceRepository.remove(id);
+  await ResourceRepository.removeFileIfUnused(row?.uri);
+};
+
 it('deleting the last row that uses a shared file removes the file', async () => {
-  await ResourceRepository.deleteResource(2);
+  await deleteFile(2);
   expect(deleted).toEqual([]);
-  await ResourceRepository.deleteResource(3);
+  await deleteFile(3);
   expect(deleted).toEqual(['0a1b2c3d-2222-4aaa-8bbb-000000000002.pdf']);
 });
 
 it('never touches links or paths that are not stored uploads', async () => {
-  await ResourceRepository.deleteResource(4);
+  await deleteFile(4);
   await ResourceRepository.removeFileIfUnused('../../etc/passwd');
   await ResourceRepository.removeFileIfUnused('file:///data/user/0/x.pdf');
   await ResourceRepository.removeFileIfUnused(null);

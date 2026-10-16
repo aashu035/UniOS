@@ -49,12 +49,13 @@ export const FileManager = {
    * @param sourceUri The temporary URI from the document picker
    * @param extension The file extension (e.g., '.pdf')
    * @param existingHashFilename If provided, skips the physical copy and re-uses this UUID filename
+   * @param knownHash The file's SHA-256 when the caller already worked it out
    */
-  async saveFile(sourceUri: string, extension: string, existingHashFilename?: string): Promise<{ filename: string, hash: string, sizeBytes: number }> {
+  async saveFile(sourceUri: string, extension: string, existingHashFilename?: string, knownHash?: string): Promise<{ filename: string, hash: string, sizeBytes: number }> {
     await this.init();
     
     // Hash the file first
-    const hash = await this.generateFileHash(sourceUri);
+    const hash = knownHash ?? await this.generateFileHash(sourceUri);
     
     // Get file size
     const fileInfo = await FileSystem.getInfoAsync(sourceUri);

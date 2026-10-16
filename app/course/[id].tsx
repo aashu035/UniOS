@@ -17,11 +17,11 @@ const TYPE_LABEL: Record<string, string> = { theory: 'Theory', lab: 'Lab', tutor
 export default function CourseDetail() {
   const p = useUni();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: string }>();
   const courseId = Number(id);
   const { data, reload } = useAcademic();
   const [detail, setDetail] = useState<CourseOverview | null>(null);
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>(tabParam === 'files' || tabParam === 'tasks' || tabParam === 'att' ? tabParam : 'overview');
   const [toastMsg, setToastMsg] = useState<{ msg: string; undo?: () => Promise<void> } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toast = (msg: string, undo?: () => Promise<void>) => {
@@ -158,7 +158,7 @@ export default function CourseDetail() {
               );
             })}
           </ListCard>
-        ) : <Empty icon="upload" title="No files yet" body="Add PDFs, notes and links for this course." action="Add file" onAction={() => router.push({ pathname: '/resource/add', params: { workspaceId: String(c.id) } })} />)}
+        ) : <Empty icon="upload" title="No files yet" body="Add PDFs, notes and links for this course." action="Add file" onAction={() => router.push({ pathname: '/add', params: { workspaceId: String(c.id) } })} />)}
 
         {tab === 'tasks' && (tasks.length ? (
           <View style={{ gap: 10 }}>

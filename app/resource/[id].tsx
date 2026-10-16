@@ -21,6 +21,10 @@ export default function ResourceDetail() {
         const [res] = await db.select().from(resources).where(eq(resources.id, parseInt(id as string, 10)));
         // A file (PDF, photo, video, document) opens in the viewer instead of this text page,
         // which used to say "This resource has no text content" for every file.
+        if (res?.type === 'note') {
+          router.replace(`/note/${res.id}` as any);
+          return;
+        }
         if (res?.uri && !/^https?:\/\//i.test(res.uri)) {
           router.replace({ pathname: '/resource/viewer', params: { filename: res.uri, title: res.title } });
           return;
