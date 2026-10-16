@@ -30,7 +30,7 @@
       "expo-sharing",
       "expo-status-bar",
       "expo-secure-store",
-      "expo-video",
+      ["expo-video", { "supportsBackgroundPlayback": true, "supportsPictureInPicture": true }],
       [
         "expo-image-picker",
         {

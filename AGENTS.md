@@ -41,6 +41,7 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 - `core/settings/prefs.ts`: small UI preferences (recent searches) in `expo-sqlite/kv-store` under the `unios.` prefix. `clearAllData` wipes them.
 - `components/uni/form.tsx`, `Sheet.tsx`, `Toast.tsx`: form pieces, bottom sheets and the undo toast used by the redesigned full-screen pages.
 - `domains/timetable/scan.ts`: the AI timetable scan as pure functions (check Gemini's reply, filter by group, review cards, clashes, error kinds, quota reset time). The Gemini call is `scanTimetable` in `core/ai/timetableParser.ts`; the key screen is `app/settings/gemini-key.tsx`.
+- File viewers: `app/resource/viewer.tsx` picks a body by extension (`domains/resource/viewer.ts`). `domains/resource/office.ts` reads docx, xlsx, csv and pptx (fflate + `core/fs/xml.ts`) with size limits, because shared files are untrusted. Notes live in `app/note/[id].tsx`; + Add in `app/add.tsx` (copy job: `domains/resource/addJob.ts`).
 - `core/fs/FileManager.ts`: uploads live in the app's `resources/` folder under a bare filename (`<uuid>.pdf`) stored in `resources.uri`; identical uploads share one file. Delete through `ResourceRepository.removeFileIfUnused`.
 
 ## Rules that bite

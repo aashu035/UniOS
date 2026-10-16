@@ -20,6 +20,11 @@ export class ResourceRepository {
     return db.select().from(resources).where(eq(resources.id, id)).get();
   }
 
+  /** Every saved file of a course, oldest first (the photo viewer swipes through these). */
+  static listFilesFor(workspaceId: number): Row[] {
+    return db.select().from(resources).where(eq(resources.workspaceId, workspaceId)).orderBy(resources.id).all();
+  }
+
   /** The first saved file with this SHA-256, with its course name, for the duplicate check. */
   static findByHash(hash: string): { title: string; uri: string | null; course: string } | null {
     const r = db.select({ title: resources.title, uri: resources.uri, course: workspaces.name })
