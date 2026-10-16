@@ -40,6 +40,7 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 - `domains/timetable/grammar.ts`: reads printed timetable cell text (`ES-L`, `SC Lab, CSE-2, RS Lab, AS`) into one student's classes. Tested against the DCRUST Section A timetable in `__tests__/timetable_grammar.test.ts`.
 - `core/settings/prefs.ts`: small UI preferences (recent searches) in `expo-sqlite/kv-store` under the `unios.` prefix. `clearAllData` wipes them.
 - `components/uni/form.tsx`, `Sheet.tsx`, `Toast.tsx`: form pieces, bottom sheets and the undo toast used by the redesigned full-screen pages.
+- `domains/timetable/scan.ts`: the AI timetable scan as pure functions (check Gemini's reply, filter by group, review cards, clashes, error kinds, quota reset time). The Gemini call is `scanTimetable` in `core/ai/timetableParser.ts`; the key screen is `app/settings/gemini-key.tsx`.
 - `core/fs/FileManager.ts`: uploads live in the app's `resources/` folder under a bare filename (`<uuid>.pdf`) stored in `resources.uri`; identical uploads share one file. Delete through `ResourceRepository.removeFileIfUnused`.
 
 ## Rules that bite
@@ -69,6 +70,7 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
   - Never rename or renumber existing files: `drizzle/migrations.js` maps them by alias.
   - `__tests__/migration_chain.test.ts` must pass.
 - **NativeWind drops function-form styles** (`style={({ pressed }) => …}`) on native. Use `Tap` from `components/uni/primitives.tsx`.
+- **New native modules need a new dev build** (`npm run build:dev`). Load them through an optional `require` in try/catch, as `core/utils/clipboard.ts` does for `expo-clipboard`, so an older build hides the feature instead of crashing.
 - **No Android `Alert.alert` with more than 3 buttons.** Android silently drops the rest. Use a sheet (see `MarkSheet`).
 - **Dates.** Stored dates are normalised with `normalizeDate` in `domains/academic/logic.ts`. Never call `new Date('YYYY-MM-DD')` for local days; use the helpers in `domains/academic/logic.ts`.
 - **Portal data is read-only.** Never ask for, store or log a student's portal password. The Samarth integration must use an in-app login where the user types it themselves.

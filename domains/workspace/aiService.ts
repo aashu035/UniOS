@@ -1,39 +1,50 @@
-import { ParsedClassSession, TimetableParser } from '../../core/ai/timetableParser';
 import { WorkspaceRepository } from './repository';
-import { planImport } from './importPlan';
+import type { PlannedCourse } from './importPlan';
 import { colors } from '../../tokens';
 
-export interface ImportResult { sessions: ParsedClassSession[]; created: string[]; skipped: string[]; warnings: string[] }
+export interface ImportResult { created: Array<{ code: string; name: string; color: string; classes: number }>; skipped: string[]; warnings: string[] }
+
+const palette = () => colors.subjects.map((s) => s.base);
+
+/** The colours the next `n` new courses get: unused palette colours first, then the palette again. */
+export function previewColors(n: number, used: string[]): string[] {
+  const taken = new Set(used);
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const c = palette().find((x) => !taken.has(x)) ?? palette()[i % palette().length];
+    taken.add(c);
+    out.push(c);
+  }
+  return out;
+}
 
 export class AITimetableService {
   /**
-   * Scan the image and create one course per subject with all of its weekly
-   * slots. Subjects that already exist (same course code) are left untouched,
-   * and one failing course never stops the others.
+   * Create one course per reviewed course with all of its weekly slots. Codes
+   * already in the app are left untouched, and one failing course never stops
+   * the others.
    */
-  static async importTimetable(imageUri: string, userBatch: string): Promise<ImportResult> {
-    const sessions = await TimetableParser.parseTimetableImage(imageUri, userBatch);
-    const { courses, warnings } = planImport(sessions);
-
+  static async importCourses(courses: Array<PlannedCourse & { name: string }>): Promise<ImportResult> {
     const existing = await WorkspaceRepository.getAllWorkspaces();
     const codes = new Set(existing.map((w) => w.code?.toUpperCase()).filter(Boolean));
-    const used = new Set(existing.map((w) => w.color));
-    const palette = colors.subjects.map((s) => s.base);
+    const used = existing.map((w) => w.color).filter((c): c is string => !!c);
 
-    const created: string[] = [];
+    const created: ImportResult['created'] = [];
     const skipped: string[] = [];
+    const warnings: string[] = [];
     for (const c of courses) {
       if (codes.has(c.code)) { skipped.push(c.code); continue; }
-      const color = palette.find((x) => !used.has(x)) ?? palette[created.length % palette.length];
-      used.add(color);
+      const color = previewColors(1, used)[0];
+      used.push(color);
       try {
-        await WorkspaceRepository.buildCompleteWorkspace({ name: c.code, code: c.code, credits: c.credits, color, components: c.components });
-        created.push(c.code);
+        await WorkspaceRepository.buildCompleteWorkspace({ name: c.name || c.code, code: c.code, credits: c.credits, color, components: c.components });
+        codes.add(c.code);
+        created.push({ code: c.code, name: c.name || c.code, color, classes: c.components.reduce((n, p) => n + p.sessions.length, 0) });
       } catch (e: any) {
         if (e?.message === 'NO_ACTIVE_SEMESTER') throw new Error('Create or activate a semester first, then scan again.');
         warnings.push(`${c.code}: could not be added (${e?.message ?? e}).`);
       }
     }
-    return { sessions, created, skipped, warnings };
+    return { created, skipped, warnings };
   }
 }

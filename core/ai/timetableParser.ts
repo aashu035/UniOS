@@ -1,126 +1,91 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import * as FileSystem from 'expo-file-system/legacy';
 import { GeminiKey } from '../settings/aiProviders';
-import { friendlyGeminiError, withGeminiModel } from './geminiModels';
+import { withGeminiModel } from './geminiModels';
+import { readScan, UnreadableTimetable, type ScanData } from '../../domains/timetable/scan';
 
-export interface ParsedClassSession {
-  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
-  startTime: string; // e.g. "08:00 AM"
-  endTime: string;   // e.g. "08:55 AM"
-  subjectCode: string; // e.g. "ES", "CN", "PP"
-  type: 'theory' | 'lab' | 'tutorial';
-  venue?: string;      // e.g. "JCB-213"
-  faculty?: string;    // e.g. "VF-5"
+export type ScanPhase = 'preparing' | 'reading' | 'checking';
+
+const prompt = (section: string, group: string) => `You read a photo of a university class timetable and return its classes as JSON.
+
+1. Layout: days may be rows with periods as columns, or periods as rows with days as columns. Read the header row and first column to tell which, then walk one day at a time.
+2. Times: map each cell to its period header and use the period's real start and end time (e.g. "08:55 AM"). A merged cell spanning several periods (a 2-hour lab) runs from the first period's start to the last period's end. Times are "hh:mm AM/PM".
+3. Empty cells are free time. Skip them.
+4. A cell like "ES-L" is a lecture (theory), "-T" a tutorial, "Lab" or "-P" a lab. The part before the suffix is the course code. Also read the room (e.g. JCB-213) and faculty initials (e.g. VF-5) when shown.
+5. Some cells are split between lab/tutorial groups (e.g. "SC Lab CSE-2 / CN Lab CSE-1"). Return one class per group and put the group name in "group". Classes for the whole section have no group.
+6. ${section ? `If the photo shows several sections, read only "${section}".` : 'If the photo shows several sections, read the first one.'}${group ? ` The student is in group "${group}", but still return every group's classes.` : ''}
+7. "legend": the table that maps course codes to full course names, if the photo has one.
+8. "groups": every lab/tutorial group name that appears in the timetable.
+9. If the photo is not a timetable, return an empty "classes" list.`;
+
+const schema = {
+  type: Type.OBJECT,
+  properties: {
+    groups: { type: Type.ARRAY, items: { type: Type.STRING } },
+    legend: {
+      type: Type.ARRAY,
+      items: { type: Type.OBJECT, properties: { code: { type: Type.STRING }, name: { type: Type.STRING } }, required: ['code', 'name'] },
+    },
+    classes: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          day: { type: Type.STRING, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
+          startTime: { type: Type.STRING, description: 'hh:mm AM/PM, e.g. 08:00 AM' },
+          endTime: { type: Type.STRING, description: 'hh:mm AM/PM, e.g. 08:55 AM' },
+          subjectCode: { type: Type.STRING, description: 'Course code, e.g. ES, CN, PCC-CSE301' },
+          type: { type: Type.STRING, enum: ['theory', 'lab', 'tutorial'] },
+          group: { type: Type.STRING, nullable: true, description: 'Lab/tutorial group, e.g. CSE-2; empty for the whole section' },
+          venue: { type: Type.STRING, nullable: true },
+          faculty: { type: Type.STRING, nullable: true },
+        },
+        required: ['day', 'startTime', 'endTime', 'subjectCode', 'type'],
+      },
+    },
+  },
+  required: ['classes'],
+};
+
+/**
+ * Read a timetable photo with the student's own Gemini key (design UniScan).
+ * Returns every class with its group so the review can switch groups without
+ * another request. Throws `UnreadableTimetable` when no timetable comes back;
+ * other errors are Gemini's own (see `scanErrorKind`). `signal` cancels.
+ */
+export async function scanTimetable(
+  photo: { uri: string; mimeType?: string | null },
+  opts: { section: string; group: string; signal?: AbortSignal; onPhase?: (p: ScanPhase) => void },
+): Promise<ScanData> {
+  const apiKey = await GeminiKey.get();
+  if (!apiKey) throw Object.assign(new Error('No Gemini key'), { name: 'NoGeminiKey' });
+  opts.onPhase?.('preparing');
+  const data = await FileSystem.readAsStringAsync(photo.uri, { encoding: FileSystem.EncodingType.Base64 });
+  if (opts.signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+
+  const ai = new GoogleGenAI({ apiKey });
+  const listModels = async () => {
+    const out: Array<{ name?: string; supportedActions?: string[] }> = [];
+    for await (const m of await ai.models.list({ config: { pageSize: 100, abortSignal: opts.signal } })) out.push(m);
+    return out;
+  };
+  opts.onPhase?.('reading');
+  const { result, model } = await withGeminiModel((m) => ai.models.generateContent({
+    model: m,
+    contents: [prompt(opts.section.trim(), opts.group.trim()), { inlineData: { data, mimeType: photo.mimeType || 'image/jpeg' } }],
+    config: { responseMimeType: 'application/json', responseSchema: schema, abortSignal: opts.signal },
+  }), listModels);
+  console.info(`[timetable] read with ${model}`);
+
+  opts.onPhase?.('checking');
+  let parsed: unknown;
+  try { parsed = JSON.parse(result.text ?? ''); } catch { throw new UnreadableTimetable(); }
+  const scan = readScan(parsed);
+  if (!scan.classes.length) throw new UnreadableTimetable();
+  return scan;
 }
 
-export class TimetableParser {
-  static async parseTimetableImage(imageUri: string, userBatch: string = ''): Promise<ParsedClassSession[]> {
-    const apiKey = await GeminiKey.get();
-    if (!apiKey) {
-      throw new Error('Gemini API key is not set. Add it in More → Timetable scanner.');
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-
-    // Read the image as base64
-    const base64Image = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    const prompt = `You are an expert AI system for university scheduling. 
-Your task is to extract timetable data from the provided image and output a structured list of class sessions.
-
-STRICT PARSING RULES:
-1. Orientation: First decide the layout. Timetables differ by college: days may be rows with time periods as columns, OR time periods may be rows with days as columns. Read the header row and first column to tell which, then walk one day at a time.
-2. Time Slots: Map each cell to its time period header (e.g., 8:00 AM - 8:55 AM). Use the period's real start and end time from the header, not a rounded hour. A cell spanning several periods (merged cells, e.g. a 2-hour lab) runs from the first period's start to the last period's end.
-3. Empty Slots: Blank cells indicate free time and MUST be skipped. No classes are scheduled if the cell is empty.
-4. Cell Data Extraction:
-   - Subject & Type: Suffixes indicate the class type. "-L" means Lecture/Theory (1 hr). "-T" means Tutorial (1 hr). "Lab" means Laboratory (2 hrs). The prefix before this is the subject code (e.g., ES, CN, PP).
-   - Venue: Extract location codes (e.g., JCB-213, CVR-208).
-   - Faculty: Extract instructor codes (e.g., VF-5).
-5. Handling Split Cells (Batch/Group Partitions):
-   - Some slots are split vertically into multiple subjects for different groups.
-   - If a split block exists, ONLY extract the class that matches the user's specific batch: "${userBatch}".
-   - If the user's batch is entirely missing from a split cell, treat it as FREE TIME and do not generate an event.
-   - If user batch is not specified, or the cell is not split, assume it applies to the user.
-
-Ensure the output is robust and perfectly formatted according to the schema. 
-Time formats MUST be exactly "hh:mm AM/PM" (e.g., "08:00 AM", "05:00 PM").`;
-
-    try {
-      const listModels = async () => {
-        const out: Array<{ name?: string; supportedActions?: string[] }> = [];
-        for await (const m of await ai.models.list({ config: { pageSize: 100 } })) out.push(m);
-        return out;
-      };
-      const { result: response, model } = await withGeminiModel((model) => ai.models.generateContent({
-        model,
-        contents: [
-          prompt,
-          {
-            inlineData: {
-              data: base64Image,
-              mimeType: 'image/jpeg',
-            }
-          }
-        ],
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            description: "List of extracted class sessions from the timetable",
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                day: {
-                  type: Type.STRING,
-                  enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-                  description: "Day of the week"
-                },
-                startTime: {
-                  type: Type.STRING,
-                  description: "Start time of the class in hh:mm AM/PM format, e.g. 08:00 AM"
-                },
-                endTime: {
-                  type: Type.STRING,
-                  description: "End time of the class in hh:mm AM/PM format, e.g. 08:55 AM"
-                },
-                subjectCode: {
-                  type: Type.STRING,
-                  description: "The core subject code (e.g., ES, CN, PP)"
-                },
-                type: {
-                  type: Type.STRING,
-                  enum: ['theory', 'lab', 'tutorial'],
-                  description: "Class type derived from suffixes (-L = theory, -T = tutorial, Lab = lab)"
-                },
-                venue: {
-                  type: Type.STRING,
-                  description: "The venue code (e.g. JCB-213)",
-                  nullable: true,
-                },
-                faculty: {
-                  type: Type.STRING,
-                  description: "The faculty code (e.g. VF-5)",
-                  nullable: true,
-                }
-              },
-              required: ["day", "startTime", "endTime", "subjectCode", "type"]
-            }
-          }
-        }
-      }), listModels);
-      console.info(`[timetable] parsed with ${model}`);
-
-      if (!response.text) {
-        throw new Error('AI returned an empty response.');
-      }
-
-      const parsedClasses: ParsedClassSession[] = JSON.parse(response.text);
-      return parsedClasses;
-    } catch (error) {
-      console.error('Error parsing timetable with Gemini:', error);
-      throw new Error(friendlyGeminiError(error));
-    }
-  }
+/** One cheap call to see whether Google accepts a key. Throws Gemini's error when it doesn't. */
+export async function testGeminiKey(apiKey: string): Promise<void> {
+  await new GoogleGenAI({ apiKey }).models.list({ config: { pageSize: 1 } });
 }

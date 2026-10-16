@@ -10,6 +10,7 @@
     "@sentry/react-native": "~7.11.0",
     "drizzle-orm": "^0.45.4",
     "expo": "~56.0.19",
+    "expo-clipboard": "~56.0.4",
     "expo-constants": "~56.0.22",
     "expo-dev-client": "~56.0.24",
     "expo-document-picker": "~56.0.4",

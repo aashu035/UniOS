@@ -33,7 +33,8 @@ export default function Menu() {
     { icon: 'refresh-cw', t: 'Portal attendance', m: lastPortal ? `Last snapshot ${shortDate(lastPortal.slice(0, 10))}` : 'No portal snapshot yet', to: '/attendance' },
     { icon: 'hard-drive-download', t: 'Backup & export', m: 'Stored on this device', to: '/settings/data' },
     { icon: 'user', t: 'Profile', m: profile?.name ?? 'Your details', to: '/profile' },
-    { icon: 'scan-line', t: 'Timetable scanner', m: 'Gemini key for reading a timetable photo', to: '/settings/ai-providers' },
+    { icon: 'scan-line', t: 'Scan with AI', m: 'Add every course from a timetable photo', to: '/course/ai-setup' },
+    { icon: 'key-round', t: 'Gemini key', m: 'Your own free key for the AI scan', to: '/settings/gemini-key' },
     { icon: 'triangle-alert', t: 'Report a problem', m: 'Send a bug report with app details', to: '/settings/report' },
   ];
 
