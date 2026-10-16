@@ -40,6 +40,22 @@ The report below is unchanged: it describes commit `93e74c4`. This table shows w
 | OLD-03 | FIXED | knip and `grep colors.light` show no screen on the old components; 13 unused old components and 6 unused token files deleted | |
 | TEST-04, DUP-04, CPLX-01, CPLX-02, CPLX-03, OLD-01, OLD-02 | OPEN | see "Cleanup, 2026-10-16" | |
 
+## Verification on the current code, 2026-10-16
+
+How to read this report: Sections 2 to 12 describe commit `93e74c4` (2026-10-14) and are not edited. "Status after fixes" and "Cleanup" say what changed afterwards. This section is the only one that is a fresh measurement of the code as it is now.
+
+| Field | Value |
+|---|---|
+| Commit measured | `482f3be` (`claude/tender-brahmagupta-u6o2s9` = `master`), clean working tree |
+| Command | `npm run check` (= `tsc --noEmit && jest`) |
+| Result | exit code 0. TypeScript: 0 errors. Jest: **42 suites passed, 0 failed; 379 tests passed, 0 failed, 0 skipped**. Time 27.7 s |
+| At `93e74c4` | 22 suites, 220 tests (Section 3) |
+| Coverage over all of `domains/` and `core/` | lines 82.6%, branches 76.6% (was 30.5% / 23.8% in Section 3) |
+
+What this proves, and what it does not (rule C3). The tests prove the behaviour they assert: for example `schedule_marks.test.ts` runs 150 random sequences of schedule changes and undos and checks the marks after every step. They do not prove behaviour on a phone. No device or emulator was available, so the camera, system pickers, PDF, video and audio playback, gestures and notifications are **not verified**.
+
+Mutation score was measured at `93e74c4` only (71.79%). It was not re-run on the new modules.
+
 ## Cleanup, 2026-10-16
 
 Method: for each candidate, `grep -rnE "\.name\b|\bname\(" app components domains core` (production) and `__tests__` (tests), excluding the definition. A method is removed only when production has 0 references. Knip 5 (`knip --config`, the audit's config) was re-run before and after.
