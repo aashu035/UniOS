@@ -11,7 +11,7 @@ import {
   CalendarCog, Globe, Smartphone, HardDrive, Hourglass, ImageOff, Play, Pause, RotateCw, Maximize, Minimize, Bookmark,
   Volume2, TextWrap, List, Zap, ZapOff, Undo2, FolderInput, Presentation, Sheet, FileSpreadsheet, FileArchive, FileCode,
   FileImage, FileVideoCamera, FileMusic, FileQuestionMark, Headphones, Rewind, FastForward, Sun, Code,
-  Heading, Bold, Italic, ListOrdered, Quote, SquareCheckBig, Download, School, Hash,
+  Heading, Bold, Italic, ListOrdered, Quote, SquareCheckBig, Download, School, Hash, Layers, ShieldCheck,
 } from 'lucide-react-native';
 
 const ICONS = {
@@ -38,7 +38,7 @@ const ICONS = {
   'file-archive': FileArchive, 'file-code': FileCode, 'file-image': FileImage, 'file-video': FileVideoCamera, 'file-music': FileMusic,
   'file-question': FileQuestionMark, headphones: Headphones, rewind: Rewind, 'fast-forward': FastForward, sun: Sun, code: Code,
   heading: Heading, bold: Bold, italic: Italic, 'list-ordered': ListOrdered, quote: Quote, 'square-check-big': SquareCheckBig,
-  download: Download, school: School, hash: Hash,
+  download: Download, school: School, hash: Hash, layers: Layers, 'shield-check': ShieldCheck,
 } as const;
 
 export type IconName = keyof typeof ICONS;

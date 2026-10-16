@@ -25,3 +25,24 @@ export function extensionFor(name: string, mimeType?: string | null): string {
   const fromMime = mimeType ? BY_MIME[mimeType.toLowerCase().split(';')[0].trim()] : undefined;
   return fromMime ?? fromName ?? 'bin';
 }
+
+export type FileKind = 'pdf' | 'word' | 'excel' | 'csv' | 'ppt' | 'image' | 'video' | 'audio' | 'code' | 'text' | 'markdown' | 'json' | 'epub' | 'archive' | 'other';
+
+const KIND_BY_EXT: Record<string, FileKind> = {
+  pdf: 'pdf', doc: 'word', docx: 'word', odt: 'word', rtf: 'word',
+  xls: 'excel', xlsx: 'excel', ods: 'excel', csv: 'csv',
+  ppt: 'ppt', pptx: 'ppt', odp: 'ppt',
+  jpg: 'image', jpeg: 'image', png: 'image', webp: 'image', gif: 'image', heic: 'image', heif: 'image',
+  mp4: 'video', mov: 'video', mkv: 'video', webm: 'video', '3gp': 'video', m4v: 'video', avi: 'video', wmv: 'video',
+  mp3: 'audio', m4a: 'audio', aac: 'audio', ogg: 'audio', opus: 'audio', wav: 'audio', amr: 'audio', flac: 'audio',
+  txt: 'text', log: 'text', md: 'markdown', markdown: 'markdown', json: 'json',
+  py: 'code', js: 'code', ts: 'code', jsx: 'code', tsx: 'code', c: 'code', h: 'code', cpp: 'code', cc: 'code', java: 'code', kt: 'code',
+  cs: 'code', go: 'code', rs: 'code', rb: 'code', php: 'code', html: 'code', css: 'code', sql: 'code', sh: 'code', m: 'code', r: 'code', ipynb: 'code',
+  epub: 'epub', zip: 'archive', rar: 'archive', '7z': 'archive', tar: 'archive', gz: 'archive',
+};
+
+/** The extension of a stored name or uri ("…/3f2b….pdf" → "pdf"), lower case; "" when none. */
+export const extOf = (nameOrUri: string | null | undefined) => /\.([A-Za-z0-9]{1,8})$/.exec((nameOrUri ?? '').trim())?.[1]?.toLowerCase() ?? '';
+
+/** What kind of file this is, from its extension. Decides the viewer and the type tile. */
+export const kindOf = (nameOrUri: string | null | undefined): FileKind => KIND_BY_EXT[extOf(nameOrUri)] ?? 'other';

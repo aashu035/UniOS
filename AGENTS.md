@@ -38,6 +38,8 @@ Expo Go is **not** supported: it only runs the newest SDK and lacks some native 
 - `domains/<name>/repository.ts`: data access per domain (attendance, workspace, task, calendar, …).
 - `core/diagnostics/`: in-app log buffer and bug-report builder.
 - `domains/timetable/grammar.ts`: reads printed timetable cell text (`ES-L`, `SC Lab, CSE-2, RS Lab, AS`) into one student's classes. Tested against the DCRUST Section A timetable in `__tests__/timetable_grammar.test.ts`.
+- `core/settings/prefs.ts`: small UI preferences (recent searches) in `expo-sqlite/kv-store` under the `unios.` prefix. `clearAllData` wipes them.
+- `components/uni/form.tsx`, `Sheet.tsx`, `Toast.tsx`: form pieces, bottom sheets and the undo toast used by the redesigned full-screen pages.
 - `core/fs/FileManager.ts`: uploads live in the app's `resources/` folder under a bare filename (`<uuid>.pdf`) stored in `resources.uri`; identical uploads share one file. Delete through `ResourceRepository.removeFileIfUnused`.
 
 ## Rules that bite

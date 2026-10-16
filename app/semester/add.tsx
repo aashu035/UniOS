@@ -1,122 +1,131 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Save } from 'lucide-react-native';
-import { colors, radius, spacing, typography } from '../../tokens';
-import { useSemesters } from '../../domains/semester/hooks';
+import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Icon } from '../../components/uni/Icon';
+import { T, Tap } from '../../components/uni/primitives';
+import { ErrorText, Field, FieldLabel, FormPage, Input, PrimaryButton, Switch3 } from '../../components/uni/form';
+import { useToast } from '../../components/uni/Toast';
+import { useUni } from '../../components/uni/theme';
+import { getLocalDateString, parseLocalDate } from '../../core/utils/date';
+import { dayName, shortDate } from '../../domains/academic/logic';
+import { termFor, validateSemester, type SemesterDraft } from '../../domains/profile/form';
+import { SemesterRepository } from '../../domains/semester/repository';
 
-export default function AddSemester() {
+type Sem = Awaited<ReturnType<typeof SemesterRepository.listWithCourseCounts>>[number];
+
+/** Add semester / Edit semester (handoff §5). `?id=` edits. */
+export default function SemesterForm() {
+  const p = useUni();
   const router = useRouter();
-  const { addSemester } = useSemesters();
-  
-  const [number, setNumber] = useState('');
-  const [name, setName] = useState('');
-  const [type, setType] = useState('odd');
-  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const editId = id && /^\d+$/.test(id) ? Number(id) : null;
 
-  const handleSave = async () => {
-    const num = parseInt(number, 10);
-    if (isNaN(num) || num < 1 || num > 12) {
-      Alert.alert('Invalid Number', 'Please enter a valid semester number (1-12).');
-      return;
-    }
+  const [all, setAll] = useState<Sem[]>([]);
+  const [d, setD] = useState<SemesterDraft>({ id: editId, number: '', name: '', term: 'odd', start: '', end: '', sgpa: '' });
+  const [termTouched, setTermTouched] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [picker, setPicker] = useState<'start' | 'end' | null>(null);
 
-    setIsSaving(true);
+  useEffect(() => {
+    SemesterRepository.listWithCourseCounts().then((list) => {
+      setAll(list);
+      const ed = editId != null ? list.find((s) => s.id === editId) : null;
+      if (ed) {
+        setD({ id: ed.id, number: String(ed.number), name: ed.name ?? '', term: ed.type === 'even' ? 'even' : 'odd', start: ed.startDate ?? '', end: ed.endDate ?? '', sgpa: ed.sgpa != null ? String(ed.sgpa) : '' });
+        setTermTouched(true);
+      } else {
+        const next = Math.min(12, (list[0]?.number ?? 0) + 1);
+        setD((x) => ({ ...x, number: String(next), term: termFor(next) }));
+      }
+    }).catch((e) => console.error('Could not load semesters', e));
+  }, [editId]);
+
+  const { errors, values } = validateSemester(d, all);
+  const n = Number(d.number) || 0;
+  const setNumber = (v: string) => {
+    const clean = v.replace(/\D/g, '').slice(0, 2);
+    const k = Number(clean);
+    setD((x) => ({ ...x, number: clean, ...(!termTouched && k ? { term: termFor(k) } : {}) }));
+  };
+  const step = (delta: number) => setNumber(String(Math.max(1, Math.min(12, (n || 0) + delta))));
+  const showDateErr = tried || (d.start && d.end && d.end <= d.start);
+
+  const save = async () => {
+    setTried(true);
+    if (!values) return;
+    setSaving(true);
     try {
-      await addSemester({
-        number: num,
-        name: name.trim() || undefined,
-        type: type,
-      });
+      if (editId != null) await SemesterRepository.updateSemester(editId, values);
+      else await SemesterRepository.addSemester(values);
+      toast.show(`${editId != null ? 'Saved' : 'Added'} ${values.name || `Semester ${values.number}`}.`);
       router.back();
-    } catch (error) {
-      console.error('Error saving semester:', error);
-      Alert.alert('Error', 'Could not save the semester. Please try again.');
-    } finally {
-      setIsSaving(false);
+    } catch (e: any) {
+      toast.show(e?.message ?? 'Could not save the semester.');
+      setSaving(false);
     }
   };
 
+  const dateBox = (k: 'start' | 'end', label: string) => {
+    const v = d[k];
+    const bad = k === 'end' && showDateErr && !!errors.dates && !!d.start && !!d.end;
+    return (
+      <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+        <FieldLabel>{label}</FieldLabel>
+        <Tap onPress={() => setPicker(k)} accessibilityRole="button" accessibilityLabel={`${label}: ${v ? `${dayName(v)} ${shortDate(v)} ${v.slice(0, 4)}` : 'not set'}`}
+          style={{ height: 50, borderRadius: 13, borderWidth: 1.5, borderColor: bad || (tried && !v) ? p.danger : p.border, backgroundColor: p.elev, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Icon name="calendar" size={16} color={p.muted} />
+          <T w={600} c={v ? p.text : p.muted} size={14} numberOfLines={1}>{v ? `${shortDate(v)} ${v.slice(0, 4)}` : 'Pick date'}</T>
+        </Tap>
+      </View>
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} accessibilityLabel="Go back">
-          <ArrowLeft size={24} color={colors.light.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Add Semester</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>Semester Number *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 5"
-          placeholderTextColor={colors.light.textMuted}
-          value={number}
-          onChangeText={setNumber}
-          keyboardType="number-pad"
-          autoFocus
-        />
-
-        <Text style={styles.label}>Custom Name (Optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Fall 2026"
-          placeholderTextColor={colors.light.textMuted}
-          value={name}
-          onChangeText={setName}
-        />
-
-        <Text style={styles.label}>Semester Type</Text>
-        <View style={styles.typeSelector}>
-          <TouchableOpacity 
-            style={[styles.typeButton, type === 'odd' && styles.typeButtonActive]}
-            onPress={() => setType('odd')}
-          >
-            <Text style={[styles.typeText, type === 'odd' && styles.typeTextActive]}>Odd</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.typeButton, type === 'even' && styles.typeButtonActive]}
-            onPress={() => setType('even')}
-          >
-            <Text style={[styles.typeText, type === 'even' && styles.typeTextActive]}>Even</Text>
-          </TouchableOpacity>
+    <FormPage title={editId != null ? 'Edit semester' : 'Add semester'} onBack={() => router.back()} gap={14}
+      footer={<PrimaryButton label={editId != null ? 'Save changes' : 'Add semester'} onPress={save} busy={saving} />}>
+      <View style={{ gap: 6 }}>
+        <FieldLabel>Semester number</FieldLabel>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Tap onPress={() => step(-1)} accessibilityRole="button" accessibilityLabel="One less"
+            style={{ width: 50, height: 50, borderRadius: 14, backgroundColor: p.surface, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="minus" size={18} color={p.text} />
+          </Tap>
+          <Input value={d.number} onChangeText={setNumber} keyboardType="number-pad" placeholder="1–12" invalid={tried && !!errors.number} accessibilityLabel="Semester number"
+            style={{ flex: 1, minWidth: 0, minHeight: 50, textAlign: 'center', fontSize: 20, fontFamily: 'JetBrainsMono_700Bold' }} />
+          <Tap onPress={() => step(1)} accessibilityRole="button" accessibilityLabel="One more"
+            style={{ width: 50, height: 50, borderRadius: 14, backgroundColor: p.surface, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="plus" size={18} color={p.text} />
+          </Tap>
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.saveButton, isSaving && styles.disabled]} 
-          onPress={handleSave} 
-          disabled={isSaving}
-        >
-          <Save size={20} color={colors.dark.text} style={styles.saveIcon} />
-          <Text style={styles.saveText}>{isSaving ? 'Saving…' : 'Save Semester'}</Text>
-        </TouchableOpacity>
+        {tried && errors.number ? <ErrorText>{errors.number}</ErrorText> : null}
       </View>
-    </SafeAreaView>
+
+      <Field label="Name (optional)">
+        <Input value={d.name} onChangeText={(v) => setD((x) => ({ ...x, name: v.slice(0, 40) }))} placeholder={`e.g. Semester ${n || 6} or Summer term`} style={{ minHeight: 50, borderRadius: 13 }} />
+      </Field>
+
+      <View style={{ gap: 6 }}>
+        <FieldLabel>Term</FieldLabel>
+        <Switch3 items={[['odd', 'Odd'], ['even', 'Even']]} value={d.term} onChange={(t) => { setTermTouched(true); setD((x) => ({ ...x, term: t })); }} />
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {dateBox('start', 'Starts')}
+        {dateBox('end', 'Ends')}
+      </View>
+      {showDateErr && errors.dates ? <View style={{ marginTop: -6 }}><ErrorText>{errors.dates}</ErrorText></View> : null}
+      {picker ? (
+        <DateTimePicker mode="date" value={parseLocalDate(d[picker] || d.start || getLocalDateString(new Date()))}
+          onChange={(e, v) => { const k = picker; setPicker(null); if (e.type === 'set' && v) setD((x) => ({ ...x, [k]: getLocalDateString(v) })); }} />
+      ) : null}
+
+      <Field label="SGPA (optional)" error={tried ? errors.sgpa : null}>
+        <Input value={d.sgpa} onChangeText={(v) => setD((x) => ({ ...x, sgpa: v }))} keyboardType="decimal-pad" placeholder="Add after results" invalid={tried && !!errors.sgpa}
+          style={[{ minHeight: 50, borderRadius: 13 }, d.sgpa ? { fontFamily: 'JetBrainsMono_700Bold' } : null]} accessibilityLabel="SGPA" />
+      </Field>
+    </FormPage>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.light.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.light.border },
-  iconButton: { padding: spacing.sm },
-  headerSpacer: { width: 40 },
-  title: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.light.text },
-  content: { padding: spacing.xl },
-  label: { fontSize: typography.fontSize.sm, color: colors.light.text, fontWeight: typography.fontWeight.semibold, marginBottom: spacing.sm, marginTop: spacing.md },
-  input: { minHeight: 52, borderWidth: 1, borderColor: colors.light.border, backgroundColor: colors.light.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg, color: colors.light.text, fontSize: typography.fontSize.base },
-  typeSelector: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
-  typeButton: { flex: 1, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.light.border, borderRadius: radius.md, backgroundColor: colors.light.surface },
-  typeButtonActive: { borderColor: colors.light.primary, backgroundColor: `${colors.light.primary}10` },
-  typeText: { fontSize: typography.fontSize.base, color: colors.light.text, fontWeight: typography.fontWeight.medium },
-  typeTextActive: { color: colors.light.primary, fontWeight: typography.fontWeight.bold },
-  footer: { padding: spacing.xl, borderTopWidth: 1, borderTopColor: colors.light.border }, 
-  saveButton: { minHeight: 52, borderRadius: radius.xl, backgroundColor: colors.light.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }, 
-  saveIcon: { marginRight: spacing.sm }, 
-  saveText: { color: colors.dark.text, fontWeight: typography.fontWeight.bold, fontSize: typography.fontSize.base }, 
-  disabled: { opacity: 0.5 },
-});

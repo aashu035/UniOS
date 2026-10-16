@@ -3,6 +3,7 @@ import { students } from './model';
 import { NewStudent, Student } from './types';
 import { eq } from 'drizzle-orm';
 import { semesters } from '../semester/model';
+import { atomic } from '../../core/db/atomic';
 
 export class ProfileRepository {
   static async getProfile(): Promise<Student & { avatar?: string | null }> {
@@ -42,6 +43,27 @@ export class ProfileRepository {
     }
 
     return { ...created, avatar: created.heroPortraitUri };
+  }
+
+  /**
+   * Onboarding's last step, in one transaction: the student and their current
+   * semester, which becomes the only active one. Running it again (a double tap,
+   * or a profile left over from a crash) updates the same rows instead of adding more.
+   */
+  static async completeOnboarding(d: { name: string; branch: string; semester: { number: number; type: 'odd' | 'even'; startDate: string; endDate: string } }) {
+    return atomic((tx) => {
+      const sem = d.semester;
+      const old = tx.select().from(semesters).where(eq(semesters.number, sem.number)).get();
+      tx.update(semesters).set({ isActive: false }).run();
+      const semester = old
+        ? tx.update(semesters).set({ type: sem.type, startDate: sem.startDate, endDate: sem.endDate, isActive: true }).where(eq(semesters.id, old.id)).returning().get()
+        : tx.insert(semesters).values({ number: sem.number, type: sem.type, startDate: sem.startDate, endDate: sem.endDate, isActive: true }).returning().get();
+      const me = tx.select({ id: students.id }).from(students).limit(1).get();
+      const student = me
+        ? tx.update(students).set({ name: d.name, branch: d.branch, currentSemester: sem.number }).where(eq(students.id, me.id)).returning().get()
+        : tx.insert(students).values({ name: d.name, branch: d.branch, currentSemester: sem.number }).returning().get();
+      return { student, semester };
+    });
   }
 
   static async updateProfile(id: number, updates: Partial<NewStudent> & { avatar?: string | null }): Promise<Student & { avatar?: string | null }> {

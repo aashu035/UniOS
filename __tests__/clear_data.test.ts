@@ -29,13 +29,24 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: async (k: string) => { mockStore.delete(k); },
 }));
 
+const mockPrefs = new Map<string, string>();
+jest.mock('expo-sqlite/kv-store', () => ({
+  __esModule: true,
+  default: {
+    getItemSync: (k: string) => mockPrefs.get(k) ?? null,
+    setItemSync: (k: string, v: string) => { mockPrefs.set(k, v); },
+    removeItemSync: (k: string) => mockPrefs.delete(k),
+    getAllKeysSync: () => [...mockPrefs.keys()],
+  },
+}));
+
 const { clearAllData } = require('../core/db/clearData');
 const { DayRuleRepository } = require('../domains/calendar/dayRules');
 
 const DOC = 'file:///data/user/0/app/files/';
 const UPLOAD = '3f2b8c1e-9d4a-4e7b-8c2d-1a2b3c4d5e6f.pdf';
 
-it('removes every row, every upload, the profile photo and the Gemini key', async () => {
+it('removes every row, every upload, the profile photo, the Gemini key and recent searches', async () => {
   const h = createDeviceDb();
   mockDevice.db = h.db; mockDevice.expoDb = h.expoDb;
   h.sqlite.exec(`
@@ -52,6 +63,8 @@ it('removes every row, every upload, the profile photo and the Gemini key', asyn
   mockFiles.clear();
   for (const f of [`${DOC}resources/${UPLOAD}`, `${DOC}avatar_1712345678901.jpg`, `${DOC}resources/notes.txt`, `${DOC}SQLite`]) mockFiles.add(f);
   mockStore.set('unios_ai_key_gemini', 'AIza-test-key');
+  mockPrefs.set('unios.recentSearches', '["medical certificate"]');
+  mockPrefs.set('other.app.key', 'kept');
 
   await clearAllData();
 
@@ -61,4 +74,5 @@ it('removes every row, every upload, the profile photo and the Gemini key', asyn
   // Our upload and photo are gone; names the app did not write are not touched.
   expect([...mockFiles].sort()).toEqual([`${DOC}SQLite`, `${DOC}resources/notes.txt`]);
   expect(mockStore.has('unios_ai_key_gemini')).toBe(false);
+  expect([...mockPrefs.keys()]).toEqual(['other.app.key']);
 });

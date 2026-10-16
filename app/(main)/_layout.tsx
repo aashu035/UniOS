@@ -19,7 +19,6 @@ export default function MainLayout() {
       <Tabs.Screen name="schedule" options={{ title: 'Timetable' }} />
       <Tabs.Screen name="work" options={{ title: 'Tasks' }} />
       <Tabs.Screen name="menu" options={{ title: 'More' }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   );
 }

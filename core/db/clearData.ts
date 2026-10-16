@@ -3,11 +3,12 @@ import { atomic } from './atomic';
 import { wipeUserTables } from './backup';
 import { FileManager } from '../fs/FileManager';
 import { GeminiKey } from '../settings/aiProviders';
+import { Prefs } from '../settings/prefs';
 
 /**
  * More → Backup & export → Clear all data. Removes everything UniOS keeps on the
- * phone: every table (in one transaction), uploaded files, the profile photo and
- * the Gemini key. The tables go first, so a failure there changes nothing.
+ * phone: every table (in one transaction), uploaded files, the profile photo,
+ * the Gemini key and small preferences (recent searches, reading positions). The tables go first, so a failure there changes nothing.
  */
 export async function clearAllData(): Promise<void> {
   atomic((tx) => {
@@ -17,4 +18,5 @@ export async function clearAllData(): Promise<void> {
   });
   await FileManager.deleteAllOwnFiles();
   await GeminiKey.save(null);
+  Prefs.clearAll(); // recent searches, where videos and PDFs were left
 }

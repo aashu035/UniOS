@@ -1,156 +1,96 @@
-import { useEffect, useState } from 'react';
-import { checkBranch, checkEnrollment, checkPersonName } from '../../core/utils/validate';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Save } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import { colors, radius, spacing, typography } from '../../tokens';
-import { useProfile } from '../../domains/profile/hooks';
-import { HeroPortrait } from '../../components/avatar/HeroPortrait';
-import { isOwnAvatar } from '../../core/fs/names';
+import { Avatar } from '../../components/profile/Avatar';
+import { changeProfilePhoto } from '../../components/profile/photo';
+import { T, Tap } from '../../components/uni/primitives';
+import { Field, FormPage, Input, PrimaryButton } from '../../components/uni/form';
+import { Sheet } from '../../components/uni/Sheet';
+import { useToast } from '../../components/uni/Toast';
+import { useUni } from '../../components/uni/theme';
+import { validateProfile, type ProfileDraft } from '../../domains/profile/form';
+import { ProfileRepository } from '../../domains/profile/repository';
 
+type Profile = Awaited<ReturnType<typeof ProfileRepository.getProfile>>;
+
+const FIELDS: Array<{ k: keyof ProfileDraft; label: string; placeholder: string; hint?: string; keyboard?: 'default' | 'number-pad' | 'decimal-pad'; caps?: 'words' | 'characters' }> = [
+  { k: 'name', label: 'Name', placeholder: 'Your name', caps: 'words' },
+  { k: 'branch', label: 'Branch', placeholder: 'e.g. B.Tech CSE', caps: 'words' },
+  { k: 'enrollment', label: 'Enrollment number', placeholder: 'e.g. 23001001018', hint: 'Optional · as on your ID card', caps: 'characters' },
+  { k: 'target', label: 'Target CGPA', placeholder: 'e.g. 8.5', hint: 'Optional · shown with your semester SGPAs', keyboard: 'decimal-pad' },
+];
+
+/** Edit profile (handoff §4). Errors show after the first Save, then update as you type. */
 export default function EditProfile() {
+  const p = useUni();
   const router = useRouter();
-  const { profile, isLoading, updateProfile } = useProfile();
-  const [name, setName] = useState('');
-  const [branch, setBranch] = useState('');
-  const [enrollmentNo, setEnrollmentNo] = useState('');
-  const [semester, setSemester] = useState('1');
-  const [targetCgpa, setTargetCgpa] = useState('8');
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [draft, setDraft] = useState<ProfileDraft>({ name: '', branch: '', enrollment: '', target: '' });
+  const [tried, setTried] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [photoSheet, setPhotoSheet] = useState(false);
 
   useEffect(() => {
-    if (!profile) return;
-    setName(profile.name ?? '');
-    setBranch(profile.branch ?? '');
-    setEnrollmentNo(profile.enrollmentNo ?? '');
-    setSemester(String(profile.currentSemester ?? 1));
-    setTargetCgpa(String(profile.targetCgpa ?? 8));
-    setAvatar(profile.avatar ?? null);
-  }, [profile]);
+    ProfileRepository.getProfile().then((pr) => {
+      if (!pr) return;
+      setProfile(pr);
+      setDraft({ name: pr.name ?? '', branch: pr.branch ?? '', enrollment: pr.enrollmentNo ?? '', target: pr.targetCgpa != null ? String(pr.targetCgpa) : '' });
+    }).catch((e) => console.error('Could not load profile', e));
+  }, []);
 
-  const handlePickImage = async () => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) {
-        Alert.alert('Permission Denied', 'You need to allow access to your photos to set a profile picture.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-      });
-
-      if (!result.canceled && result.assets[0].uri) {
-        const sourceUri = result.assets[0].uri;
-        const fileName = `avatar_${Date.now()}.jpg`;
-        const docDir = FileSystem.documentDirectory!.replace(/\/$/, '');
-        const destUri = `${docDir}/${fileName}`;
-
-        await FileSystem.copyAsync({
-          from: sourceUri,
-          to: destUri,
-        });
-
-        // Delete the old photo, but only a file this screen created (a restored backup could name any path)
-        if (isOwnAvatar(avatar)) {
-          const oldAbsoluteUri = `${docDir}/${avatar}`;
-          await FileSystem.deleteAsync(oldAbsoluteUri, { idempotent: true });
-        }
-
-        // Store relative path
-        setAvatar(fileName);
-      }
-    } catch (err) {
-      console.error('Error saving image:', err);
-      Alert.alert('Error', 'Could not save the image.');
-    }
-  };
-
+  const { errors, values } = validateProfile(draft);
   const save = async () => {
-    // Strict parsing: "3abc" and "8.5x" are rejected, not read as 3 and 8.5.
-    const parsedSemester = /^\d{1,2}$/.test(semester.trim()) ? Number(semester.trim()) : NaN;
-    const parsedCgpa = /^\d{1,2}(\.\d{1,2})?$/.test(targetCgpa.trim()) ? Number(targetCgpa.trim()) : NaN;
-    const n = checkPersonName(name);
-    if (!n.ok) { Alert.alert('Check your name', n.error); return; }
-    const b = checkBranch(branch, false);
-    if (!b.ok) { Alert.alert('Check your branch', b.error); return; }
-    const e = checkEnrollment(enrollmentNo);
-    if (!e.ok) { Alert.alert('Check enrollment number', e.error); return; }
-    if (!Number.isInteger(parsedSemester) || parsedSemester < 1 || parsedSemester > 12) {
-      Alert.alert('Check semester', 'Enter a semester between 1 and 12.');
-      return;
-    }
-    if (!Number.isFinite(parsedCgpa) || parsedCgpa < 0 || parsedCgpa > 10) {
-      Alert.alert('Check target CGPA', 'Enter a value between 0 and 10, e.g. 8.5.');
-      return;
-    }
-
-    setIsSaving(true);
+    setTried(true);
+    if (!values || !profile) return;
+    setSaving(true);
     try {
-      await updateProfile({
-        name: n.value, branch: b.value || null, enrollmentNo: e.value || null,
-        currentSemester: parsedSemester, targetCgpa: parsedCgpa, avatar
-      });
+      await ProfileRepository.updateProfile(profile.id, values);
+      toast.show('Profile saved.');
       router.back();
-    } catch (error) {
-      console.error('Could not update profile', error);
-      Alert.alert('Could not save profile', 'Please try again.');
-    } finally {
-      setIsSaving(false);
+    } catch (e: any) {
+      console.error('Could not update profile', e);
+      toast.show('Could not save the profile. Try again.');
+      setSaving(false);
     }
   };
 
-  const docDir = FileSystem.documentDirectory ? FileSystem.documentDirectory.replace(/\/$/, '') : '';
-  // Only a photo this app saved; a restored backup could otherwise point anywhere, or at a web address.
-  const displayAvatar = isOwnAvatar(avatar) ? `${docDir}/${avatar}` : null;
+  const photo = async (from: 'camera' | 'library' | null) => {
+    setPhotoSheet(false);
+    if (!profile) return;
+    const r = await changeProfilePhoto(profile.id, profile.avatar, from);
+    if (r.ok) { setProfile({ ...profile, avatar: r.file, heroPortraitUri: r.file }); toast.show(from ? 'Photo updated.' : 'Photo removed.'); }
+    else if (r.reason === 'denied') toast.show('Access is off. Turn it on in Settings → Apps → UniOS.');
+    else if (r.reason === 'failed') toast.show('Could not save the photo.');
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} accessibilityLabel="Go back">
-          <ArrowLeft size={24} color={colors.light.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Edit profile</Text>
-        <View style={styles.headerSpacer} />
+    <FormPage title="Edit profile" onBack={() => router.back()} gap={14}
+      footer={<PrimaryButton label="Save" onPress={save} busy={saving} disabled={!profile} />}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <Tap onPress={() => setPhotoSheet(true)} accessibilityRole="button" accessibilityLabel="Profile photo">
+          <Avatar file={profile?.avatar} name={draft.name || profile?.name} size={64} />
+        </Tap>
+        <Tap onPress={() => setPhotoSheet(true)} accessibilityRole="button"
+          style={{ height: 44, paddingHorizontal: 14, borderRadius: 13, backgroundColor: p.surface, justifyContent: 'center' }}>
+          <T w={800} size={13.5}>{profile?.avatar ? 'Change photo' : 'Add photo'}</T>
+        </Tap>
       </View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.avatarContainer}>
-          <HeroPortrait imageUrl={displayAvatar} onPress={handlePickImage} size={100} />
-        </View>
-        <Field label="Name *" value={name} onChangeText={setName} />
-        <Field label="Branch" value={branch} onChangeText={setBranch} placeholder="e.g. Computer Science" />
-        <Field label="Enrollment number" value={enrollmentNo} onChangeText={setEnrollmentNo} />
-        <Field label="Current semester" value={semester} onChangeText={setSemester} keyboardType="number-pad" />
-        <Field label="Target CGPA" value={targetCgpa} onChangeText={setTargetCgpa} keyboardType="decimal-pad" />
-      </ScrollView>
-      <View style={styles.footer}>
-        <TouchableOpacity style={[styles.saveButton, (isSaving || isLoading) && styles.disabled]} onPress={save} disabled={isSaving || isLoading}>
-          <Save size={20} color={colors.dark.text} style={styles.saveIcon} />
-          <Text style={styles.saveText}>{isSaving ? 'Saving…' : 'Save changes'}</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+
+      {FIELDS.map((f) => (
+        <Field key={f.k} label={f.label} error={tried ? errors[f.k] : null} hint={f.hint}>
+          <Input value={draft[f.k]} onChangeText={(v) => setDraft((d) => ({ ...d, [f.k]: v }))} placeholder={f.placeholder}
+            invalid={tried && !!errors[f.k]} keyboardType={f.keyboard ?? 'default'} autoCapitalize={f.caps ?? 'none'} accessibilityLabel={f.label}
+            style={[{ minHeight: 50, borderRadius: 13 }, (f.k === 'target' || f.k === 'enrollment') && draft[f.k] ? { fontFamily: 'JetBrainsMono_700Bold' } : null]} />
+        </Field>
+      ))}
+
+      <Sheet visible={photoSheet} onClose={() => setPhotoSheet(false)} title="Profile photo"
+        rows={[
+          { icon: 'camera', label: 'Camera', onPress: () => photo('camera') },
+          { icon: 'images', label: 'Photos', onPress: () => photo('library') },
+          ...(profile?.avatar ? [{ icon: 'trash-2' as const, label: 'Remove photo', danger: true, onPress: () => photo(null) }] : []),
+        ]} />
+    </FormPage>
   );
 }
-
-function Field({ label, placeholder, ...inputProps }: { label: string; placeholder?: string; value: string; onChangeText: (value: string) => void; autoFocus?: boolean; keyboardType?: 'default' | 'number-pad' | 'decimal-pad' }) {
-  return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput style={styles.input} placeholder={placeholder} placeholderTextColor={colors.light.textMuted} {...inputProps} /></View>;
-}
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.light.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.light.border },
-  iconButton: { padding: spacing.sm }, headerSpacer: { width: 40 }, title: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.light.text },
-  content: { padding: spacing.xl }, 
-  avatarContainer: { alignItems: 'center', marginBottom: spacing.xl },
-  field: { marginBottom: spacing.lg }, label: { fontSize: typography.fontSize.sm, color: colors.light.text, fontWeight: typography.fontWeight.semibold, marginBottom: spacing.sm },
-  input: { minHeight: 52, borderWidth: 1, borderColor: colors.light.border, backgroundColor: colors.light.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg, color: colors.light.text, fontSize: typography.fontSize.base },
-  footer: { padding: spacing.xl, borderTopWidth: 1, borderTopColor: colors.light.border }, saveButton: { minHeight: 52, borderRadius: radius.xl, backgroundColor: colors.light.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }, saveIcon: { marginRight: spacing.sm }, saveText: { color: colors.dark.text, fontWeight: typography.fontWeight.bold, fontSize: typography.fontSize.base }, disabled: { opacity: 0.5 },
-});

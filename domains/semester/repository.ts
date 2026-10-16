@@ -13,23 +13,36 @@ export class SemesterRepository {
     return db.select().from(semesters).where(eq(semesters.isActive, true)).get();
   }
 
+  /** Every semester with how many courses it has, newest (highest number) first. */
+  static async listWithCourseCounts() {
+    const { workspaces } = require('../workspace/model');
+    const all = db.select().from(semesters).all();
+    const ws = db.select({ semesterId: workspaces.semesterId }).from(workspaces).all() as Array<{ semesterId: number | null }>;
+    return all
+      .map((s) => ({ ...s, courses: ws.filter((w) => w.semesterId === s.id).length }))
+      .sort((a, b) => b.number - a.number || b.id - a.id);
+  }
+
   static async addSemester(data: {
     number: number;
-    name?: string;
+    name?: string | null;
     type?: string;
     startDate?: string;
     endDate?: string;
+    sgpa?: number | null;
   }) {
     return atomic((tx) => {
+      if (tx.select().from(semesters).where(eq(semesters.number, data.number)).get()) throw new Error(`Semester ${data.number} already exists`);
       const existing = tx.select().from(semesters).limit(1).get();
       const isFirst = !existing;
 
       const newSemester = tx.insert(semesters).values({
         number: data.number,
-        name: data.name,
+        name: data.name ?? undefined,
         type: data.type || 'odd',
         startDate: data.startDate,
         endDate: data.endDate,
+        sgpa: data.sgpa ?? null,
       }).returning().get();
 
       if (isFirst) {
@@ -73,14 +86,23 @@ export class SemesterRepository {
 
   static async updateSemester(id: number, data: Partial<{
     number: number;
-    name: string;
+    name: string | null;
     type: string;
     startDate: string;
     endDate: string;
-    sgpa: number;
+    sgpa: number | null;
   }>) {
     // Note: isActive is omitted from here; callers must use activateSemester() to change activation state
-    return db.update(semesters).set(data).where(eq(semesters.id, id)).returning().get();
+    return atomic((tx) => {
+      if (data.number !== undefined) {
+        const clash = tx.select().from(semesters).where(eq(semesters.number, data.number)).all().find((x) => x.id !== id);
+        if (clash) throw new Error(`Semester ${data.number} already exists`);
+      }
+      const row = tx.update(semesters).set(data).where(eq(semesters.id, id)).returning().get();
+      // The profile shows the active semester's number.
+      if (row?.isActive && data.number !== undefined) tx.update(students).set({ currentSemester: data.number }).run();
+      return row;
+    });
   }
 
   static async deleteSemester(id: number) {
@@ -90,7 +112,14 @@ export class SemesterRepository {
       if (attachedWorkspaces) {
         throw new Error("Cannot delete a semester that contains active subjects. Please delete or reassign the subjects first.");
       }
-      return tx.delete(semesters).where(eq(semesters.id, id)).run();
+      const row = tx.select().from(semesters).where(eq(semesters.id, id)).get();
+      tx.delete(semesters).where(eq(semesters.id, id)).run();
+      return row ?? null;
     });
+  }
+
+  /** Undo a delete: the same row and id. */
+  static async restoreSemester(row: typeof semesters.$inferSelect) {
+    return db.insert(semesters).values(row).onConflictDoNothing().returning().get();
   }
 }

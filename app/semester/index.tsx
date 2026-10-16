@@ -1,108 +1,119 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Plus, Calendar, CheckCircle } from 'lucide-react-native';
-import { colors, radius, spacing, typography } from '../../tokens';
-import { useSemesters } from '../../domains/semester/hooks';
+import React, { useCallback, useState } from 'react';
+import { View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Icon } from '../../components/uni/Icon';
+import { T, Tap } from '../../components/uni/primitives';
+import { FormPage, PrimaryButton } from '../../components/uni/form';
+import { Sheet } from '../../components/uni/Sheet';
+import { useToast } from '../../components/uni/Toast';
+import { shadow, useUni } from '../../components/uni/theme';
+import { semesterRange, semesterTitle, termLabel } from '../../domains/profile/form';
+import { SemesterRepository } from '../../domains/semester/repository';
 
-export default function SemesterList() {
+type Sem = Awaited<ReturnType<typeof SemesterRepository.listWithCourseCounts>>[number];
+type SheetKind = 'actions' | 'blocked' | 'delete' | null;
+
+const courses = (n: number) => `${n} course${n === 1 ? '' : 's'}`;
+
+/**
+ * Semesters (handoff §5): newest first, the active one outlined. Tap a card for
+ * Set active / Edit / Delete; a semester with courses cannot be deleted.
+ */
+export default function Semesters() {
+  const p = useUni();
   const router = useRouter();
-  const { semesters, isLoading, activateSemester } = useSemesters();
+  const toast = useToast();
+  const [sems, setSems] = useState<Sem[] | null>(null);
+  const [sel, setSel] = useState<Sem | null>(null);
+  const [sheet, setSheet] = useState<SheetKind>(null);
 
-  const handleSetCurrent = async (id: number) => {
-    Alert.alert(
-      "Set Active Semester",
-      "Are you sure you want to make this the active semester?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Confirm", 
-          onPress: () => activateSemester(id)
-        }
-      ]
-    );
+  const load = useCallback(async () => setSems(await SemesterRepository.listWithCourseCounts()), []);
+  useFocusEffect(useCallback(() => { load().catch((e) => console.error('Could not load semesters', e)); }, [load]));
+
+  const close = () => setSheet(null);
+  const add = () => router.push('/semester/add');
+
+  const setActive = async (s: Sem) => {
+    close();
+    try {
+      await SemesterRepository.activateSemester(s.id);
+      toast.show(`${semesterTitle(s)} is now active. Home and Timetable show its courses.`);
+      load();
+    } catch (e: any) { toast.show(e?.message ?? 'Could not change the active semester.'); }
+  };
+  const remove = async (s: Sem) => {
+    close();
+    try {
+      const row = await SemesterRepository.deleteSemester(s.id);
+      load();
+      toast.show(`${semesterTitle(s)} deleted.`, row ? { undo: async () => { await SemesterRepository.restoreSemester(row); load(); } } : undefined);
+    } catch (e: any) { toast.show(e?.message ?? 'Could not delete the semester.'); }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => router.back()} accessibilityLabel="Go back">
-          <ArrowLeft size={24} color={colors.light.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Semesters</Text>
-        <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/semester/add')} accessibilityLabel="Add semester">
-          <Plus size={24} color={colors.light.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {isLoading ? (
-          <Text style={styles.loadingText}>Loading...</Text>
-        ) : semesters.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Calendar size={48} color={colors.light.textMuted} style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>No semesters yet</Text>
-            <Text style={styles.emptyDesc}>Add a semester to start tracking your SGPA.</Text>
+    <FormPage title="Semesters" backIcon="chevron-left" onBack={() => router.back()} gap={14}
+      right={(
+        <Tap onPress={add} accessibilityRole="button" accessibilityLabel="Add semester"
+          style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: p.primary, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="plus" size={20} color="#fff" width={2.6} />
+        </Tap>
+      )}>
+      {sems && !sems.length ? (
+        <View style={[{ marginTop: 30, padding: 28, paddingHorizontal: 20, borderRadius: 24, backgroundColor: p.elev, borderWidth: 1, borderColor: p.hair, alignItems: 'center', gap: 12 }, shadow(p)]}>
+          <View style={{ width: 60, height: 60, borderRadius: 20, backgroundColor: p.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="layers" size={26} color={p.primary} />
           </View>
-        ) : (
-          semesters.map((sem) => (
-            <TouchableOpacity 
-              key={sem.id} 
-              style={[styles.card, sem.isActive && styles.activeCard]}
-              onPress={() => handleSetCurrent(sem.id)}
-            >
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={styles.semNumber}>Semester {sem.number}</Text>
-                  {sem.name && <Text style={styles.semName}>{sem.name}</Text>}
-                </View>
-                {sem.isActive && (
-                  <View style={styles.activeBadge}>
-                    <CheckCircle size={14} color={colors.light.background} style={{ marginRight: 4 }} />
-                    <Text style={styles.activeBadgeText}>Active</Text>
-                  </View>
-                )}
+          <T w={800} size={18}>Add your first semester</T>
+          <T c={p.muted} size={13.5} style={{ lineHeight: 20, textAlign: 'center' }}>
+            Courses belong to a semester. Add the one you're in now, then add its courses. Old semesters keep their attendance and SGPA.
+          </T>
+          <View style={{ alignSelf: 'stretch' }}><PrimaryButton label="Add semester" onPress={add} /></View>
+        </View>
+      ) : null}
+
+      {(sems ?? []).map((m) => {
+        const on = !!m.isActive;
+        const range = semesterRange(m.startDate, m.endDate);
+        return (
+          <Tap key={m.id} onPress={() => { setSel(m); setSheet('actions'); }} accessibilityRole="button"
+            accessibilityLabel={`${semesterTitle(m)}${on ? ', active' : ''}, ${courses(m.courses)}${m.sgpa != null ? `, SGPA ${m.sgpa}` : ''}`}
+            style={[{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 22, backgroundColor: p.elev, borderWidth: on ? 1.5 : 1, borderColor: on ? p.primary : p.hair }, shadow(p)]}>
+            <View style={{ width: 48, height: 48, borderRadius: 15, backgroundColor: on ? p.primary : p.surface, alignItems: 'center', justifyContent: 'center' }}>
+              <T w={800} c={on ? '#fff' : p.text} size={18} style={{ fontFamily: 'JetBrainsMono_700Bold' }}>{m.number}</T>
+            </View>
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <T w={800} size={15} style={{ lineHeight: 20 }}>{semesterTitle(m)}</T>
+                {on ? <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 7, backgroundColor: p.primary }}><T w={800} c="#fff" size={11}>Active</T></View> : null}
               </View>
-              
-              <View style={styles.cardDetails}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Type</Text>
-                  <Text style={styles.detailValue}>{sem.type === 'even' ? 'Even' : 'Odd'}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>SGPA</Text>
-                  <Text style={styles.detailValue}>{sem.sgpa ? sem.sgpa.toFixed(2) : '--'}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
-    </SafeAreaView>
+              <T w={600} c={p.muted} size={12.5}>{[termLabel(m.type, m.number), range].filter(Boolean).join(' · ')}</T>
+              <T w={600} c={p.muted} size={12.5}>{courses(m.courses)}</T>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <T w={800} c={m.sgpa != null ? p.text : p.muted} size={17} style={{ fontFamily: 'JetBrainsMono_700Bold' }}>{m.sgpa != null ? m.sgpa.toFixed(2) : '—'}</T>
+              <T w={700} c={p.muted} size={11}>{m.sgpa != null ? 'SGPA' : on ? 'In progress' : 'Add SGPA'}</T>
+            </View>
+          </Tap>
+        );
+      })}
+
+      {sel ? (
+        <>
+          <Sheet visible={sheet === 'actions'} onClose={close} title={semesterTitle(sel)}
+            text={[semesterRange(sel.startDate, sel.endDate), courses(sel.courses)].filter(Boolean).join(' · ')}
+            rows={[
+              ...(sel.isActive ? [] : [{ icon: 'circle-check' as const, label: 'Set active', onPress: () => setActive(sel) }]),
+              { icon: 'pencil', label: 'Edit', onPress: () => { close(); router.push({ pathname: '/semester/add', params: { id: String(sel.id) } }); } },
+              { icon: 'trash-2', label: 'Delete', danger: true, onPress: () => setSheet(sel.courses ? 'blocked' : 'delete') },
+            ]} />
+          <Sheet visible={sheet === 'blocked'} onClose={close} title={`Can't delete ${semesterTitle(sel)} yet`}
+            text={`Move or delete its ${courses(sel.courses)} first. Their attendance and files go with them.`}
+            buttons={[{ label: 'Close', onPress: close }, { label: 'Open courses', tone: 'primary', onPress: () => { close(); router.push('/(main)/menu'); } }]} />
+          <Sheet visible={sheet === 'delete'} onClose={close} title={`Delete ${semesterTitle(sel)}?`}
+            text="It has no courses. You can undo for a few seconds."
+            buttons={[{ label: 'Cancel', onPress: close }, { label: 'Delete', tone: 'danger', onPress: () => remove(sel) }]} />
+        </>
+      ) : null}
+    </FormPage>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.light.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.light.border },
-  iconButton: { padding: spacing.sm },
-  title: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.light.text },
-  content: { padding: spacing.md },
-  loadingText: { textAlign: 'center', marginTop: spacing.xl, color: colors.light.textMuted },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xxl },
-  emptyIcon: { marginBottom: spacing.md },
-  emptyTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.light.text, marginBottom: spacing.xs },
-  emptyDesc: { fontSize: typography.fontSize.sm, color: colors.light.textMuted, textAlign: 'center' },
-  card: { backgroundColor: colors.light.surface, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.light.border },
-  activeCard: { borderColor: colors.light.primary, backgroundColor: `${colors.light.primary}05` },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
-  semNumber: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.light.text },
-  semName: { fontSize: typography.fontSize.sm, color: colors.light.textMuted, marginTop: 2 },
-  activeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.light.primary, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full },
-  activeBadgeText: { color: colors.light.background, fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.bold },
-  cardDetails: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.light.border, paddingTop: spacing.md, marginTop: spacing.sm },
-  detailItem: { flex: 1 },
-  detailLabel: { fontSize: typography.fontSize.xs, color: colors.light.textMuted, marginBottom: 2 },
-  detailValue: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colors.light.text },
-});
