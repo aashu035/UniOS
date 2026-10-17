@@ -205,6 +205,6 @@ Expo Go and web are not supported targets.
 | No sample data on a fresh install | Implemented | Sample data misleads. |
 | Synchronous `atomic()` transactions | Implemented | The expo driver commits when the callback returns. |
 | Optional Gemini scan with the student's own key | Implemented | Fast setup from a printed timetable. Manual setup stays available. |
-| Sentry error reporting, always on | Implemented, owner review open | Crash data for a solo developer. Conflicts with the earlier "no telemetry" goal. |
-| Laptop-local AI tutor | Removed (`8b38196`) | Never reachable from the app's navigation. |
+| Sentry error reporting, always on | Implemented, owner review open | Added in `a09d221` ("integrate Sentry error monitoring and performance tracking"). Conflicts with the earlier "no telemetry" goal. |
+| Laptop-local AI tutor | Removed (`8b38196`) | The commit message records that the tutor chain was never reachable from the app. |
 | Full model fine-tuning for personalisation | Rejected | Not needed for the current scope. |

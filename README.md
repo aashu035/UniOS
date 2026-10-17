@@ -8,9 +8,9 @@ It was built for B.Tech students at DCRUST, Murthal. Its attendance rules follow
 
 ## The problem
 
-DCRUST requires 75% attendance in each subject. Students track this by hand or wait for the college portal to update. The portal shows a percentage, but not how many classes you can still miss. Timetables change often: classes get cancelled, moved, or swapped for another weekday's schedule.
+DCRUST requires 75% attendance in each subject, counted over lectures, tutorials and labs together. Leave counts as held but not attended, and it can only be condoned later on documents. A student who wants to know "can I miss the next class?" must do this arithmetic for every subject.
 
-UniOS answers three questions on one screen: what is next today, where you stand in each subject, and what is due.
+UniOS does the arithmetic from your own marks. Its Today tab shows the next class, alerts, the week and task countdowns. Each course shows how many classes you can miss, or must attend, to reach your target. Cancelled, moved and extra classes update the counts.
 
 ## Screenshots
 
@@ -54,7 +54,7 @@ The earlier "local AI tutor" and laptop companion were removed on 2026-10-14 in 
 
 | Item | State |
 | --- | --- |
-| Platform | Android. iOS has no bundle identifier in `app.json` and has never been built. |
+| Platform | Android. iOS has no bundle identifier in `app.json`, and the repository has no record of an iOS build. |
 | Version | `1.1.0` (`app.json`) |
 | Store listing | None linked from this repository |
 | GitHub release | None |
@@ -107,7 +107,7 @@ flowchart LR
 
 ### Web
 
-Web is not a supported target. `npm run web` exists, but `react-dom` and `react-native-web` are not dependencies (`package.json`, `package-lock.json`). The app also needs native modules such as `expo-sqlite`, `react-native-pdf` and `expo-video` at startup.
+Web is not a supported target. `npm run web` exists, but `react-dom` and `react-native-web` are not dependencies (`package.json`, `package-lock.json`). On a clean `npm ci`, `npx expo export -p web` stops with "It looks like you're trying to use web support but don't have the required dependencies installed" (checked 2026-10-17).
 
 ### Troubleshooting
 
@@ -143,13 +143,13 @@ Your academic data stays on the phone in SQLite. UniOS has no account, no server
 | Service | What leaves the phone | When |
 | --- | --- | --- |
 | Google Gemini (optional) | The timetable photo you pick, an instruction text, your section and group name, and your API key. | Only when you tap scan, and when you check a new key. Nothing is sent if you have no key. |
-| Sentry (crash and error reporting) | Crash and error reports, performance traces, device model and OS, and screen recordings of some sessions. Text and images in recordings are masked by default. | Always on, in every build. |
+| Sentry (crash and error reporting) | Crash and error reports with app and device details, performance traces, and screen recordings of some sessions. Text and images in recordings are masked by default. | Always on, in every build. |
 
 **Gemini.** You create your own key at Google AI Studio. UniOS keeps it in the phone's secure storage (`expo-secure-store`). It is not in backups or logs. Google's Gemini API terms say Google may use what you send to the free tier to improve its products, and that human reviewers may read it. Do not scan a photo that shows private information. Read the current terms at <https://ai.google.dev/terms>.
 
 **Sentry.** The settings are in `app/_layout.tsx`. `sendDefaultPii` is `false`. Production builds send 20% of performance traces (`tracesSampleRate: 0.2`). Screen recordings (session replay) cover 10% of sessions and every session with an error. The masking defaults come from `@sentry/react-native` 7.11.0. **Report a problem** sends your note, an optional email, app and device details, table row counts, and recent warnings and errors from the app's log. It does not read the contents of your records. There is no setting to turn Sentry off.
 
-**Links** open in your phone's browser. UniOS does not fetch them.
+**Links** open in another app, usually your browser, through `Linking.openURL`. UniOS does not download them.
 
 ## Known limitations
 
@@ -158,7 +158,7 @@ Your academic data stays on the phone in SQLite. UniOS has no account, no server
 - A backup holds database rows only. It does not contain your uploaded files, so restoring on a new phone loses them.
 - There is no way to enter a portal attendance snapshot in the app.
 - Sentry cannot be turned off.
-- Android only. iOS has never been built.
+- Android only. No iOS build is configured or recorded.
 - The Android package ID is `com.anonymous.UniOS`. Changing it later makes a new app that cannot update the old one.
 
 ## Roadmap
@@ -182,7 +182,7 @@ Do not report security problems in a public issue. Read [`SECURITY.md`](SECURITY
 
 ## License
 
-`LICENSE` has the MIT license text. Its copyright line names 650 Industries, Inc. (Expo). That file is the same, byte for byte, as `node_modules/expo/LICENSE`, and it came with the first commit. The owner has not yet decided on the copyright line for UniOS's own code. Until they do, ask the owner before you reuse the code.
+`LICENSE` has the MIT license text. Its copyright line names 650 Industries, Inc. (Expo). That file is the same, byte for byte, as `node_modules/expo/LICENSE`, and it came with the first commit. The owner is reviewing the copyright line for UniOS's own code. This README will change when that review ends.
 
 ## Documentation
 
