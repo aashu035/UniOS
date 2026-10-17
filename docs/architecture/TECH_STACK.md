@@ -52,7 +52,7 @@ Each row was checked with a search for an import in `app/`, `components/`, `core
 | Library | Service | When it sends data |
 | --- | --- | --- |
 | `@google/genai` | Google Gemini | Only during an AI timetable scan or a key check (`core/ai/timetableParser.ts`) |
-| `@sentry/react-native` | Sentry | Always on: crashes, errors, performance traces, session replay, user reports (`app/_layout.tsx`, `core/diagnostics/index.ts`) |
+| `@sentry/react-native` | Sentry | Always on: crashes, errors, performance traces and profiles, console logs, session replay, user reports (`app/_layout.tsx`, `core/diagnostics/index.ts`) |
 
 ## Tests
 

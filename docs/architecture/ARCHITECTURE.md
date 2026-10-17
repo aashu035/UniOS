@@ -150,11 +150,13 @@ sequenceDiagram
 | `sendDefaultPii` | `false` |
 | `environment` | `development`, `preview` or `production` (from `APP_VARIANT`) |
 | `tracesSampleRate` | `1.0` in development, `0.2` otherwise |
+| `profilesSampleRate` | `1.0` (a Hermes profile for every sampled trace) |
+| `enableLogs` | `true`: every `console` level is sent as a Sentry log |
 | `replaysSessionSampleRate` | `0.1` |
 | `replaysOnErrorSampleRate` | `1.0` |
 | Replay masking | SDK defaults in `@sentry/react-native` 7.11.0: `maskAllText`, `maskAllImages` and `maskAllVectors` are `true` (`node_modules/@sentry/react-native/dist/js/replay/mobilereplay.js`) |
 
-**Report a problem** (`core/diagnostics/index.ts`) sends the student's note, an optional email, app and device details, table row counts, and recent console warnings and errors. It does not read row contents. There is no setting to turn Sentry off. This is an open owner decision (PRD section 6).
+**Report a problem** (`core/diagnostics/index.ts`) sends the student's note, an optional email, app and device details, table row counts, and recent console warnings and errors. It does not read row contents. There is no setting to turn Sentry off. This is an open owner decision (PRD section 6). The detailed proposal is [`docs/proposals/2026-10-17-sentry-privacy.md`](../proposals/2026-10-17-sentry-privacy.md).
 
 ## Data classification
 

@@ -143,11 +143,11 @@ Your academic data stays on the phone in SQLite. UniOS has no account, no server
 | Service | What leaves the phone | When |
 | --- | --- | --- |
 | Google Gemini (optional) | The timetable photo you pick, an instruction text, your section and group name, and your API key. | Only when you tap scan, and when you check a new key. Nothing is sent if you have no key. |
-| Sentry (crash and error reporting) | Crash and error reports with app and device details, performance traces, and screen recordings of some sessions. Text and images in recordings are masked by default. | Always on, in every build. |
+| Sentry (crash and error reporting) | Crash and error reports with app and device details, performance traces and profiles, the app's console log lines, and screen recordings of some sessions. Text and images in recordings are masked by default. | Always on, in every build. |
 
 **Gemini.** You create your own key at Google AI Studio. UniOS keeps it in the phone's secure storage (`expo-secure-store`). It is not in backups or logs. Google's Gemini API terms say Google may use what you send to the free tier to improve its products, and that human reviewers may read it. Do not scan a photo that shows private information. Read the current terms at <https://ai.google.dev/terms>.
 
-**Sentry.** The settings are in `app/_layout.tsx`. `sendDefaultPii` is `false`. Production builds send 20% of performance traces (`tracesSampleRate: 0.2`). Screen recordings (session replay) cover 10% of sessions and every session with an error. The masking defaults come from `@sentry/react-native` 7.11.0. **Report a problem** sends your note, an optional email, app and device details, table row counts, and recent warnings and errors from the app's log. It does not read the contents of your records. There is no setting to turn Sentry off.
+**Sentry.** The settings are in `app/_layout.tsx`. `sendDefaultPii` is `false`. Production builds send 20% of performance traces (`tracesSampleRate: 0.2`). Each sampled trace also sends a CPU profile (`profilesSampleRate: 1.0`). Screen recordings (session replay) cover 10% of sessions and every session with an error. `enableLogs: true` sends every `console` message as a Sentry log. The masking defaults come from `@sentry/react-native` 7.11.0. **Report a problem** sends your note, an optional email, app and device details, table row counts, and recent warnings and errors from the app's log. It does not read the contents of your records. There is no setting to turn Sentry off. A proposal to change these settings is in [`docs/proposals/2026-10-17-sentry-privacy.md`](docs/proposals/2026-10-17-sentry-privacy.md).
 
 **Links** open in another app, usually your browser, through `Linking.openURL`. UniOS does not download them.
 

@@ -215,3 +215,13 @@ No paid stars, fake reviews, bulk messages or posts that pretend to be a user.
 ## 15. Reviewable diff
 
 Run `git diff b779d2d..chore/promotion-readiness` on the branch. The final reply links the full diff file.
+
+## 16. Follow-up after owner approval (2026-10-17)
+
+| Item | Result | Label |
+| --- | --- | --- |
+| Push | `chore/promotion-readiness` pushed to `https://github.com/aashu035/UniOS`. `git ls-remote` showed `de176e6` on the remote branch. `master` is untouched (`b779d2d`). | Verified |
+| CI on `de176e6` | Run 39002188243, workflow "Check": `success`. All steps passed, including `npm ci` and `npm run check`. The log file is on a host that this session cannot reach, so the test counts on GitHub were not read. | Verified (step results) |
+| Sentry review | New facts from the installed SDK: `profilesSampleRate: 1.0` sends Hermes profiles; `enableLogs: true` sends every `console` level as a Sentry log. The README, `ARCHITECTURE.md` and `TECH_STACK.md` now say so. Proposal: [`docs/proposals/2026-10-17-sentry-privacy.md`](../docs/proposals/2026-10-17-sentry-privacy.md). | Completed (docs); code change awaiting approval |
+| License, security reporting, package ID, metadata | [`docs/proposals/2026-10-17-owner-decisions.md`](../docs/proposals/2026-10-17-owner-decisions.md) | Awaiting approval |
+| Correction to section 10 | `assets/Actual Assets.png/` is a folder of six design mockups, not screenshots. It is described in the owner-decisions file (L13). | Verified |
