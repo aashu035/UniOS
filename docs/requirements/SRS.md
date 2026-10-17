@@ -4,11 +4,12 @@
 **Status:** Approved requirements baseline; implementation status is recorded per requirement and must be verified before release.  
 **Product intent:** Defined only in `docs/product/PRD.md`.  
 **Traceability:** `docs/project-package/requirements-traceability-matrix.md`.  
-**Authority:** This is the canonical source for normative “shall” requirements. See [Source of Truth](../SOURCE_OF_TRUTH.md).
+**Authority:** This is the canonical source for normative “shall” requirements. See [Source of Truth](../SOURCE_OF_TRUTH.md).  
+**Reconciled:** 2026-10-17 against commit `b779d2d`. This pass re-checked section 3.7, the new section 3.8, UNI-ATT-002, UNI-PRIV-001, UNI-MAINT-001 and section 5. The other status values were not re-checked in this pass.
 
 ## 1. Scope and terminology
 
-UniOS is a private, local-first academic organiser for an individual student. Its core phone workflows include profile/setup, semesters, courses, timetable, tasks, attendance, materials, and progress. An optional paired laptop may later provide a local AI tutor; the app’s normal academic workflows shall not depend on it.
+UniOS is a private, local-first academic organiser for an individual student. Its core phone workflows include profile/setup, semesters, courses, timetable, tasks, attendance, materials, and progress. An optional Gemini timetable scan uses the student's own API key. The earlier laptop AI tutor was removed in commit `8b38196` (2026-10-14).
 
 | Term | Meaning in this SRS |
 | --- | --- |
@@ -17,7 +18,7 @@ UniOS is a private, local-first academic organiser for an individual student. It
 | **Recurring class** | One class schedule with one or more explicitly selected weekdays. |
 | **One-time event** | A dated event that does not repeat unless the student deliberately creates a recurrence. |
 | **Resource** | Student-controlled material such as document, link, note, PYQ, reference book, exercise, or answer. |
-| **Companion** | The optional laptop-local AI service; it is not a cloud API. |
+| **Companion** | Removed. The former laptop-local AI service. Its code was deleted in commit `8b38196`. |
 | **Confirmation** | An explicit student action in a review surface; an AI suggestion alone is never confirmation. |
 
 ## 2. General constraints
@@ -67,7 +68,7 @@ UniOS is a private, local-first academic organiser for an individual student. It
 | --- | --- | --- | --- |
 | UNI-TASK-001 | The student shall create, edit, complete/status-update, and delete academic and personal tasks with title, optional course, type, date, priority, notes, and attachments where supported. | Partially implemented | Create/status/relaunch/delete test covers course-linked and unlinked tasks. |
 | UNI-ATT-001 | The student shall create, view, edit, and delete attendance records with a date, status, and optional note. | Partially implemented | Per-course history updates without inventing attendance. |
-| UNI-ATT-002 | Portal attendance snapshots shall be clearly labelled as checked snapshots rather than asserted as a live portal integration. | Implemented design | UI distinguishes local mark from imported/snapshot data. |
+| UNI-ATT-002 | Portal attendance snapshots shall be clearly labelled as checked snapshots rather than asserted as a live portal integration. | Partial: the app shows snapshots (`domains/academic/snapshot.ts:107`, `app/attendance/index.tsx`), but no screen creates one; rows arrive only through backup restore | UI distinguishes local mark from imported/snapshot data. |
 | UNI-STUDY-001 | The student shall log class or self-study sessions with duration, topics, confidence, and optional linked material. | Approved design | Logged session appears in real progress totals after relaunch. |
 | UNI-NOTIFY-001 | In-app notifications shall be readable, markable as read, and safe to open through valid in-app routes. | Partially implemented | Read/unread and valid action-route tests pass; broken routes do not crash. |
 
@@ -88,16 +89,27 @@ UniOS is a private, local-first academic organiser for an individual student. It
 | UNI-DATA-001 | The app shall provide a path to export/back up locally stored student data before destructive reset/cleanup features are introduced. | Approved design | Export produces a recoverable, documented local artifact and handles failure safely. |
 | UNI-DATA-002 | Legacy demo-data cleanup, if offered, shall list its known generated targets and require explicit confirmation; it shall not silently remove a student profile. | Approved design | Legacy-data fixture removes only recognised demo records. |
 
-### 3.7 Optional local AI companion
+### 3.7 Optional local AI companion (removed)
+
+Commit `8b38196` (2026-10-14) removed the tutor screen, the pairing screen, the `domains/ai` repository and the Python companion. The requirements below stay for history. They are not active. The empty tables `ai_connections`, `learning_profiles`, `material_index_permissions`, `tutor_conversations` and `tutor_messages` remain; see the ERD.
 
 | ID | Requirement | Status | Acceptance criteria |
 | --- | --- | --- | --- |
-| UNI-AI-001 | The Tutor shall be optional; unavailable companion service shall never block startup or core academic workflows. | Implemented experimental / device verification pending | App works in airplane mode/with a stopped companion; Tutor offers retry/re-pair guidance within bounded timeout. |
-| UNI-AI-002 | The app shall not call a cloud inference API or upload student material outside the approved local phone–laptop connection. | Implemented experimental / transport hardening pending | Network review shows no cloud endpoint; companion request test uses local pair only. |
-| UNI-AI-003 | The student shall explicitly approve each material before it is copied/indexed by a companion and shall be able to revoke/remove it later. | Approved design | Permission, index, revoke, and post-revoke retrieval tests pass. |
-| UNI-AI-004 | Grounded tutor answers shall disclose their selected source material and distinguish unsupported general responses from material-grounded responses. | Approved design | Test prompts display source manifest/page-or-chunk reference where available. |
-| UNI-AI-005 | AI-generated dates, events, homework, exams, holidays, or tasks shall be candidates only; the app shall require student review and confirmation before a normal local record is created. | Approved design | Extraction test leaves database unchanged until the confirm action. |
-| UNI-AI-006 | Personalisation shall use visible, editable learning preferences and feedback; it shall not assign an opaque academic ability label or claim to predict grades. | Approved design | Preferences can be viewed, changed, and reset; generated answer format changes without altering source facts. |
+| UNI-AI-001 | The Tutor shall be optional; unavailable companion service shall never block startup or core academic workflows. | Removed (`8b38196`) | App works in airplane mode/with a stopped companion; Tutor offers retry/re-pair guidance within bounded timeout. |
+| UNI-AI-002 | The app shall not call a cloud inference API or upload student material outside the approved local phone–laptop connection. | Removed (`8b38196`). Superseded by UNI-SCAN-001: the app calls Google Gemini for the optional timetable scan | Network review shows no cloud endpoint; companion request test uses local pair only. |
+| UNI-AI-003 | The student shall explicitly approve each material before it is copied/indexed by a companion and shall be able to revoke/remove it later. | Removed | Permission, index, revoke, and post-revoke retrieval tests pass. |
+| UNI-AI-004 | Grounded tutor answers shall disclose their selected source material and distinguish unsupported general responses from material-grounded responses. | Removed | Test prompts display source manifest/page-or-chunk reference where available. |
+| UNI-AI-005 | AI-generated dates, events, homework, exams, holidays, or tasks shall be candidates only; the app shall require student review and confirmation before a normal local record is created. | Implemented for the timetable scan: classes are review cards until the student saves (`app/course/ai-setup.tsx`, `domains/timetable/scan.ts`) | Extraction test leaves database unchanged until the confirm action. |
+| UNI-AI-006 | Personalisation shall use visible, editable learning preferences and feedback; it shall not assign an opaque academic ability label or claim to predict grades. | Removed | Preferences can be viewed, changed, and reset; generated answer format changes without altering source facts. |
+
+### 3.8 Optional AI timetable scan
+
+| ID | Requirement | Status | Acceptance criteria |
+| --- | --- | --- | --- |
+| UNI-SCAN-001 | The scan shall send data to Google Gemini only when the student starts a scan or checks a new key, and only with a key the student entered. | Implemented (`core/ai/timetableParser.ts`; key in `expo-secure-store`, `core/settings/aiProviders.ts`) | No Gemini request without a saved key; the key is absent from backups and logs. |
+| UNI-SCAN-002 | The scan shall send only the chosen photo, the instruction text, and the section and group names. | Implemented (`scanTimetable`) | Code review of the request body. |
+| UNI-SCAN-003 | Gemini's reply shall be validated before review; an unreadable reply shall show a recoverable error. | Implemented (`readScan`, `scanErrorKind`; `__tests__/timetable_scan.test.ts`) | Malformed replies are rejected in tests. |
+| UNI-SCAN-004 | The app shall tell the student, before the first scan, that the photo goes to Google. | Implemented on the key screen (`app/settings/gemini-key.tsx:99`). Device check pending | Wording visible on a device. |
 
 ## 4. Quality requirements
 
@@ -108,13 +120,13 @@ UniOS is a private, local-first academic organiser for an individual student. It
 | UNI-REL-003 | Long-running local operations shall have visible progress and a bounded failure/retry path. | Simulated database/file/companion failure does not freeze the UI. |
 | UNI-DATA-003 | Persisted data shall remain consistent across app relaunch and migration. | Test database before/after each migration; verify affected records. |
 | UNI-DATA-004 | Deletion shall be scoped, confirmed, and recoverable only through an explicit backup/export mechanism. | Parent-child deletion fixture and no-unrelated-data test pass. |
-| UNI-PRIV-001 | UniOS shall minimise data exposure: normal academic data remains local, selected AI context is explicit, and local AI history/indexes are removable. | Privacy controls are visible and reviewed against actual requests/storage. |
+| UNI-PRIV-001 | UniOS shall minimise data exposure: normal academic data remains local, selected AI context is explicit, and local AI history/indexes are removable. Open conflict: Sentry crash reports, traces and session replay are always on (`app/_layout.tsx`); the owner must decide whether to add an off switch (see PRD section 6). | Privacy controls are visible and reviewed against actual requests/storage. |
 | UNI-UX-001 | Core controls shall be reachable, pressable, labelled, and understandable with accessible contrast and touch targets. | Accessibility review of priority routes; no “dead” button in test script. |
-| UNI-MAINT-001 | The worktree shall pass TypeScript validation and migration/build checks appropriate to the changed area. | `npm.cmd run typecheck` and relevant Android/Expo checks pass before a release candidate. |
+| UNI-MAINT-001 | The worktree shall pass TypeScript validation and migration/build checks appropriate to the changed area. | `npm run check` (typecheck and all tests) passes locally and in GitHub Actions (`.github/workflows/check.yml`); relevant Android checks pass before a release candidate. |
 
 ## 5. Out of scope for the initial production rebuild
 
-- Cloud-hosted inference, account synchronisation, hidden analytics, or mandatory sign-in.
+- Cloud-hosted inference, account synchronisation, hidden analytics, or mandatory sign-in. Exceptions on record: the optional Gemini scan (section 3.8) and Sentry error reporting, both disclosed in the README.
 - Claims of guaranteed grade improvement, diagnosis, counselling, or automatic academic decisions.
 - Unreviewed full-model training on personal academic data.
 - Automatic direct access to a university portal unless a separate, permissioned and tested integration is approved.

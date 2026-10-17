@@ -1,6 +1,6 @@
 # UniOS requirements traceability matrix
 
-**Status:** Working baseline for implementation and acceptance testing. Product-discovery inputs are from the project owner; references `E1`–`E8` point to the source register in [`evidence-register.md`](evidence-register.md).
+**Status:** Working baseline for implementation and acceptance testing. **2026-10-17:** FR-10, FR-11 and the Tutor parts of QR-03 and QR-05 refer to the laptop AI tutor, which commit `8b38196` removed. They are not active. The app now sends data to Google Gemini (optional scan) and Sentry; see the README privacy section. Product-discovery inputs are from the project owner; references `E1`–`E8` point to the source register in [`evidence-register.md`](evidence-register.md).
 
 ## Functional requirements
 

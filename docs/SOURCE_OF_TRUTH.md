@@ -11,7 +11,7 @@ This file prevents contradictions between product documents, implementation note
 | Why the product exists, target student, outcomes, priority, scope, or non-goals | [`product/PRD.md`](product/PRD.md) | Design specification, feasibility package | PRD wins unless the project owner revises it. |
 | What the system is approved to do; functional/non-functional requirement; acceptance condition | [`requirements/SRS.md`](requirements/SRS.md) | Requirements traceability matrix | SRS wins for approved requirements. Update it before implementing a changed requirement. |
 | What persistent data exists now | `domains/*/model.ts` and applied `drizzle/*.sql` migrations | [`architecture/ERD.md`](architecture/ERD.md) | Code plus migration history wins. ERD must be corrected in the same change. |
-| How components communicate; privacy, offline, and reliability boundaries | [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md) | `ai/local-companion-architecture.md` | Architecture wins for approved system boundaries; code must be reconciled before release. |
+| How components communicate; privacy, offline, and reliability boundaries | [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md) | `AGENTS.md` | Architecture wins for approved system boundaries; code must be reconciled before release. |
 | Which runtime/library/version/build command is selected | [`architecture/TECH_STACK.md`](architecture/TECH_STACK.md), `package.json`, lockfile, native Gradle files | README | Installed manifest/native files win for current implementation; Tech Stack records rationale and intended support. |
 | How a contributor runs the project | [`../README.md`](../README.md) | `package.json` scripts, Android project | The executable script/config wins; update README immediately if instructions fail. |
 | Evidence/statistics used in professional documents | [`project-package/evidence-register.md`](project-package/evidence-register.md) | Original linked source | Original source wins; replace stale claims rather than silently retaining them. |
@@ -59,7 +59,8 @@ Never use “supported” or “production-ready” unless release verification 
 | Database schema exports | `core/db/schema.ts` and `domains/*/model.ts` | Models define current table shape. |
 | Migration history | `drizzle/meta/_journal.json`, `drizzle/*.sql`, `drizzle/migrations.js` | Do not edit applied migration history destructively. |
 | Domain operations | `domains/*/repository.ts`, `domains/*/hooks.ts` | Repository transactions own cross-table integrity in the present SQLite schema. |
-| Local AI companion pair/chat implementation | `companion/**`, `app/settings/pairing.tsx`, `app/tutor/index.tsx`, `domains/ai/**`, and applied migrations | Implemented experimental local-only pair/chat. `docs/ai/local-companion-architecture.md` defines the approved privacy/security boundary; encrypted transport, retrieval, citations, and candidate workflows remain future requirements. |
+| AI timetable scan | `core/ai/**`, `core/settings/aiProviders.ts`, `domains/timetable/scan.ts`, `app/course/ai-setup.tsx`, `app/settings/gemini-key.tsx` | Optional. Sends the photo to Google Gemini with the student's own key. The laptop AI companion was removed in commit `8b38196`. |
+| Error reporting | `app/_layout.tsx`, `core/diagnostics/**` | Sentry, always on. Disclosed in the README. |
 
 ## Conflict examples
 

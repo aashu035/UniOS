@@ -1,0 +1,28 @@
+name: Check
+
+# Runs the same command contributors run before each commit:
+# `npm run check` = TypeScript (tsc --noEmit) + every Jest test.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # React Native 0.85 needs ^20.19.4 || ^22.13.0 || ^24.3.0 (node_modules/react-native/package.json).
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check

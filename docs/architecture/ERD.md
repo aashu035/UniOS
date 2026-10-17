@@ -103,7 +103,7 @@ erDiagram
 | `calendar_events` | `id` | `workspace_id → workspaces`, `venue_override_id → venues` | A one-time event uses `specific_date`; recurring class instances use `day_of_week`. `recurrence_group_id` links the selected weekday instances and `end_date` bounds the series. |
 | `resources` | `id` | `workspace_id → workspaces` | Student-controlled document, link, image, or text-note metadata. `uri` is nullable for text-only notes. |
 | `notifications` | `id` | None | Local in-app message/read-state/deep-link state. |
-| `ai_connections` | text `id` | None | Companion label, local base URL, device identity, and pairing state. **It contains no bearer token**; the phone keeps that secret in Expo SecureStore. |
+| `ai_connections` | text `id` | None | **Unused since `8b38196`.** Former companion label, local base URL, device identity, and pairing state. It contains no bearer token. |
 | `learning_profiles` | text `id` | None | Editable language, depth, example, pace, and accessibility preferences. The current table has no student foreign key. |
 | `material_index_permissions` | text `id` | `resource_id → resources`, `connection_id → ai_connections` | Permission metadata for a future material-index operation; the ingestion/index workflow is not yet implemented. |
 | `tutor_conversations` | text `id` | `connection_id → ai_connections` | Local tutor conversation metadata. |
@@ -129,5 +129,30 @@ The original academic foreign keys use SQLite `ON DELETE NO ACTION`; workspace d
 
 1. The schema does not enforce one active semester, a unique semester number, or a one-profile rule.
 2. A recurrence group is represented by repeated calendar-event rows with one shared ID; there is no separate schedule-group parent table yet.
-3. Material-permission, learning-profile, and tutor-history tables exist, but material indexing/retrieval, cited answers, and editable profile UI are still separate future work.
+3. The AI tables `ai_connections`, `learning_profiles`, `material_index_permissions`, `tutor_conversations` and `tutor_messages` are unused. Commit `8b38196` (2026-10-14) removed the only code that read or wrote them. They stay for compatibility; see "Unused AI tables" below.
 4. Direct database deletion of an academic parent can still bypass repository cleanup; application code must use the tested repository path.
+
+## Unused AI tables
+
+Reviewed 2026-10-17 at commit `b779d2d`. No table was changed.
+
+| Fact | Evidence |
+| --- | --- |
+| No app code reads or writes the five AI tables. | A search of `app/`, `components/`, `core/` and `domains/` finds them only in `domains/ai/model.ts`, `core/db/schema.ts:11`, `core/db/backupSchema.ts` and `core/db/backup.ts:20`. |
+| Migrations `0002`, `0003` and `0004` create and change them. Every installed phone that ran those migrations has them. | `drizzle/0002_lonely_havok.sql`, `drizzle/0003_curious_ozymandias.sql`, `drizzle/0004_add_calendar_recurrence_and_remove_legacy_token.sql` |
+| They are part of backup format version 2. A restore rejects a backup that lacks any of them, unless it is listed in `OPTIONAL_BACKUP_TABLES` (only `day_rules` is). | `core/db/backupSchema.ts`, `core/db/backupValidation.ts:26-29` |
+| Restore and Clear all data delete their rows by name. | `USER_TABLES_CHILD_FIRST` in `core/db/backup.ts` |
+| The backup fixture holds zero rows in each of them. | `__tests__/fixtures/backup-v2-before-day-rules.json` |
+
+What a removal would break, if done without care:
+
+1. If a new app stops writing the five arrays, an app with the current validation rejects its backups ("Backup is missing canonical table array").
+2. Version 2 backups made by the current code contain the five arrays, so a new app can restore them if it still accepts the arrays.
+3. Dropping the tables needs a new migration. `wipeUserTables` and the backup lists must change in the same release, or restore and Clear all data throw "No schema for table". `core/db/backup.ts` also checks at import time that both lists match.
+
+A safe plan, which needs owner approval:
+
+1. Add the five names to `OPTIONAL_BACKUP_TABLES`, so that backups without them still restore. Keep exporting empty arrays for one release, so older apps still accept new backups.
+2. In a later release, stop exporting them, remove them from both backup lists and from `core/db/schema.ts`, and add a `DROP TABLE` migration (children first: `tutor_messages`, `tutor_conversations`, `material_index_permissions`, then `ai_connections`, `learning_profiles`).
+3. Add tests: restore an old backup that contains the arrays, restore a new one without them, and run `__tests__/migration_chain.test.ts`.
+

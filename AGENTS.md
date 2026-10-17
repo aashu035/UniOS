@@ -8,7 +8,7 @@ UniOS is an offline-first student app (Android first): courses, timetable, atten
 
 - Expo SDK 56, expo-router, React Native 0.85 (Hermes), reanimated 4, react-native-svg, lucide-react-native.
 - drizzle-orm on expo-sqlite. Migrations live in `drizzle/` and are run by `core/db/coordinator.ts`.
-- NativeWind v4 is used by the older screens. The redesigned screens use `components/uni/*` with StyleSheet.
+- Screens use `components/uni/*` with StyleSheet. NativeWind v4 is still configured in `babel.config.js`, but no screen uses `className`.
 - Sentry (`@sentry/react-native`) for crashes, performance and user reports.
 - Jest with ts-jest. DB tests run on better-sqlite3 migrated from `drizzle/`.
 
